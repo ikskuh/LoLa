@@ -9,7 +9,7 @@ function Fibonacci1(num)
     if (num <= 1) {
         return 1;
     }
-    return Fibonacci(num - 1) + Fibonacci(num - 2);
+    return Fibonacci1(num - 1) + Fibonacci1(num - 2);
 }
 
 function Fibonacci2(num)
@@ -29,24 +29,30 @@ function Fibonacci2(num)
     return b;
 }
 
+function Retless(a)
+{
+    Print("a = ", a);
+}
+
 Print("Fibonacci(4) = ");
 Print(Fibonacci1(4));
 Print(Fibonacci2(4));
+
+var list = [ "This", "is", "a" ];
+list = list + [ "Sentence" ];
+Print(list);
+
+// is this comment?
+var a = 10;
+Print(a);
+a = "Hallo";
+Print(a);
 
 var counter = CreateCounter();
 Print("cnt = ", counter.GetValue());
 Print("cnt = ", counter.Increment());
 Print("cnt = ", counter.Increment());
 Print("cnt = ", counter.Decrement());
-
-var list = [ "This", "is", "a" ];
-list = list + [ "Sentence" ];
-Print(list);
-
-var a = 10;
-Print(a);
-a = "Hallo";
-Print(a);
 
 )LoLa";
 

@@ -5,6 +5,12 @@
 #include <string>
 #include <memory>
 
+namespace LoLa::Compiler
+{
+    struct CodeWriter;
+    struct Scope;
+}
+
 namespace LoLa::AST
 {
     template<typename T>
@@ -15,7 +21,7 @@ namespace LoLa::AST
     enum class Operator
     {
         LessOrEqual,
-        GreaterOrEqual,
+        MoreOrEqual,
         Equals,
         Differs,
         Less,
@@ -32,14 +38,27 @@ namespace LoLa::AST
         Not
     };
 
-    struct StatementBase { virtual ~StatementBase(); };
-    struct ExpressionBase { virtual ~ExpressionBase(); };
+    struct StatementBase {
+        virtual ~StatementBase();
+        virtual void emit(Compiler::CodeWriter & writer, Compiler::Scope & scope) = 0;
+    };
+
+    struct ExpressionBase {
+        virtual ~ExpressionBase();
+        virtual void emit(Compiler::CodeWriter & writer, Compiler::Scope & scope) = 0;
+    };
+
+    struct LValueExpressionBase : ExpressionBase {
+        virtual ~LValueExpressionBase();
+        virtual void emitStore(Compiler::CodeWriter & writer, Compiler::Scope & scope) = 0;
+    };
 
     using Statement = std::unique_ptr<StatementBase>;
     using Expression = std::unique_ptr<ExpressionBase>;
+    using LValueExpression = std::unique_ptr<LValueExpressionBase>;
 
-    Expression ArrayIndexer(Expression var, Expression index);
-    Expression VariableRef(String var);
+    LValueExpression ArrayIndexer(Expression var, Expression index);
+    LValueExpression VariableRef(String var);
     Expression ArrayLiteral(List<Expression> initializer);
     Expression FunctionCall(String name, List<Expression> args);
     Expression MethodCall(Expression object, String name, List<Expression> args);
@@ -49,7 +68,7 @@ namespace LoLa::AST
     Expression UnaryOperator(Operator op, Expression value);
     Expression BinaryOperator(Operator op, Expression lhs, Expression rhs);
 
-    Statement Assignment(Expression target, Expression value);
+    Statement Assignment(LValueExpression target, Expression value);
 
     Statement Return();
     Statement Return(Expression value);

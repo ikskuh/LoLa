@@ -56,7 +56,7 @@ continue                    { return token::CONTINUE; }
 return                      { return token::RETURN; }
 
 \<\=                        { lval->emplace<Operator>(Operator::LessOrEqual); return token::LEQUAL; }
-\>\=                        { lval->emplace<Operator>(Operator::GreaterOrEqual); return token::GEQUAL; }
+\>\=                        { lval->emplace<Operator>(Operator::MoreOrEqual); return token::GEQUAL; }
 \=\=                        { lval->emplace<Operator>(Operator::Equals); return token::EQUALS; }
 \!\=                        { lval->emplace<Operator>(Operator::Differs); return token::DIFFERS; }
 \<                          { lval->emplace<Operator>(Operator::Less); return token::LESS; }
@@ -80,7 +80,7 @@ not                         { lval->emplace<Operator>(Operator::Not); return tok
 
 [0-9]+(\.[0-9]+)?           { lval->emplace<std::string>(yytext); return token::NUMBER; }
 
-\"(?:\\\"|.)*?\"            { lval->emplace<std::string>(yytext); return token::STRING; }
+\"(\\\"|[^\"])*?\"            { lval->emplace<std::string>(yytext); return token::STRING; }
 
 [A-Za-z][A-Za-z0-9]*        { lval->emplace<std::string>(yytext); return token::IDENT; }
 

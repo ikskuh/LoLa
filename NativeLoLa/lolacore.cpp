@@ -2,10 +2,40 @@
 
 #include "driver.hpp"
 
+#include "compiler.hpp"
+#include "runtime.hpp"
+
 #include <sstream>
 
 #define STR(x) #x
 #define SSTR(x) STR(x)
+
+using LoLa::Runtime::Function;
+using LoLa::Runtime::Value;
+
+struct GenericSyncFunction : LoLa::Runtime::Function
+{
+    std::function<Value(Value const * args, size_t cnt)> fn;
+
+    explicit GenericSyncFunction(decltype(fn) const & f) :
+        fn(f)
+    {
+    }
+
+    std::unique_ptr<LoLa::Runtime::FunctionCall> call(const LoLa::Runtime::Value *args, size_t argc) const override
+    {
+        struct ConstValue : LoLa::Runtime::FunctionCall
+        {
+            Value value;
+            explicit ConstValue(Value const & v) : value(v) { }
+
+            std::optional<Value> execute() override {
+                return value;
+            }
+        };
+        return std::make_unique<ConstValue>(fn(args, argc));
+    }
+};
 
 bool LoLa::verify(std::string_view code)
 {
@@ -17,8 +47,41 @@ bool LoLa::verify(std::string_view code)
 
     driver.parse(str);
 
-    for(auto const & fn : driver.program.functions)
-        std::cout << "fun " << fn.name << std::endl;
+    Compiler::Compiler compiler;
+
+    auto const compile_unit = compiler.compile(driver.program);
+
+    Compiler::Disassembler disasm;
+    disasm.disassemble(compile_unit, std::cout);
+
+    Runtime::VirtualMachine machine;
+    machine.enable_trace = false;
+
+    machine.functions["Print"] = new GenericSyncFunction([](Value const * argv, size_t argc) -> Value
+    {
+        for(size_t i = 0; i < argc; i++)
+        {
+            if(i > 0)
+                std::cout << " ";
+            std::cout << argv[i];
+        }
+        std::cout << std::endl;
+        return LoLa::Runtime::Void { };
+    });
+
+    try
+    {
+        machine.start(&compile_unit, 0); // start the main function
+        while(machine.exec() != LoLa::Runtime::ExecutionResult::Done)
+        {
+
+        }
+    }
+    catch (LoLa::Error err)
+    {
+        std::cerr << to_string(err) << std::endl;
+        return false;
+    }
 
     return true;
 }

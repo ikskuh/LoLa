@@ -7,14 +7,22 @@ CONFIG += static
 
 SOURCES += \
   ast.cpp \
+  compiler.cpp \
   driver.cpp \
-  lolacore.cpp
+  error.cpp \
+  il.cpp \
+  lolacore.cpp \
+  runtime.cpp
 
 HEADERS += \
   ast.hpp \
+  compiler.hpp \
   driver.hpp \
+  error.hpp \
   grammar.tab.h \
+  il.hpp \
   lolacore.hpp \
+  runtime.hpp \
   scanner.hpp
 
 YACCSOURCES += \
