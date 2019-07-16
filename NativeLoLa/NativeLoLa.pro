@@ -7,6 +7,7 @@ CONFIG += static
 
 SOURCES += \
   ast.cpp \
+  common_runtime.cpp \
   compiler.cpp \
   driver.cpp \
   error.cpp \
@@ -16,6 +17,7 @@ SOURCES += \
 
 HEADERS += \
   ast.hpp \
+  common_runtime.hpp \
   compiler.hpp \
   driver.hpp \
   error.hpp \

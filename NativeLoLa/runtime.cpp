@@ -6,6 +6,15 @@
 #include <iomanip>
 
 using LoLa::Runtime::ExecutionResult;
+using LoLa::Runtime::FunctionCall;
+using LoLa::Runtime::Value;
+using LoLa::Runtime::Function;
+using LoLa::Runtime::VirtualMachine;
+using LoLa::Compiler::CompilationUnit;
+
+struct ScriptFunction : LoLa::Runtime::Function
+{
+};
 
 struct NumberHack {
     double value;
@@ -25,25 +34,11 @@ static NumberHack to_numberhack(LoLa::Runtime::Value const & value) {
 LoLa::Runtime::VirtualMachine::VirtualMachine(LoLa::Runtime::Environment &env, size_t entryPoint) :
     env(&env)
 {
-    assert(code_stack.empty());
-    auto & node = code_stack.emplace_back();
-    node = ExecutionContext { };
-
-    auto & ctx = std::get<ExecutionContext>(node);
-    ctx.code = env.code;
-    ctx.offset = entryPoint;
-    ctx.locals.resize(env.code->global_count); // top-level node contains the indexable global variables
-}
-
-bool LoLa::Runtime::VirtualMachine::returnToCaller(LoLa::Runtime::Value const & result)
-{
-    code_stack.pop_back();
-    if(not code_stack.empty()) {
-        std::get<ExecutionContext>(code_stack.back()).data_stack.push_back(result);
-        return true;
-    } else {
-        return false;
-    }
+    auto ctx = std::make_unique<ExecutionContext>();
+    ctx->code = env.code.get();
+    ctx->offset = entryPoint;
+    ctx->locals.resize(env.code->global_count); // top-level node contains the indexable global variables
+    code_stack.emplace_back(std::move(ctx));
 }
 
 LoLa::Runtime::ExecutionResult LoLa::Runtime::VirtualMachine::exec()
@@ -51,60 +46,48 @@ LoLa::Runtime::ExecutionResult LoLa::Runtime::VirtualMachine::exec()
     if(code_stack.empty())
         return ExecutionResult::Done;
 
-    auto & state = code_stack.back();
-    if(std::holds_alternative<ExecutionContext>(state))
+    auto & fn = code_stack.back();
+    if(auto result = fn->execute(*this); result)
     {
-        auto & ctx = std::get<ExecutionContext>(state);
-
-        if(enable_trace)
+        this->code_stack.pop_back();
+        if(this->code_stack.empty())
         {
-            std::cerr << "exec " << std::setw(6) << std::hex << std::setfill('0') << ctx.offset;
-            for(auto const & val : ctx.data_stack)
-                std::cerr << "\t" << val;
-            std::cerr << std::endl;
-        }
-
-        if(ctx.exec(*this))
-            return ExecutionResult::Exhausted;
-        else
-            return ExecutionResult::Done;
-    }
-    else if(std::holds_alternative<std::unique_ptr<FunctionCall>>(state))
-    {
-        auto & fn = std::get<std::unique_ptr<FunctionCall>>(state);
-        if(auto result = fn->execute(); result)
-        {
-            if(returnToCaller(*result)) {
-                return ExecutionResult::Exhausted;
-            } else {
-                return ExecutionResult::Done;
+            if(typeOf(*result) != TypeID::Void) {
+                throw Error::InvalidTopLevelReturn;
             }
+            return ExecutionResult::Done;
         }
-        return ExecutionResult::Exhausted;
+        else
+        {
+            this->code_stack.back()->resumeFromCall(*this, *result);
+        }
     }
-    else
-    {
-        assert(false and "this should not happen!");
-    }
+    return ExecutionResult::Exhausted;
 }
 
-bool LoLa::Runtime::VirtualMachine::ExecutionContext::exec(VirtualMachine & vm)
+std::variant<std::monostate, LoLa::Runtime::Value, LoLa::Runtime::VirtualMachine::ExecutionContext::ManualYield> LoLa::Runtime::VirtualMachine::ExecutionContext::exec(VirtualMachine & vm)
 {
+    auto constexpr continue_execution = std::monostate { };
+    auto constexpr yield_execution = ManualYield { };
+
     auto & ctx = *this;
     auto & env = (this->override_env != nullptr) ? (*this->override_env) : (*vm.env);
+    if(vm.enable_trace)
+        std::cerr << "[TRACE] " << std::hex << std::setw(6) << std::setfill('0') << ctx.offset << std::endl;
+
     auto const i = ctx.fetch_instruction();
     switch(i)
     {
     case IL::Instruction::nop:
-        return true;
+        return continue_execution;
 
     case IL::Instruction::push_num:
         ctx.push(ctx.fetch_number());
-        return true;
+        return continue_execution;
 
     case IL::Instruction::push_str:
         ctx.push(ctx.fetch_string());
-        return true;
+        return continue_execution;
 
     case IL::Instruction::store_local:
     {
@@ -112,7 +95,7 @@ bool LoLa::Runtime::VirtualMachine::ExecutionContext::exec(VirtualMachine & vm)
          if(index >= ctx.locals.size())
              throw Error::InvalidVariable;
          ctx.locals.at(index) = ctx.pop();
-         return true;
+         return continue_execution;
     }
 
     case IL::Instruction::load_local:
@@ -121,7 +104,7 @@ bool LoLa::Runtime::VirtualMachine::ExecutionContext::exec(VirtualMachine & vm)
          if(index >= ctx.locals.size())
              throw Error::InvalidVariable;
          ctx.push(ctx.locals.at(index));
-         return true;
+         return continue_execution;
     }
 
     case IL::Instruction::reserve_locals:
@@ -129,18 +112,18 @@ bool LoLa::Runtime::VirtualMachine::ExecutionContext::exec(VirtualMachine & vm)
         auto const index = ctx.fetch_u16();
         if(index > ctx.locals.size())
             ctx.locals.reserve(index);
-        return true;
+        return continue_execution;
     }
 
     case IL::Instruction::ret:
-        return vm.returnToCaller(Void { });
+        return Void { };
 
     case IL::Instruction::retval:
-        return vm.returnToCaller(ctx.pop());
+        return ctx.pop();
 
     case IL::Instruction::pop:
         ctx.pop();
-        return true;
+        return continue_execution;
 
     case IL::Instruction::jmp:               // [ target:u32 ]
     {
@@ -148,7 +131,7 @@ bool LoLa::Runtime::VirtualMachine::ExecutionContext::exec(VirtualMachine & vm)
         if(target >= ctx.code->code.size())
             throw Error::InvalidPointer;
         ctx.offset = target;
-        return true;
+        return continue_execution;
     }
     case IL::Instruction::jnf:               // [ target:u32 ]
     {
@@ -160,7 +143,7 @@ bool LoLa::Runtime::VirtualMachine::ExecutionContext::exec(VirtualMachine & vm)
                 throw Error::InvalidPointer;
             ctx.offset = target;
         }
-        return true;
+        return continue_execution;
     }
 
     case IL::Instruction::jif:               // [ target:u32 ]
@@ -173,7 +156,7 @@ bool LoLa::Runtime::VirtualMachine::ExecutionContext::exec(VirtualMachine & vm)
                 throw Error::InvalidPointer;
             ctx.offset = target;
         }
-        return true;
+        return continue_execution;
     }
 
 #define BINARY_OPERATOR(_Convert, _Operator) \
@@ -181,14 +164,14 @@ bool LoLa::Runtime::VirtualMachine::ExecutionContext::exec(VirtualMachine & vm)
             auto const rhs = ctx.pop(); \
             auto const lhs = ctx.pop(); \
             ctx.push(_Convert(lhs) _Operator _Convert(rhs)); \
-            return true; \
+            return continue_execution; \
         }
 
 #define UNARY_OPERATOR(_Convert, _Operator) \
         { \
             auto const value = ctx.pop(); \
             ctx.push(_Operator _Convert(value)); \
-            return true; \
+            return continue_execution; \
         } \
 
     case IL::Instruction::add:
@@ -215,7 +198,7 @@ bool LoLa::Runtime::VirtualMachine::ExecutionContext::exec(VirtualMachine & vm)
         case TypeID::Enumerator:
             throw Error::InvalidOperator;
         }
-        return true;
+        return continue_execution;
     }
 
     case IL::Instruction::sub:      BINARY_OPERATOR(to_number, -)
@@ -246,7 +229,7 @@ bool LoLa::Runtime::VirtualMachine::ExecutionContext::exec(VirtualMachine & vm)
             array[i] = ctx.pop();
         }
         ctx.push(array);
-        return true;
+        return continue_execution;
     }
 
     case IL::Instruction::call_fn:            // [ fun:str ] [argc:u8 ]
@@ -263,25 +246,12 @@ bool LoLa::Runtime::VirtualMachine::ExecutionContext::exec(VirtualMachine & vm)
             auto fn = it->second->call(argv.data(), argv.size());
             vm.code_stack.emplace_back(std::move(fn));
         }
-        else if(auto it = ctx.code->functions.find(name); it != ctx.code->functions.end())
-        {
-            // TODO: Implement native calls
-            auto & new_ctx = std::get<ExecutionContext>(vm.code_stack.emplace_back(ExecutionContext{}));
-            new_ctx.code = ctx.code;
-            new_ctx.offset = it->second.entry_point;
-            new_ctx.locals.resize(it->second.local_count);
-            assert(argc <= it->second.local_count);
-            for(size_t i = 0; i < argc; i++)
-            {
-                new_ctx.locals[i] = ctx.pop();
-            }
-        }
         else
         {
             std::cerr << "function " << name << " not found!" << std::endl;
             throw Error::UnsupportedFunction;
         }
-        return true;
+        return yield_execution;
     }
 
     case IL::Instruction::store_global_idx:       // [ idx:u16 ]
@@ -290,7 +260,7 @@ bool LoLa::Runtime::VirtualMachine::ExecutionContext::exec(VirtualMachine & vm)
         if(index >= env.script_globals.size())
             throw Error::InvalidVariable;
         env.script_globals.at(index) = ctx.pop();
-        return true;
+        return continue_execution;
     }
 
     case IL::Instruction::load_global_idx:        // [ idx:u16 ]
@@ -299,7 +269,7 @@ bool LoLa::Runtime::VirtualMachine::ExecutionContext::exec(VirtualMachine & vm)
         if(index >= env.script_globals.size())
             throw Error::InvalidVariable;
         ctx.push(env.script_globals.at(index));
-        return true;
+        return continue_execution;
     }
 
     case IL::Instruction::store_global_name:       // [ var:str ]
@@ -314,19 +284,23 @@ bool LoLa::Runtime::VirtualMachine::ExecutionContext::exec(VirtualMachine & vm)
     throw Error::InvalidInstruction;
 }
 
-ExecutionResult LoLa::Runtime::VirtualMachine::exec(size_t instructions)
+std::optional<LoLa::Runtime::Value> LoLa::Runtime::VirtualMachine::ExecutionContext::execute(LoLa::Runtime::VirtualMachine &vm)
 {
-    for(; instructions > 0; --instructions)
+    size_t quota = vm.instruction_quota;
+    for(; quota > 0; --quota)
     {
-        switch(exec())
-        {
-        case ExecutionResult::Done: return ExecutionResult::Done;
-        case ExecutionResult::Paused: return ExecutionResult::Paused;
-        case ExecutionResult::Exhausted: continue;
-        }
-        assert(false and "ExecutionResult case not handled!");
+        auto val = exec(vm);
+        if(std::holds_alternative<ManualYield>(val))
+            return std::nullopt;
+        else if(std::holds_alternative<Value>(val))
+            return std::get<Value>(val);
     }
-    return ExecutionResult::Exhausted;
+    return std::nullopt;
+}
+
+void LoLa::Runtime::VirtualMachine::ExecutionContext::resumeFromCall(LoLa::Runtime::VirtualMachine &, const LoLa::Runtime::Value &result)
+{
+    push(result);
 }
 
 LoLa::Runtime::Value LoLa::Runtime::VirtualMachine::ExecutionContext::pop()
@@ -439,11 +413,17 @@ LoLa::Runtime::FunctionCall::~FunctionCall()
 
 }
 
-LoLa::Runtime::Environment::Environment(const LoLa::Compiler::CompilationUnit *code) :
+void LoLa::Runtime::FunctionCall::resumeFromCall(LoLa::Runtime::VirtualMachine &, LoLa::Runtime::Value const &)
+{
+    assert(false and "function type called subroutin, but did not implement resumeFromCall");
+}
+
+LoLa::Runtime::Environment::Environment(std::shared_ptr<const Compiler::CompilationUnit> code) :
     code(code),
     functions(),
     script_globals(code->global_count),
     known_globals()
 {
-
+    for(auto const & fn : code->functions)
+        functions.emplace(fn.first, fn.second.get());
 }

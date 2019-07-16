@@ -11,7 +11,8 @@ namespace LoLa
         StackEmpty,
         TypeMismatch,
         InvalidOperator,
-        UnsupportedFunction
+        UnsupportedFunction,
+        InvalidTopLevelReturn
     };
 
     char const * to_string(Error err);

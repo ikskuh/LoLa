@@ -29,7 +29,7 @@ struct GenericSyncFunction : LoLa::Runtime::Function
             Value value;
             explicit ConstValue(Value const & v) : value(v) { }
 
-            std::optional<Value> execute() override {
+            std::optional<Value> execute(LoLa::Runtime::VirtualMachine&) override {
                 return value;
             }
         };
@@ -49,12 +49,12 @@ bool LoLa::verify(std::string_view code)
 
     Compiler::Compiler compiler;
 
-    auto const compile_unit = compiler.compile(driver.program);
+    auto compile_unit = compiler.compile(driver.program);
 
     Compiler::Disassembler disasm;
-    disasm.disassemble(compile_unit, std::cout);
+    disasm.disassemble(*compile_unit, std::cout);
 
-    Runtime::Environment env { &compile_unit };
+    Runtime::Environment env(compile_unit);
     env.functions["Print"] = new GenericSyncFunction([](Value const * argv, size_t argc) -> Value
     {
         for(size_t i = 0; i < argc; i++)
@@ -68,7 +68,7 @@ bool LoLa::verify(std::string_view code)
     });
 
     Runtime::VirtualMachine machine { env };
-    machine.enable_trace = false;
+    machine.enable_trace = true;
 
 //    try
     {

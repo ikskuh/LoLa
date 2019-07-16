@@ -5,23 +5,37 @@
 #include "ast.hpp"
 #include "error.hpp"
 
+#include "common_runtime.hpp"
+
 #include <map>
 #include <optional>
 
 namespace LoLa::Compiler
 {
-    struct Function
+    struct CompilationUnit;
+
+    struct ScriptFunction : LoLa::Runtime::Function
     {
+        std::weak_ptr<const CompilationUnit> code;
         uint32_t entry_point;
         uint16_t local_count;
+
+        ScriptFunction(std::weak_ptr<const CompilationUnit> code);
+
+        std::unique_ptr<LoLa::Runtime::FunctionCall> call(LoLa::Runtime::Value const * args, size_t argc) const override;
     };
 
     //! piece of compiled LoLa code
     struct CompilationUnit
     {
+        CompilationUnit() = default;
+        CompilationUnit(CompilationUnit const &) = delete;
+        CompilationUnit(CompilationUnit &&) = delete;
+        ~CompilationUnit() = default;
+
         uint16_t global_count;
         std::vector<uint8_t> code;
-        std::map<std::string, Function> functions;
+        std::map<std::string, std::unique_ptr<ScriptFunction>> functions;
     };
 
     struct Label {
@@ -110,7 +124,7 @@ namespace LoLa::Compiler
 
     struct Compiler
     {
-        CompilationUnit compile(AST::Program const & program) const;
+        std::shared_ptr<CompilationUnit> compile(AST::Program const & program) const;
     };
 
     struct Disassembler

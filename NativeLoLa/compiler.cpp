@@ -4,25 +4,25 @@
 #include <iostream>
 #include <iomanip>
 
-LoLa::Compiler::CompilationUnit LoLa::Compiler::Compiler::compile(const LoLa::AST::Program &program) const
+std::shared_ptr<LoLa::Compiler::CompilationUnit> LoLa::Compiler::Compiler::compile(const LoLa::AST::Program &program) const
 {
-    CompilationUnit cu;
+    auto cu = std::make_shared<CompilationUnit>();
 
-    CodeWriter writer(&cu);
+    CodeWriter writer(cu.get());
 
     Scope global_scope;
     global_scope.is_global = true;
     for(auto const & stmt : program.statements)
         stmt->emit(writer, global_scope);
 
-    cu.global_count = global_scope.max_variables;
+    cu->global_count = global_scope.max_variables;
 
     for(auto const & fn : program.functions)
     {
-        auto const ep = cu.code.size();
+        auto const ep = cu->code.size();
 
-        auto [ fun, created ] = cu.functions.emplace(fn.name, Function { });
-        fun->second.entry_point = ep;
+        auto [ fun, created ] = cu->functions.emplace(fn.name, std::make_unique<ScriptFunction>(cu));
+        fun->second->entry_point = ep;
 
         Scope scope;
         scope.is_global = false;
@@ -34,7 +34,7 @@ LoLa::Compiler::CompilationUnit LoLa::Compiler::Compiler::compile(const LoLa::AS
         fn.body->emit(writer, scope);
         writer.emit(IL::Instruction::ret); // implicit return at the end of the function
 
-        fun->second.local_count = scope.max_variables;
+        fun->second->local_count = scope.max_variables;
     }
 
     return cu;
@@ -193,7 +193,7 @@ void LoLa::Compiler::Disassembler::disassemble(const LoLa::Compiler::Compilation
     {
         for(auto const & ep : cu.functions)
         {
-            if(ep.second.entry_point != reader.offset)
+            if(ep.second->entry_point != reader.offset)
                 continue;
             putprefix();
             stream << ep.first << ":" << std::endl;
@@ -334,4 +334,27 @@ uint32_t LoLa::Compiler::CodeReader::fetch_u32()
     uint32_t i;
     fetch_buffer(&i, sizeof i);
     return i;
+}
+
+#include "runtime.hpp"
+
+LoLa::Compiler::ScriptFunction::ScriptFunction(std::weak_ptr<const CompilationUnit> code) :
+    code(code)
+{
+
+}
+
+std::unique_ptr<LoLa::Runtime::FunctionCall>
+    LoLa::Compiler::ScriptFunction::call(LoLa::Runtime::Value const * args, size_t argc) const
+{
+    auto ptr = std::make_unique<LoLa::Runtime::VirtualMachine::ExecutionContext>();
+
+    ptr->code = code.lock().get();
+    ptr->offset = entry_point;
+    ptr->locals.resize(local_count);
+    assert(argc <= local_count);
+    for(size_t i = 0; i < argc; i++)
+        ptr->locals[i] = args[i];
+
+    return ptr;
 }
