@@ -19,6 +19,7 @@ namespace LoLa::Compiler
     //! piece of compiled LoLa code
     struct CompilationUnit
     {
+        uint16_t global_count;
         std::vector<uint8_t> code;
         std::map<std::string, Function> functions;
     };
@@ -90,7 +91,11 @@ namespace LoLa::Compiler
         std::vector<std::string> local_variables;
         std::vector<size_t> return_point;
 
-        uint16_t max_locals;
+        uint16_t max_variables = 0;
+        bool is_global = false; //!< Scope is a global scope. Access to variables in this scope must be global
+
+        //! upwards reference to another scope that serves as global scope
+        Scope const * global_scope = nullptr;
 
         Scope();
         ~Scope();
@@ -100,7 +105,7 @@ namespace LoLa::Compiler
 
         void declare(std::string const & name);
 
-        std::optional<uint16_t> get(std::string const & name);
+        std::optional<uint16_t> get(std::string const & name) const;
     };
 
     struct Compiler

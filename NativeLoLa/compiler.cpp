@@ -10,11 +10,12 @@ LoLa::Compiler::CompilationUnit LoLa::Compiler::Compiler::compile(const LoLa::AS
 
     CodeWriter writer(&cu);
 
-    {
-        Scope scope;
-        for(auto const & stmt : program.statements)
-            stmt->emit(writer, scope);
-    }
+    Scope global_scope;
+    global_scope.is_global = true;
+    for(auto const & stmt : program.statements)
+        stmt->emit(writer, global_scope);
+
+    cu.global_count = global_scope.max_variables;
 
     for(auto const & fn : program.functions)
     {
@@ -24,6 +25,8 @@ LoLa::Compiler::CompilationUnit LoLa::Compiler::Compiler::compile(const LoLa::AS
         fun->second.entry_point = ep;
 
         Scope scope;
+        scope.is_global = false;
+        scope.global_scope = &global_scope;
 
         for(auto const & param : fn.params)
             scope.declare(param);
@@ -31,7 +34,7 @@ LoLa::Compiler::CompilationUnit LoLa::Compiler::Compiler::compile(const LoLa::AS
         fn.body->emit(writer, scope);
         writer.emit(IL::Instruction::ret); // implicit return at the end of the function
 
-        fun->second.local_count = scope.max_locals;
+        fun->second.local_count = scope.max_variables;
     }
 
     return cu;
@@ -156,10 +159,10 @@ void LoLa::Compiler::Scope::declare(const std::string &name)
     // TODO: Test here for shadowing
     local_variables.emplace_back(name);
     assert(local_variables.size() < 65536);
-    max_locals = std::max<uint16_t>(max_locals, local_variables.size());
+    max_variables = std::max<uint16_t>(max_variables, local_variables.size());
 }
 
-std::optional<uint16_t> LoLa::Compiler::Scope::get(std::string const & name)
+std::optional<uint16_t> LoLa::Compiler::Scope::get(std::string const & name) const
 {
     if(local_variables.empty())
         return std::nullopt;
@@ -227,11 +230,17 @@ void LoLa::Compiler::Disassembler::disassemble(const LoLa::Compiler::Compilation
         case Instruction::array_store:  stream << "array_store" << std::endl; continue;
         case Instruction::array_load:   stream << "array_load" << std::endl; continue;
 
-        case Instruction::store_global: // [ var:str ]
+        case Instruction::store_global_name: // [ var:str ]
             stream << "store_global " << reader.fetch_string() << std::endl;
             continue;
-        case Instruction::load_global: // [ var:str ]
+        case Instruction::load_global_name: // [ var:str ]
             stream << "load_global " << reader.fetch_string() << std::endl;
+            continue;
+        case Instruction::store_global_idx: // [ idx:u16 ]
+            stream << "store_global " << reader.fetch_u16() << std::endl;
+            continue;
+        case Instruction::load_global_idx: // [ idx:u16 ]
+            stream << "load_global " << reader.fetch_u16() << std::endl;
             continue;
         case Instruction::push_str: // [ val:str ]
             stream << "push_str '" << reader.fetch_string() << "'" << std::endl;

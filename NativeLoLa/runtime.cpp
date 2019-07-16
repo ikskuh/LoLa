@@ -22,15 +22,17 @@ static NumberHack to_numberhack(LoLa::Runtime::Value const & value) {
     return to_number(value);
 }
 
-void LoLa::Runtime::VirtualMachine::start(const LoLa::Compiler::CompilationUnit *cu, size_t offset)
+LoLa::Runtime::VirtualMachine::VirtualMachine(LoLa::Runtime::Environment &env, size_t entryPoint) :
+    env(&env)
 {
     assert(code_stack.empty());
     auto & node = code_stack.emplace_back();
     node = ExecutionContext { };
 
     auto & ctx = std::get<ExecutionContext>(node);
-    ctx.code = cu;
-    ctx.offset = offset;
+    ctx.code = env.code;
+    ctx.offset = entryPoint;
+    ctx.locals.resize(env.code->global_count); // top-level node contains the indexable global variables
 }
 
 bool LoLa::Runtime::VirtualMachine::returnToCaller(LoLa::Runtime::Value const & result)
@@ -89,6 +91,7 @@ LoLa::Runtime::ExecutionResult LoLa::Runtime::VirtualMachine::exec()
 bool LoLa::Runtime::VirtualMachine::ExecutionContext::exec(VirtualMachine & vm)
 {
     auto & ctx = *this;
+    auto & env = (this->override_env != nullptr) ? (*this->override_env) : (*vm.env);
     auto const i = ctx.fetch_instruction();
     switch(i)
     {
@@ -107,7 +110,7 @@ bool LoLa::Runtime::VirtualMachine::ExecutionContext::exec(VirtualMachine & vm)
     {
          auto const index = ctx.fetch_u16();
          if(index >= ctx.locals.size())
-             throw Error::InvalidLocal;
+             throw Error::InvalidVariable;
          ctx.locals.at(index) = ctx.pop();
          return true;
     }
@@ -116,7 +119,7 @@ bool LoLa::Runtime::VirtualMachine::ExecutionContext::exec(VirtualMachine & vm)
     {
          auto const index = ctx.fetch_u16();
          if(index >= ctx.locals.size())
-             throw Error::InvalidLocal;
+             throw Error::InvalidVariable;
          ctx.push(ctx.locals.at(index));
          return true;
     }
@@ -250,7 +253,7 @@ bool LoLa::Runtime::VirtualMachine::ExecutionContext::exec(VirtualMachine & vm)
     {
         auto const name = ctx.fetch_string();
         auto const argc = ctx.fetch_u8();
-        if(auto it = vm.functions.find(name); it != vm.functions.end())
+        if(auto it = env.functions.find(name); it != env.functions.end())
         {
             std::vector<Value> argv;
             argv.resize(argc);
@@ -281,8 +284,26 @@ bool LoLa::Runtime::VirtualMachine::ExecutionContext::exec(VirtualMachine & vm)
         return true;
     }
 
-    case IL::Instruction::store_global:       // [ var:str ]
-    case IL::Instruction::load_global:        // [ var:str ]
+    case IL::Instruction::store_global_idx:       // [ idx:u16 ]
+    {
+        auto const index = ctx.fetch_u16();
+        if(index >= env.script_globals.size())
+            throw Error::InvalidVariable;
+        env.script_globals.at(index) = ctx.pop();
+        return true;
+    }
+
+    case IL::Instruction::load_global_idx:        // [ idx:u16 ]
+    {
+        auto const index = ctx.fetch_u16();
+        if(index >= env.script_globals.size())
+            throw Error::InvalidVariable;
+        ctx.push(env.script_globals.at(index));
+        return true;
+    }
+
+    case IL::Instruction::store_global_name:       // [ var:str ]
+    case IL::Instruction::load_global_name:        // [ var:str ]
     case IL::Instruction::call_obj:          // [ fun:str ] [argc:u8 ]
     case IL::Instruction::iter_make:
     case IL::Instruction::iter_next:
@@ -414,6 +435,15 @@ LoLa::Runtime::Function::~Function()
 }
 
 LoLa::Runtime::FunctionCall::~FunctionCall()
+{
+
+}
+
+LoLa::Runtime::Environment::Environment(const LoLa::Compiler::CompilationUnit *code) :
+    code(code),
+    functions(),
+    script_globals(code->global_count),
+    known_globals()
 {
 
 }

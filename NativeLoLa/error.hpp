@@ -7,7 +7,7 @@ namespace LoLa
     {
         InvalidPointer,
         InvalidInstruction,
-        InvalidLocal,
+        InvalidVariable,
         StackEmpty,
         TypeMismatch,
         InvalidOperator,

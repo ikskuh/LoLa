@@ -34,12 +34,21 @@ LValueExpression LoLa::AST::VariableRef(String var)
         {
             if(auto local = scope.get(name); local)
             {
-                code.emit(Instruction::load_local);
+                if(scope.is_global)
+                    code.emit(Instruction::load_global_idx);
+                else
+                    code.emit(Instruction::load_local);
                 code.emit(uint16_t(*local));
+            }
+            else if(auto global = (scope.global_scope != nullptr) ? scope.global_scope->get(name) : std::nullopt; global)
+            {
+                assert(scope.global_scope->is_global);
+                code.emit(Instruction::load_global_idx);
+                code.emit(uint16_t(*global));
             }
             else
             {
-                code.emit(Instruction::load_global);
+                code.emit(Instruction::load_global_name);
                 code.emit(name);
             }
         }
@@ -47,12 +56,21 @@ LValueExpression LoLa::AST::VariableRef(String var)
         void emitStore(CodeWriter & code, Scope & scope) override {
             if(auto local = scope.get(name); local)
             {
-                code.emit(Instruction::store_local);
+                if(scope.is_global)
+                    code.emit(Instruction::store_global_idx);
+                else
+                    code.emit(Instruction::store_local);
                 code.emit(uint16_t(*local));
+            }
+            else if(auto global = (scope.global_scope != nullptr) ? scope.global_scope->get(name) : std::nullopt; global)
+            {
+                assert(scope.global_scope->is_global);
+                code.emit(Instruction::store_global_idx);
+                code.emit(uint16_t(*global));
             }
             else
             {
-                code.emit(Instruction::store_global);
+                code.emit(Instruction::store_global_name);
                 code.emit(name);
             }
         }
@@ -401,7 +419,10 @@ Statement LoLa::AST::Declaration(String name, Expression value)
             auto const pos = scope.get(name);
             assert(pos != std::nullopt);
 
-            code.emit(Instruction::store_local);
+            if(scope.is_global)
+                code.emit(Instruction::store_global_idx);
+            else
+                code.emit(Instruction::store_local);
             code.emit(uint16_t(*pos));
         }
     };

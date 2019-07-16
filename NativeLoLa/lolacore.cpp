@@ -54,10 +54,8 @@ bool LoLa::verify(std::string_view code)
     Compiler::Disassembler disasm;
     disasm.disassemble(compile_unit, std::cout);
 
-    Runtime::VirtualMachine machine;
-    machine.enable_trace = false;
-
-    machine.functions["Print"] = new GenericSyncFunction([](Value const * argv, size_t argc) -> Value
+    Runtime::Environment env { &compile_unit };
+    env.functions["Print"] = new GenericSyncFunction([](Value const * argv, size_t argc) -> Value
     {
         for(size_t i = 0; i < argc; i++)
         {
@@ -69,19 +67,21 @@ bool LoLa::verify(std::string_view code)
         return LoLa::Runtime::Void { };
     });
 
-    try
+    Runtime::VirtualMachine machine { env };
+    machine.enable_trace = false;
+
+//    try
     {
-        machine.start(&compile_unit, 0); // start the main function
         while(machine.exec() != LoLa::Runtime::ExecutionResult::Done)
         {
 
         }
     }
-    catch (LoLa::Error err)
-    {
-        std::cerr << to_string(err) << std::endl;
-        return false;
-    }
+//    catch (LoLa::Error err)
+//    {
+//        std::cerr << to_string(err) << std::endl;
+//        return false;
+//    }
 
     return true;
 }

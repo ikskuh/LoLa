@@ -11,6 +11,7 @@
 #include <vector>
 #include <list>
 #include <ostream>
+#include <functional>
 
 namespace LoLa::Runtime
 {
@@ -37,11 +38,11 @@ namespace LoLa::Runtime
 
         explicit Enumerator(Array & a) : array(&a), index(0) { }
 
-        Value & value() {
+        [[nodiscard]] Value & value() {
             return array->at(index);
         }
 
-        Value const & value() const {
+        [[nodiscard]]  Value const & value() const {
             return array->at(index);
         }
 
@@ -50,7 +51,7 @@ namespace LoLa::Runtime
             return good();
         }
 
-        bool good() const {
+        [[nodiscard]] bool good() const {
             return index < array->size();
         }
     };
@@ -102,6 +103,28 @@ namespace LoLa::Runtime
         Paused = 2,     //!< Code has yielded manually and returned control to caller
     };
 
+    //! Execution environment.
+    //! May be an Object or just a plain environment.
+    struct Environment
+    {
+        using Getter = std::function<Value()>;
+        using Setter = std::function<void(Value)>;
+        using GlobalVariable = std::variant<
+            Value,                      // internal stored
+            Value *,                    // external reference
+            std::pair<Getter, Setter>   // "smart" variable
+        >;
+
+        explicit Environment(Compiler::CompilationUnit const * code);
+
+        Compiler::CompilationUnit const * code;
+
+        // contains pointers to all available "native" functions
+        std::map<std::string, Function const *> functions;
+        std::vector<Value> script_globals;
+        std::map<String, GlobalVariable> known_globals;
+    };
+
     struct VirtualMachine
     {
         struct ExecutionContext : Compiler::CodeReader
@@ -113,12 +136,15 @@ namespace LoLa::Runtime
             void push(Value const & v);
 
             bool exec(VirtualMachine & vm);
+
+            Environment * override_env = nullptr;
         };
 
-        bool enable_trace = false;
+        Environment * env;
 
-        // contains pointers to all available "native" functions
-        std::map<std::string, Function const *> functions;
+        explicit VirtualMachine(Environment & env, size_t entryPoint = 0);
+
+        bool enable_trace = false;
 
         //! contains the current execution stack.
         //! each element is either a VM context or an
@@ -126,8 +152,6 @@ namespace LoLa::Runtime
         //! must be a list<T> because we modify it, but don't want our
         //! element pointers to change
         std::list<std::variant<ExecutionContext, std::unique_ptr<FunctionCall>>> code_stack;
-
-        void start(Compiler::CompilationUnit const * cu, size_t offset);
 
         //! returns *true* if a caller exists, otherwise *false*.
         bool returnToCaller(Value const & val);

@@ -20,8 +20,8 @@ namespace LoLa::IL
         // scope_push = 1,
         // scope_pop = 2,
         // declare = 3,         //!< [ var:str ]
-        store_global = 4,       //!< stores global variable [ var:str ]
-        load_global = 5,        //!< loads global variable  [ var:str ]
+        store_global_name = 4,  //!< stores global variable by name [ var:str ]
+        load_global_name = 5,   //!< loads global variable by name [ var:str ]
         push_str = 6,           //!< pushes string literal  [ val:str ]
         push_num = 7,           //!< pushes number literal  [ val:f64 ]
         array_pack = 8,         //!< packs *num* elements into an array [ num:u16 ]
@@ -55,6 +55,8 @@ namespace LoLa::IL
         reserve_locals = 36,    //!< [ count : u16 ]
         retval = 37,            //!< returns from the current function with a value
         jif = 38,               //!< jump when false[ target:u32 ]
+        store_global_idx = 39,  //!< stores global variable by index [ idx:u16 ]
+        load_global_idx = 40,   //!< loads global variable by index [ idx:u16 ]
     };
 }
 

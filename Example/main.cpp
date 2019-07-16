@@ -48,6 +48,14 @@ Print(a);
 a = "Hallo";
 Print(a);
 
+var glob;
+function SetGlob(x) {
+    glob = x;
+    Print("Set glob to '", x, "'");
+}
+SetGlob("glob-content");
+Print("glob is '", glob, "'");
+
 var counter = CreateCounter();
 Print("cnt = ", counter.GetValue());
 Print("cnt = ", counter.Increment());

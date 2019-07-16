@@ -6,7 +6,7 @@ const char *LoLa::to_string(LoLa::Error err)
     {
     case Error::InvalidPointer:      return "invalid pointer";
     case Error::InvalidInstruction:  return "invalid instruction";
-    case Error::InvalidLocal:        return "invalid local";
+    case Error::InvalidVariable:     return "invalid variable";
     case Error::StackEmpty:          return "stack empty";
     case Error::TypeMismatch:        return "type mismatch";
     case Error::InvalidOperator:     return "invalid operator";
