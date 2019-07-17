@@ -2,6 +2,37 @@
 
 #include "lolacore.hpp"
 
+char const * const example_1 = R"LoLa(
+    var stack = CreateStack();
+
+    stack.Push(10);
+    stack.Push(20);
+    stack.Push(30);
+
+    function Operation(op)
+    {
+       if(op == "print") {
+           Print(stack.Pop());
+       }
+       if(op == "add") {
+           var lhs = stack.Pop();
+           var rhs = stack.Pop();
+           stack.Push(lhs + rhs);
+       }
+       if(op == "mul") {
+           var lhs = stack.Pop();
+           var rhs = stack.Pop();
+           stack.Push(lhs * rhs);
+       }
+    }
+
+    Operation("mul");
+    Operation("add");
+    Operation("print");
+
+    Print("Stack Length: ", stack.GetSize());
+)LoLa";
+
 char const * const my_code = R"LoLa(
 
 function Fibonacci1(num)
@@ -79,7 +110,7 @@ for(x in list) {
 
 int main()
 {
-    auto const success = LoLa::verify(my_code);
+    auto const success = LoLa::verify(example_1);
 
     if(success)
         std::cout << "good" << std::endl;

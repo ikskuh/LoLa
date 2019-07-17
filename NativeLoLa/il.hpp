@@ -52,7 +52,6 @@ namespace LoLa::IL
         ret = 33,               //!< returns from the current function with Void
         store_local = 34,       //!< [ index : u16 ]
         load_local = 35,        //!< [ index : u16 ]
-        reserve_locals = 36,    //!< [ count : u16 ]
         retval = 37,            //!< returns from the current function with a value
         jif = 38,               //!< jump when false[ target:u32 ]
         store_global_idx = 39,  //!< stores global variable by index [ idx:u16 ]

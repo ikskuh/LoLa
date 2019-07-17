@@ -108,14 +108,6 @@ std::variant<std::monostate, LoLa::Runtime::Value, LoLa::Runtime::VirtualMachine
          return continue_execution;
     }
 
-    case IL::Instruction::reserve_locals:
-    {
-        auto const index = ctx.fetch_u16();
-        if(index > ctx.locals.size())
-            ctx.locals.reserve(index);
-        return continue_execution;
-    }
-
     case IL::Instruction::ret:
         return Void { };
 

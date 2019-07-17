@@ -279,9 +279,6 @@ void LoLa::Compiler::Disassembler::disassemble(const LoLa::Compiler::Compilation
         case Instruction::load_local: // [ index : u16 ]
             stream << "load_local " << int(reader.fetch_u16()) << std::endl;
             continue;
-        case Instruction::reserve_locals: // [ count : u16 ]
-            stream << "reserve_locals " << int(reader.fetch_u16()) << std::endl;
-            continue;
         }
         assert(false and "unhandled instruction");
     }

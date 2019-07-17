@@ -70,11 +70,11 @@ namespace LoLa {
 %type <Statement>   statement body decl ass for while conditional expression return
 %type <Function>    function
 %type <List<Statement>>  stmtlist
-%type <Expression> expr_0 expr_1 expr_2 expr_3 expr_4
+%type <Expression> expr_0 expr_02 expr_1 expr_2 expr_3 expr_4
 %type <List<std::string>> plist
 %type <Expression> rvalue call array
 %type <LValueExpression> lvalue
-%type <Operator> expr_0_op expr_1_op expr_2_op expr_3_op
+%type <Operator> expr_0_op expr_02_op expr_1_op expr_2_op expr_3_op
 %type <List<Expression>> arglist
 
 %%
@@ -130,6 +130,7 @@ statement   : decl          { $$ = move($1); }
             | conditional   { $$ = move($1); }
             | expression    { $$ = move($1); }
             | return        { $$ = move($1); }
+            | body          { $$ = move($1); }
             ;
 
 decl		: VAR IDENT IS expr_0 TERMINATOR			{ $$ = Declaration(move($2), move($4)); }
@@ -156,9 +157,14 @@ conditional : IF ROUND_O expr_0 ROUND_C body ELSE body  { $$ = IfElse(move($3), 
 expression	: call TERMINATOR							{ $$ = DiscardResult(move($1)); }
             ;
 
-expr_0_op	: EQUALS|DIFFERS|LEQUAL|GEQUAL|MORE|LESS;
-expr_0		: expr_0 expr_0_op expr_0					{ $$ = BinaryOperator($2, move($1), move($3)); }
-            | expr_1									{ $$ = move($1); }
+expr_0_op	: AND | OR;
+expr_0		: expr_0 expr_0_op expr_0                   { $$ = BinaryOperator($2, move($1), move($3)); }
+            | expr_02                                   { $$ = move($1); }
+            ;
+
+expr_02_op	: EQUALS|DIFFERS|LEQUAL|GEQUAL|MORE|LESS;
+expr_02		: expr_02 expr_02_op expr_02                { $$ = BinaryOperator($2, move($1), move($3)); }
+            | expr_1                                    { $$ = move($1); }
             ;
 
 
@@ -168,7 +174,7 @@ expr_1		: expr_1 expr_1_op expr_1					{ $$ = BinaryOperator($2, move($1), move($
             ;
 
 
-expr_2_op	: MULT | DIV | MOD | AND | OR;
+expr_2_op	: MULT | DIV | MOD;
 expr_2		: expr_2 expr_2_op expr_2					{ $$ = BinaryOperator($2, move($1), move($3)); }
             | expr_3									{ $$ = move($1); }
             ;
@@ -210,7 +216,7 @@ arglist     : arglist COMMA expr_0 {
             }
             ;
 
-lvalue      : expr_4 SQUARE_O expr_0 SQUARE_C            { $$ = ArrayIndexer(move($1), move($3)); }
+lvalue      : expr_4 SQUARE_O expr_0 SQUARE_C           { $$ = ArrayIndexer(move($1), move($3)); }
             | IDENT                                     { $$ = VariableRef($1); }
             ;
 
