@@ -69,7 +69,12 @@ std::variant<std::monostate, LoLa::Runtime::Value, LoLa::Runtime::VirtualMachine
     auto & ctx = *this;
     auto & env = (this->override_env != nullptr) ? (*this->override_env) : (*vm.env);
     if(vm.enable_trace)
-        std::cerr << "[TRACE] " << std::hex << std::setw(6) << std::setfill('0') << ctx.offset << std::endl;
+    {
+        std::cerr << "[TRACE] " << std::hex << std::setw(6) << std::setfill('0') << ctx.offset;
+        for(auto const & val : ctx.data_stack)
+            std::cerr << "\t" << val;
+        std::cerr << std::endl;
+    }
 
     auto const i = ctx.fetch_instruction();
     switch(i)
@@ -269,7 +274,9 @@ std::variant<std::monostate, LoLa::Runtime::Value, LoLa::Runtime::VirtualMachine
         if(typeOf(obj_val) != TypeID::Object)
             throw Error::TypeMismatch;
 
-        Object const obj = std::get<Object>(obj_val);
+        auto obj = std::get<Object>(obj_val).lock();
+        if(not obj)
+            throw Error::ObjectDisposed;
         if(auto fun = obj->getFunction(name); fun)
         {
             std::vector<Value> argv;
@@ -317,13 +324,130 @@ std::variant<std::monostate, LoLa::Runtime::Value, LoLa::Runtime::VirtualMachine
         return continue_execution;
     }
 
-    case IL::Instruction::store_global_name:       // [ var:str ]
-    case IL::Instruction::load_global_name:        // [ var:str ]
-    case IL::Instruction::iter_make:
-    case IL::Instruction::iter_next:
-    case IL::Instruction::array_store:
+    case IL::Instruction::array_store: // pops value, then index, then array, pushes array
+    {
+        auto array = to_array(ctx.pop());
+        auto const index = size_t(to_number(ctx.pop()));
+        auto const value = ctx.pop();
+
+        array.at(index) = value;
+
+        ctx.push(array);
+
+        return continue_execution;
+    }
+
     case IL::Instruction::array_load:
-        assert(false and "not implemented yet");
+    {
+        auto array = to_array(ctx.pop());
+        auto const index = size_t(to_number(ctx.pop()));
+
+        ctx.push(array.at(index));
+
+        return continue_execution;
+    }
+
+    case IL::Instruction::iter_make:
+    {
+        auto array = to_array(ctx.pop());
+        ctx.push(Enumerator(array));
+        return continue_execution;
+    }
+
+    case IL::Instruction::iter_next:
+    {
+        auto & top = ctx.peek();
+        if(typeOf(top) != TypeID::Enumerator)
+            throw Error::TypeMismatch;
+
+        auto & iter = std::get<Enumerator>(top);
+        if(iter.next())
+        {
+            ctx.push(iter.value());
+            ctx.push(true);
+        }
+        else
+        {
+            ctx.push(false);
+        }
+
+        return continue_execution;
+    }
+
+    case IL::Instruction::store_global_name:       // [ var:str ]
+    {
+        auto const name = ctx.fetch_string();
+        auto const val = ctx.pop();
+
+        if(auto it = env.known_globals.find(name); it != env.known_globals.end())
+        {
+            using Getter = Environment::Getter;
+            using Setter = Environment::Setter;
+
+            auto & var = it->second;
+            if(std::holds_alternative<Value>(var))
+            {
+                std::get<Value>(var) = val;
+            }
+            else if(std::holds_alternative<Value*>(var))
+            {
+                *std::get<Value*>(var) = val;
+            }
+            else if(std::holds_alternative<std::pair<Getter, Setter>>(var))
+            {
+                auto & pair = std::get<std::pair<Getter, Setter>>(var);
+                if(pair.second)
+                    pair.second(val);
+                else
+                    throw Error::ReadOnlyVariable;
+            }
+            else {
+                assert(false and "not implemented yet");
+            }
+        }
+        else
+        {
+            throw Error::InvalidVariable;
+        }
+        return continue_execution;
+    }
+    case IL::Instruction::load_global_name:        // [ var:str ]
+    {
+        auto const name = ctx.fetch_string();
+        if(auto it = env.known_globals.find(name); it != env.known_globals.end())
+        {
+            using Getter = Environment::Getter;
+            using Setter = Environment::Setter;
+
+            Value result;
+            auto const & var = it->second;
+            if(std::holds_alternative<Value>(var))
+            {
+                result = std::get<Value>(var);
+            }
+            else if(std::holds_alternative<Value*>(var))
+            {
+                result = *std::get<Value*>(var);
+            }
+            else if(std::holds_alternative<std::pair<Getter, Setter>>(var))
+            {
+                auto & pair = std::get<std::pair<Getter, Setter>>(var);
+                if(pair.first)
+                    result = pair.first();
+                else
+                    throw Error::ReadOnlyVariable;
+            }
+            else {
+                assert(false and "not implemented yet");
+            }
+            ctx.push(result);
+        }
+        else
+        {
+            throw Error::InvalidVariable;
+        }
+        return continue_execution;
+    }
     }
     throw Error::InvalidInstruction;
 }
@@ -354,6 +478,13 @@ LoLa::Runtime::Value LoLa::Runtime::VirtualMachine::ExecutionContext::pop()
     Value v = std::move(data_stack.back());
     data_stack.pop_back();
     return v;
+}
+
+LoLa::Runtime::Value &VirtualMachine::ExecutionContext::peek()
+{
+    if(data_stack.empty())
+        throw Error::StackEmpty;
+    return data_stack.back();
 }
 
 void LoLa::Runtime::VirtualMachine::ExecutionContext::push(const LoLa::Runtime::Value &v)
@@ -470,4 +601,12 @@ LoLa::Runtime::Environment::Environment(std::shared_ptr<const Compiler::Compilat
 {
     for(auto const & fn : code->functions)
         functions.emplace(fn.first, fn.second.get());
+}
+
+std::optional<const LoLa::Runtime::Function *> LoLa::Runtime::Environment::getFunction(const std::string &name) const
+{
+    if(auto it = functions.find(name); it != functions.end())
+        return it->second;
+    else
+        return std::nullopt;
 }

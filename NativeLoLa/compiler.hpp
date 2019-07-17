@@ -102,6 +102,8 @@ namespace LoLa::Compiler
 
     struct Scope
     {
+        enum Type { Local = 0, Global = 1 };
+
         std::vector<std::string> local_variables;
         std::vector<size_t> return_point;
 
@@ -119,7 +121,7 @@ namespace LoLa::Compiler
 
         void declare(std::string const & name);
 
-        std::optional<uint16_t> get(std::string const & name) const;
+        std::optional<std::pair<uint16_t, Type>> get(std::string const & name) const;
     };
 
     struct Compiler

@@ -12,6 +12,8 @@ const char *LoLa::to_string(LoLa::Error err)
     case Error::InvalidOperator:       return "invalid operator";
     case Error::UnsupportedFunction:   return "unsupported function";
     case Error::InvalidTopLevelReturn: return "invalid top level return";
+    case Error::ObjectDisposed:        return "object disposed";
+    case Error::ReadOnlyVariable:      return "read only variable";
     }
     return "<unknown error>";
 }

@@ -26,7 +26,7 @@ namespace LoLa::Runtime
 
     //! Execution environment.
     //! May be an Object or just a plain environment.
-    struct Environment
+    struct Environment : LoLa::Object
     {
         using Getter = std::function<Value()>;
         using Setter = std::function<void(Value)>;
@@ -44,6 +44,8 @@ namespace LoLa::Runtime
         std::map<std::string, Function const *> functions;
         std::vector<Value> script_globals;
         std::map<String, GlobalVariable> known_globals;
+
+        std::optional<Function const *> getFunction(std::string const & name) const override;
     };
 
     struct VirtualMachine
@@ -57,6 +59,7 @@ namespace LoLa::Runtime
 
             Value pop();
             void push(Value const & v);
+            Value & peek();
 
             std::variant<std::monostate, Value, ManualYield> exec(VirtualMachine & vm);
 

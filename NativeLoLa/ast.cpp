@@ -34,17 +34,18 @@ LValueExpression LoLa::AST::VariableRef(String var)
         {
             if(auto local = scope.get(name); local)
             {
-                if(scope.is_global)
+                if(local->second == Scope::Global)
                     code.emit(Instruction::load_global_idx);
                 else
                     code.emit(Instruction::load_local);
-                code.emit(uint16_t(*local));
+                code.emit(local->first);
             }
             else if(auto global = (scope.global_scope != nullptr) ? scope.global_scope->get(name) : std::nullopt; global)
             {
                 assert(scope.global_scope->is_global);
+                assert(global->second == Scope::Global);
                 code.emit(Instruction::load_global_idx);
-                code.emit(uint16_t(*global));
+                code.emit(global->first);
             }
             else
             {
@@ -56,17 +57,18 @@ LValueExpression LoLa::AST::VariableRef(String var)
         void emitStore(CodeWriter & code, Scope & scope) override {
             if(auto local = scope.get(name); local)
             {
-                if(scope.is_global)
+                if(local->second == Scope::Global)
                     code.emit(Instruction::store_global_idx);
                 else
                     code.emit(Instruction::store_local);
-                code.emit(uint16_t(*local));
+                code.emit(local->first);
             }
             else if(auto global = (scope.global_scope != nullptr) ? scope.global_scope->get(name) : std::nullopt; global)
             {
                 assert(scope.global_scope->is_global);
+                assert(global->second == Scope::Global);
                 code.emit(Instruction::store_global_idx);
-                code.emit(uint16_t(*global));
+                code.emit(global->first);
             }
             else
             {
@@ -113,14 +115,27 @@ LValueExpression LoLa::AST::ArrayIndexer(Expression value, Expression index)
         Expression value, index;
         Foo(Expression l, Expression r) : value(move(l)), index(move(r)) { }
 
-
-        void emit(CodeWriter & code, Scope &) override {
-            throw "invalid operation";
+        void emit(CodeWriter & code, Scope & scope) override
+        {
+            index->emit(code, scope);
+            value->emit(code, scope);
+            code.emit(Instruction::array_load);
         }
 
-
-        void emitStore(CodeWriter & code, Scope &) override {
-            throw "invalid operation";
+        void emitStore(CodeWriter & code, Scope & scope) override
+        {
+            if(auto * lvalue = dynamic_cast<LValueExpressionBase*>(value.get()); lvalue != nullptr)
+            {
+                // read-modify-write the lvalue expression
+                index->emit(code, scope); // load the index on the stack
+                lvalue->emit(code, scope); // load the function on the stack
+                code.emit(Instruction::array_store);
+                lvalue->emitStore(code, scope); // now store back the value on the stack
+            }
+            else
+            {
+                assert(false and "syntax error not implemented yet");
+            }
         }
     };
     return std::make_unique<Foo>(move(value), move(index));
@@ -320,8 +335,39 @@ Statement LoLa::AST::ForLoop(String var, Expression source, Statement body)
         Statement body;
         Foo(String var, Expression list, Statement body) : var(var), list(move(list)), body(move(body)) { }
 
-        void emit(CodeWriter & code, Scope &) override {
-            assert(false and "not implemented yet");
+        void emit(CodeWriter & code, Scope & scope) override {
+            scope.enter();
+
+            list->emit(code, scope);
+            code.emit(Instruction::iter_make);
+
+            scope.declare(var);
+
+            auto loopvar = scope.get(var);
+            assert(loopvar);
+
+            auto const loop_start = code.createAndDefineLabel();
+            auto const loop_end = code.createLabel();
+
+            code.emit(Instruction::iter_next);
+
+            code.emit(Instruction::jif);
+            code.emit(loop_end);
+
+            if(loopvar->second == Scope::Global)
+                code.emit(Instruction::store_global_idx);
+            else
+                code.emit(Instruction::store_local);
+            code.emit(loopvar->first);
+
+            body->emit(code, scope);
+
+            code.emit(Instruction::jmp);
+            code.emit(loop_start);
+
+            code.defineLabel(loop_end);
+
+            scope.leave();
         }
     };
     return std::make_unique<Foo>(var, move(source), move(body));
@@ -419,11 +465,11 @@ Statement LoLa::AST::Declaration(String name, Expression value)
             auto const pos = scope.get(name);
             assert(pos != std::nullopt);
 
-            if(scope.is_global)
+            if(pos->second == Scope::Global)
                 code.emit(Instruction::store_global_idx);
             else
                 code.emit(Instruction::store_local);
-            code.emit(uint16_t(*pos));
+            code.emit(pos->first);
         }
     };
     return std::make_unique<Foo>(name, move(value));

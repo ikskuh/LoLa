@@ -62,6 +62,18 @@ Print("cnt = ", counter.Increment());
 Print("cnt = ", counter.Increment());
 Print("cnt = ", counter.Decrement());
 
+RealGlobal = 10;
+
+Print(ReadOnlyGlobal);
+// ReadOnlyGlobal = 10;
+
+list[1] = "was";
+Print(list[0]);
+
+for(x in list) {
+    Print(x);
+}
+
 )LoLa";
 
 

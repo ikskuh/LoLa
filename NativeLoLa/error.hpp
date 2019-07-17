@@ -12,7 +12,9 @@ namespace LoLa
         TypeMismatch,
         InvalidOperator,
         UnsupportedFunction,
-        InvalidTopLevelReturn
+        InvalidTopLevelReturn,
+        ObjectDisposed,
+        ReadOnlyVariable,
     };
 
     char const * to_string(Error err);

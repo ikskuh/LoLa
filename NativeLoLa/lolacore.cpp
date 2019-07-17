@@ -28,7 +28,7 @@ struct GenericSyncFunction : LoLa::Runtime::Function
     }
 };
 
-struct CounterObject : LoLa::Runtime::ObjectState
+struct CounterObject : LoLa::Object
 {
     double counter = 0;
 
@@ -88,8 +88,16 @@ bool LoLa::verify(std::string_view code)
     });
     env.functions["CreateCounter"] = new GenericSyncFunction([](Value const * argv, size_t argc) -> Value
     {
-        return new CounterObject;
+        return ObjectRef(new CounterObject);
     });
+
+    env.known_globals["RealGlobal"] = Value { LoLa::Runtime::Void { } };
+    env.known_globals["ReadOnlyGlobal"] = std::make_pair(
+        []() -> LoLa::Runtime::Value {
+            return 42.0;
+        },
+        LoLa::Runtime::Environment::Setter()
+    );
 
     Runtime::VirtualMachine machine { env };
     machine.enable_trace = false;

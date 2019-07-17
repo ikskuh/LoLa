@@ -13,7 +13,8 @@ SOURCES += \
   error.cpp \
   il.cpp \
   lolacore.cpp \
-  runtime.cpp
+  runtime.cpp \
+  tombstone.cpp
 
 HEADERS += \
   ast.hpp \
@@ -25,7 +26,8 @@ HEADERS += \
   il.hpp \
   lolacore.hpp \
   runtime.hpp \
-  scanner.hpp
+  scanner.hpp \
+  tombstone.hpp
 
 YACCSOURCES += \
   grammar.yy

@@ -163,7 +163,7 @@ void LoLa::Compiler::Scope::declare(const std::string &name)
     max_variables = std::max<uint16_t>(max_variables, local_variables.size());
 }
 
-std::optional<uint16_t> LoLa::Compiler::Scope::get(std::string const & name) const
+std::optional<std::pair<uint16_t, LoLa::Compiler::Scope::Type>>  LoLa::Compiler::Scope::get(std::string const & name) const
 {
     if(local_variables.empty())
         return std::nullopt;
@@ -172,7 +172,13 @@ std::optional<uint16_t> LoLa::Compiler::Scope::get(std::string const & name) con
     {
         i -= 1;
         if(local_variables[i] == name)
-            return uint16_t(i);
+        {
+            // only top-level variables in the global scope are really global ones
+            if(is_global and ((return_point.size() <= 1) or (i < return_point.at(1))))
+                return std::make_pair(uint16_t(i), Global);
+            else
+                return std::make_pair(uint16_t(i), Local);
+        }
     }
     return std::nullopt;
 }

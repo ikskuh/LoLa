@@ -7,6 +7,8 @@
 #include <optional>
 #include <memory>
 
+#include "tombstone.hpp"
+
 namespace LoLa::Runtime
 {
     struct ObjectState;
@@ -18,11 +20,11 @@ namespace LoLa::Runtime
     using Number = double;
     using String = std::string;
     using Boolean = bool;
-    using Object = ObjectState*;
+    using Object = LoLa::ObjectRef;
     struct Array;
     struct Enumerator;
 
-    using Value = std::variant<Void, Number, String, Boolean, Object, Array, Enumerator>;
+    using Value = std::variant<Void, Number, String, Object, Boolean, Array, Enumerator>;
 
     struct Array : std::vector<Value> { };
 
@@ -30,17 +32,17 @@ namespace LoLa::Runtime
 
     struct Enumerator
     {
-        Array * array;
+        Array array;
         size_t index;
 
-        explicit Enumerator(Array & a) : array(&a), index(0) { }
+        explicit Enumerator(Array const & a) : array(a), index(-1ULL) { }
 
         [[nodiscard]] Value & value() {
-            return array->at(index);
+            return array.at(index);
         }
 
         [[nodiscard]]  Value const & value() const {
-            return array->at(index);
+            return array.at(index);
         }
 
         bool next() {
@@ -49,7 +51,7 @@ namespace LoLa::Runtime
         }
 
         [[nodiscard]] bool good() const {
-            return index < array->size();
+            return index < array.size();
         }
     };
 
@@ -58,8 +60,8 @@ namespace LoLa::Runtime
         Void = 0,
         Number = 1,
         String = 2,
-        Boolean = 3,
-        Object = 4,
+        Object = 3,
+        Boolean = 4,
         Array = 5,
         Enumerator = 6,
     };
@@ -101,13 +103,6 @@ namespace LoLa::Runtime
         virtual ~Function();
 
         virtual CallOrImmediate call(Value const * args, size_t argc) const = 0;
-    };
-
-    struct ObjectState
-    {
-        virtual ~ObjectState() = default;
-
-        virtual std::optional<Function const *> getFunction(std::string const & name) const = 0;
     };
 }
 
