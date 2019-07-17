@@ -18,7 +18,7 @@ namespace LoLa::Runtime
     using Number = double;
     using String = std::string;
     using Boolean = bool;
-    using Object = std::shared_ptr<ObjectState>;
+    using Object = ObjectState*;
     struct Array;
     struct Enumerator;
 
@@ -96,8 +96,18 @@ namespace LoLa::Runtime
 
     struct Function
     {
+        typedef std::variant<Value, std::unique_ptr<FunctionCall>> CallOrImmediate;
+
         virtual ~Function();
-        virtual std::unique_ptr<FunctionCall> call(Value const * args, size_t argc) const = 0;
+
+        virtual CallOrImmediate call(Value const * args, size_t argc) const = 0;
+    };
+
+    struct ObjectState
+    {
+        virtual ~ObjectState() = default;
+
+        virtual std::optional<Function const *> getFunction(std::string const & name) const = 0;
     };
 }
 

@@ -22,7 +22,7 @@ namespace LoLa::Compiler
 
         ScriptFunction(std::weak_ptr<const CompilationUnit> code);
 
-        std::unique_ptr<LoLa::Runtime::FunctionCall> call(LoLa::Runtime::Value const * args, size_t argc) const override;
+        CallOrImmediate call(LoLa::Runtime::Value const * args, size_t argc) const override;
     };
 
     //! piece of compiled LoLa code

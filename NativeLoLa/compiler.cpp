@@ -14,6 +14,7 @@ std::shared_ptr<LoLa::Compiler::CompilationUnit> LoLa::Compiler::Compiler::compi
     global_scope.is_global = true;
     for(auto const & stmt : program.statements)
         stmt->emit(writer, global_scope);
+    writer.emit(IL::Instruction::ret); // implicit return at the end of the block
 
     cu->global_count = global_scope.max_variables;
 
@@ -344,8 +345,7 @@ LoLa::Compiler::ScriptFunction::ScriptFunction(std::weak_ptr<const CompilationUn
 
 }
 
-std::unique_ptr<LoLa::Runtime::FunctionCall>
-    LoLa::Compiler::ScriptFunction::call(LoLa::Runtime::Value const * args, size_t argc) const
+LoLa::Runtime::Function::CallOrImmediate LoLa::Compiler::ScriptFunction::call(LoLa::Runtime::Value const * args, size_t argc) const
 {
     auto ptr = std::make_unique<LoLa::Runtime::VirtualMachine::ExecutionContext>();
 

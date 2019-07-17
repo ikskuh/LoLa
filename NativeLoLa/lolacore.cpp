@@ -22,18 +22,38 @@ struct GenericSyncFunction : LoLa::Runtime::Function
     {
     }
 
-    std::unique_ptr<LoLa::Runtime::FunctionCall> call(const LoLa::Runtime::Value *args, size_t argc) const override
+    CallOrImmediate call(const LoLa::Runtime::Value *args, size_t argc) const override
     {
-        struct ConstValue : LoLa::Runtime::FunctionCall
-        {
-            Value value;
-            explicit ConstValue(Value const & v) : value(v) { }
+        return fn(args, argc);
+    }
+};
 
-            std::optional<Value> execute(LoLa::Runtime::VirtualMachine&) override {
-                return value;
-            }
-        };
-        return std::make_unique<ConstValue>(fn(args, argc));
+struct CounterObject : LoLa::Runtime::ObjectState
+{
+    double counter = 0;
+
+    GenericSyncFunction getValue, increment, decrement;
+
+    CounterObject() :
+        getValue([this](Value const *, size_t) -> Value { return counter; }),
+        increment([this](Value const *, size_t) -> Value { return ++counter; }),
+        decrement([this](Value const *, size_t) -> Value { return --counter; })
+    {
+
+    }
+
+    std::optional<LoLa::Runtime::Function const *> getFunction(std::string const & name) const override
+    {
+        if(name == "GetValue") {
+            return &getValue;
+        }
+        else if(name == "Increment") {
+            return &increment;
+        }
+        else if(name == "Decrement") {
+            return &decrement;
+        }
+        return std::nullopt;
     }
 };
 
@@ -66,9 +86,13 @@ bool LoLa::verify(std::string_view code)
         std::cout << std::endl;
         return LoLa::Runtime::Void { };
     });
+    env.functions["CreateCounter"] = new GenericSyncFunction([](Value const * argv, size_t argc) -> Value
+    {
+        return new CounterObject;
+    });
 
     Runtime::VirtualMachine machine { env };
-    machine.enable_trace = true;
+    machine.enable_trace = false;
 
 //    try
     {

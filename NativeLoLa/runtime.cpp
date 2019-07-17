@@ -12,10 +12,6 @@ using LoLa::Runtime::Function;
 using LoLa::Runtime::VirtualMachine;
 using LoLa::Compiler::CompilationUnit;
 
-struct ScriptFunction : LoLa::Runtime::Function
-{
-};
-
 struct NumberHack {
     double value;
     NumberHack(double d) : value(d) { }
@@ -243,16 +239,65 @@ std::variant<std::monostate, LoLa::Runtime::Value, LoLa::Runtime::VirtualMachine
             for(size_t i = 0; i < argc; i++)
                 argv[i] = ctx.pop();
 
-            auto fn = it->second->call(argv.data(), argv.size());
-            vm.code_stack.emplace_back(std::move(fn));
+            auto fnOrValue = it->second->call(argv.data(), argv.size());
+
+            if(std::holds_alternative<Value>(fnOrValue))
+            {
+                ctx.push(std::get<Value>(fnOrValue));
+                return continue_execution;
+            }
+            else
+            {
+                assert(std::holds_alternative<std::unique_ptr<FunctionCall>>(fnOrValue));
+                vm.code_stack.emplace_back(std::move(std::get<std::unique_ptr<FunctionCall>>(fnOrValue)));
+                return yield_execution;
+            }
         }
         else
         {
             std::cerr << "function " << name << " not found!" << std::endl;
             throw Error::UnsupportedFunction;
         }
-        return yield_execution;
     }
+
+    case IL::Instruction::call_obj:          // [ fun:str ] [argc:u8 ]
+    {
+        auto const name = ctx.fetch_string();
+        auto const argc = ctx.fetch_u8();
+
+        Value const obj_val = ctx.pop();
+        if(typeOf(obj_val) != TypeID::Object)
+            throw Error::TypeMismatch;
+
+        Object const obj = std::get<Object>(obj_val);
+        if(auto fun = obj->getFunction(name); fun)
+        {
+            std::vector<Value> argv;
+            argv.resize(argc);
+            for(size_t i = 0; i < argc; i++)
+                argv[i] = ctx.pop();
+
+            auto fnOrValue = (*fun)->call(argv.data(), argv.size());
+
+            if(std::holds_alternative<Value>(fnOrValue))
+            {
+                ctx.push(std::get<Value>(fnOrValue));
+                return continue_execution;
+            }
+            else
+            {
+                assert(std::holds_alternative<std::unique_ptr<FunctionCall>>(fnOrValue));
+                vm.code_stack.emplace_back(std::move(std::get<std::unique_ptr<FunctionCall>>(fnOrValue)));
+                return yield_execution;
+            }
+        }
+        else
+        {
+            std::cerr << "method " << name << " not found!" << std::endl;
+            throw Error::UnsupportedFunction;
+        }
+    }
+
 
     case IL::Instruction::store_global_idx:       // [ idx:u16 ]
     {
@@ -274,7 +319,6 @@ std::variant<std::monostate, LoLa::Runtime::Value, LoLa::Runtime::VirtualMachine
 
     case IL::Instruction::store_global_name:       // [ var:str ]
     case IL::Instruction::load_global_name:        // [ var:str ]
-    case IL::Instruction::call_obj:          // [ fun:str ] [argc:u8 ]
     case IL::Instruction::iter_make:
     case IL::Instruction::iter_next:
     case IL::Instruction::array_store:
