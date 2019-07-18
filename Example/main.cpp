@@ -112,6 +112,12 @@ for(x in list) {
     Print(x);
 }
 
+for(x in list) { }
+for(x in list) { }
+for(x in list) { }
+for(x in list) { }
+for(x in list) { }
+
 )LoLa";
 
 using LoLa::Runtime::Function;
@@ -199,7 +205,7 @@ using namespace LoLa;
 
 int main()
 {
-    auto program = AST::parse(example_1);
+    auto program = AST::parse(my_code);
     if(not program)
         return 1;
 

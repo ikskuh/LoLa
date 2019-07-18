@@ -235,8 +235,8 @@ Expression LoLa::AST::UnaryOperator(Operator op, Expression value)
 Expression LoLa::AST::BinaryOperator(Operator op, Expression lhs, Expression rhs)
 {
     struct Foo : ExpressionBase {
-        Operator op;
         Expression lhs, rhs;
+        Operator op;
         Foo(Operator o, Expression l, Expression r) : op(o), lhs(move(l)), rhs(move(r)) { }
 
         void emit(CodeWriter & code, Scope & scope) override {
@@ -282,9 +282,7 @@ Statement LoLa::AST::Assignment(LValueExpression target, Expression value)
 Statement LoLa::AST::Return()
 {
     struct Foo : StatementBase {
-        Foo() { }
-
-        void emit(CodeWriter & code, Scope & scope) override {
+        void emit(CodeWriter & code, Scope &) override {
             code.emit(Instruction::ret);
         }
     };
@@ -368,6 +366,9 @@ Statement LoLa::AST::ForLoop(String var, Expression source, Statement body)
             code.emit(loop_start);
 
             code.defineLabel(loop_end);
+
+            // erase the iterator from the stack
+            code.emit(Instruction::pop);
 
             scope.leave();
         }
