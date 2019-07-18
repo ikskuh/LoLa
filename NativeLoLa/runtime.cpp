@@ -1,4 +1,5 @@
 #include "runtime.hpp"
+#include "compiler.hpp"
 #include <cstring>
 #include <cassert>
 #include <cmath>
@@ -70,7 +71,25 @@ std::variant<std::monostate, LoLa::Runtime::Value, LoLa::Runtime::VirtualMachine
     auto & env = (this->override_env != nullptr) ? (*this->override_env) : (*vm.env);
     if(vm.enable_trace)
     {
-        std::cerr << "[TRACE] " << std::hex << std::setw(6) << std::setfill('0') << ctx.offset;
+        std::cerr << "[TRACE] "
+                  << std::hex
+                  << std::setw(6)
+                  << std::setfill('0')
+                  << std::right
+                  << ctx.offset
+                  << " | ";
+
+        CodeReader slice(ctx);
+
+        std::stringstream strstream;
+
+        LoLa::Compiler::Disassembler disasm;
+        disasm.disassemble_instruction(slice, strstream);
+
+        std::cerr << std::setw(32) << std::setfill(' ') << std::left << strstream.str();
+
+        std::cerr << "\t|";
+
         for(auto const & val : ctx.data_stack)
             std::cerr << "\t" << val;
         std::cerr << std::endl;

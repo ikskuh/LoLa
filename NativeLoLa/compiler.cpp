@@ -185,7 +185,6 @@ std::optional<std::pair<uint16_t, LoLa::Compiler::Scope::Type>>  LoLa::Compiler:
 
 void LoLa::Compiler::Disassembler::disassemble(const LoLa::Compiler::CompilationUnit &cu, std::ostream &stream) const
 {
-    using IL::Instruction;
     CodeReader reader;
     reader.code = &cu;
     reader.offset = 0;
@@ -210,78 +209,87 @@ void LoLa::Compiler::Disassembler::disassemble(const LoLa::Compiler::Compilation
         putprefix();
         stream << "\t";
 
-        auto const instr = reader.fetch_instruction();
-        switch(instr)
-        {
-        case Instruction::nop:          stream << "nop" << std::endl; continue;
-        case Instruction::pop:          stream << "pop" << std::endl; continue;
-        case Instruction::eq:           stream << "eq" << std::endl; continue;
-        case Instruction::neq:          stream << "neq" << std::endl; continue;
-        case Instruction::less:         stream << "less" << std::endl; continue;
-        case Instruction::less_eq:      stream << "less_eq" << std::endl; continue;
-        case Instruction::greater:      stream << "greater" << std::endl; continue;
-        case Instruction::greater_eq:   stream << "greater_eq" << std::endl; continue;
-        case Instruction::add:          stream << "add" << std::endl; continue;
-        case Instruction::sub:          stream << "sub" << std::endl; continue;
-        case Instruction::mul:          stream << "mul" << std::endl; continue;
-        case Instruction::div:          stream << "div" << std::endl; continue;
-        case Instruction::mod:          stream << "mod" << std::endl; continue;
-        case Instruction::bool_or:      stream << "or" << std::endl; continue;
-        case Instruction::bool_and:     stream << "and" << std::endl; continue;
-        case Instruction::bool_not:     stream << "not" << std::endl; continue;
-        case Instruction::negate:       stream << "negate" << std::endl; continue;
-        case Instruction::iter_make:    stream << "iter_make" << std::endl; continue;
-        case Instruction::iter_next:    stream << "iter_next" << std::endl; continue;
-        case Instruction::ret:          stream << "ret" << std::endl; continue;
-        case Instruction::retval:       stream << "retval" << std::endl; continue;
-        case Instruction::array_store:  stream << "array_store" << std::endl; continue;
-        case Instruction::array_load:   stream << "array_load" << std::endl; continue;
+        disassemble_instruction(reader, stream);
 
-        case Instruction::store_global_name: // [ var:str ]
-            stream << "store_global " << reader.fetch_string() << std::endl;
-            continue;
-        case Instruction::load_global_name: // [ var:str ]
-            stream << "load_global " << reader.fetch_string() << std::endl;
-            continue;
-        case Instruction::store_global_idx: // [ idx:u16 ]
-            stream << "store_global " << reader.fetch_u16() << std::endl;
-            continue;
-        case Instruction::load_global_idx: // [ idx:u16 ]
-            stream << "load_global " << reader.fetch_u16() << std::endl;
-            continue;
-        case Instruction::push_str: // [ val:str ]
-            stream << "push_str '" << reader.fetch_string() << "'" << std::endl;
-            continue;
-        case Instruction::push_num: // [ val:f64 ]
-            stream << "push_num " << reader.fetch_number() << std::endl;
-            continue;
-        case Instruction::array_pack: // [ num:u16 ]
-            stream << "array_pack " << reader.fetch_u16() << std::endl;
-            continue;
-        case Instruction::call_fn: // calls a function [ fun:str ] [argc:u8 ]
-            stream << "call_fn " << reader.fetch_string() << ", " << int(reader.fetch_u8()) << std::endl;
-            continue;
-        case Instruction::call_obj: // [ fun:str ] [argc:u8 ]
-            stream << "call_obj " << reader.fetch_string() << ", " << int(reader.fetch_u8()) << std::endl;
-            continue;
-        case Instruction::jmp: // [ target:u32 ]
-            stream << "jmp " << reader.fetch_u32() << std::endl;
-            continue;
-        case Instruction::jnf : // [ target:u32 ]
-            stream << "jnf " << reader.fetch_u32() << std::endl;
-            continue;
-        case Instruction::jif: // [ target:u32 ]
-            stream << "jif " << reader.fetch_u32() << std::endl;
-            continue;
-        case Instruction::store_local: // [ index : u16 ]
-            stream << "store_local " << int(reader.fetch_u16()) << std::endl;
-            continue;
-        case Instruction::load_local: // [ index : u16 ]
-            stream << "load_local " << int(reader.fetch_u16()) << std::endl;
-            continue;
-        }
-        assert(false and "unhandled instruction");
+        stream << std::endl;
     }
+}
+
+void LoLa::Compiler::Disassembler::disassemble_instruction(LoLa::Compiler::CodeReader &reader, std::ostream &stream) const
+{
+    using IL::Instruction;
+
+    auto const instr = reader.fetch_instruction();
+    switch(instr)
+    {
+    case Instruction::nop:          stream << "nop" ; return;
+    case Instruction::pop:          stream << "pop" ; return;
+    case Instruction::eq:           stream << "eq" ; return;
+    case Instruction::neq:          stream << "neq" ; return;
+    case Instruction::less:         stream << "less" ; return;
+    case Instruction::less_eq:      stream << "less_eq" ; return;
+    case Instruction::greater:      stream << "greater" ; return;
+    case Instruction::greater_eq:   stream << "greater_eq" ; return;
+    case Instruction::add:          stream << "add" ; return;
+    case Instruction::sub:          stream << "sub" ; return;
+    case Instruction::mul:          stream << "mul" ; return;
+    case Instruction::div:          stream << "div" ; return;
+    case Instruction::mod:          stream << "mod" ; return;
+    case Instruction::bool_or:      stream << "or" ; return;
+    case Instruction::bool_and:     stream << "and" ; return;
+    case Instruction::bool_not:     stream << "not" ; return;
+    case Instruction::negate:       stream << "negate" ; return;
+    case Instruction::iter_make:    stream << "iter_make" ; return;
+    case Instruction::iter_next:    stream << "iter_next" ; return;
+    case Instruction::ret:          stream << "ret" ; return;
+    case Instruction::retval:       stream << "retval" ; return;
+    case Instruction::array_store:  stream << "array_store" ; return;
+    case Instruction::array_load:   stream << "array_load" ; return;
+
+    case Instruction::store_global_name: // [ var:str ]
+        stream << "store_global " << reader.fetch_string() ;
+        return;
+    case Instruction::load_global_name: // [ var:str ]
+        stream << "load_global " << reader.fetch_string() ;
+        return;
+    case Instruction::store_global_idx: // [ idx:u16 ]
+        stream << "store_global " << reader.fetch_u16() ;
+        return;
+    case Instruction::load_global_idx: // [ idx:u16 ]
+        stream << "load_global " << reader.fetch_u16() ;
+        return;
+    case Instruction::push_str: // [ val:str ]
+        stream << "push_str '" << reader.fetch_string() << "'" ;
+        return;
+    case Instruction::push_num: // [ val:f64 ]
+        stream << "push_num " << reader.fetch_number() ;
+        return;
+    case Instruction::array_pack: // [ num:u16 ]
+        stream << "array_pack " << reader.fetch_u16() ;
+        return;
+    case Instruction::call_fn: // calls a function [ fun:str ] [argc:u8 ]
+        stream << "call_fn " << reader.fetch_string() << ", " << int(reader.fetch_u8()) ;
+        return;
+    case Instruction::call_obj: // [ fun:str ] [argc:u8 ]
+        stream << "call_obj " << reader.fetch_string() << ", " << int(reader.fetch_u8()) ;
+        return;
+    case Instruction::jmp: // [ target:u32 ]
+        stream << "jmp " << reader.fetch_u32() ;
+        return;
+    case Instruction::jnf : // [ target:u32 ]
+        stream << "jnf " << reader.fetch_u32() ;
+        return;
+    case Instruction::jif: // [ target:u32 ]
+        stream << "jif " << reader.fetch_u32() ;
+        return;
+    case Instruction::store_local: // [ index : u16 ]
+        stream << "store_local " << int(reader.fetch_u16()) ;
+        return;
+    case Instruction::load_local: // [ index : u16 ]
+        stream << "load_local " << int(reader.fetch_u16()) ;
+        return;
+    }
+    assert(false and "unhandled instruction");
 }
 
 

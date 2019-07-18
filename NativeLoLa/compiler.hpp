@@ -132,6 +132,8 @@ namespace LoLa::Compiler
     struct Disassembler
     {
         void disassemble(CompilationUnit const & cu, std::ostream & stream) const;
+
+        void disassemble_instruction(CodeReader & reader, std::ostream & stream) const;
     };
 }
 

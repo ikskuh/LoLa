@@ -57,6 +57,40 @@ struct CounterObject : LoLa::Object
     }
 };
 
+
+struct StackObject : LoLa::Object
+{
+    std::vector<LoLa::Runtime::Value> contents;
+
+    GenericSyncFunction getSize, push, pop;
+
+    StackObject() :
+        getSize([this](Value const *, size_t) -> Value { return double(contents.size()); }),
+        push([this](Value const * a, size_t) -> Value { contents.push_back(a[0]); return LoLa::Runtime::Void { }; }),
+        pop([this](Value const *, size_t) -> Value {
+            auto val = contents.back();
+            contents.pop_back();
+            return val;
+        })
+    {
+
+    }
+
+    std::optional<LoLa::Runtime::Function const *> getFunction(std::string const & name) const override
+    {
+        if(name == "GetSize") {
+            return &getSize;
+        }
+        else if(name == "Push") {
+            return &push;
+        }
+        else if(name == "Pop") {
+            return &pop;
+        }
+        return std::nullopt;
+    }
+};
+
 bool LoLa::verify(std::string_view code)
 {
     std::stringstream str;
@@ -90,6 +124,10 @@ bool LoLa::verify(std::string_view code)
     {
         return ObjectRef(new CounterObject);
     });
+    env.functions["CreateStack"] = new GenericSyncFunction([](Value const * argv, size_t argc) -> Value
+    {
+        return ObjectRef(new StackObject);
+    });
 
     env.known_globals["RealGlobal"] = Value { LoLa::Runtime::Void { } };
     env.known_globals["ReadOnlyGlobal"] = std::make_pair(
@@ -100,7 +138,7 @@ bool LoLa::verify(std::string_view code)
     );
 
     Runtime::VirtualMachine machine { env };
-    machine.enable_trace = false;
+    machine.enable_trace = true;
 
 //    try
     {
