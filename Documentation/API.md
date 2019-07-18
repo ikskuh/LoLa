@@ -1,7 +1,44 @@
 # LoLa C++ API
 
+## Usage
 
+```cpp
+#include "LoLa/ast.hpp"
+#include "LoLa/compiler.hpp"
+#include "LoLa/runtime.hpp"
 
+void run_script(char const * source)
+{
+    auto program = AST::parse(source);
+    if(not program)
+        return;
+
+    auto compile_unit = LoLa::Compiler::Compiler().compile(*program);
+
+    Runtime::Environment env(compile_unit);
+    env.functions["Print"] = new GenericSyncFunction([](Value const * argv, size_t argc) -> Value
+    {
+        for(size_t i = 0; i < argc; i++)
+        {
+            if(i > 0)
+                std::cout << " ";
+            std::cout << argv[i];
+        }
+        std::cout << std::endl;
+        return LoLa::Runtime::Void { };
+    });
+    env.functions["CreateStack"] = new GenericSyncFunction([](Value const *, size_t) -> Value
+    {
+        return ObjectRef(new StackObject); //< leaks memory, but we ignore this for now
+    });
+
+    Runtime::VirtualMachine machine { env };
+    machine.enable_trace = true;
+    while(machine.exec() != LoLa::Runtime::ExecutionResult::Done)
+	{
+    }
+}
+```
 
 ## Tracing
 
