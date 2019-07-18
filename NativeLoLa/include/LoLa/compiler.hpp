@@ -5,7 +5,7 @@
 #include "ast.hpp"
 #include "error.hpp"
 
-#include "common_runtime.hpp"
+#include "common.hpp"
 
 #include <map>
 #include <optional>

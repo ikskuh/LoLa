@@ -5,32 +5,33 @@ CONFIG -= qt
 
 CONFIG += static
 
-SOURCES += \
-  ast.cpp \
-  common_runtime.cpp \
-  compiler.cpp \
-  driver.cpp \
-  error.cpp \
-  il.cpp \
-  lolacore.cpp \
-  runtime.cpp \
-  tombstone.cpp
-
-HEADERS += \
-  ast.hpp \
-  common_runtime.hpp \
-  compiler.hpp \
-  driver.hpp \
-  error.hpp \
-  grammar.tab.h \
-  il.hpp \
-  lolacore.hpp \
-  runtime.hpp \
-  scanner.hpp \
-  tombstone.hpp
+INCLUDEPATH += $$PWD/include/LoLa
+DEPENDPATH  += $$PWD/include/LoLa
 
 YACCSOURCES += \
-  grammar.yy
+  src/grammar.yy
 
 LEXSOURCES += \
-  yy.ll
+  src/yy.ll
+
+HEADERS += \
+  include/LoLa/common.hpp \
+  include/LoLa/compiler.hpp \
+  include/LoLa/il.hpp \
+  include/LoLa/runtime.hpp \
+  include/LoLa/tombstone.hpp \
+  include/LoLa/ast.hpp \
+  src/driver.hpp \
+  include/LoLa/error.hpp \
+  grammar.tab.h \
+  src/scanner.hpp
+
+SOURCES += \
+  src/ast.cpp \
+  src/common.cpp \
+  src/compiler.cpp \
+  src/driver.cpp \
+  src/error.cpp \
+  src/il.cpp \
+  src/runtime.cpp \
+  src/tombstone.cpp

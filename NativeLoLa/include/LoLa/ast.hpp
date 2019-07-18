@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <optional>
 
 namespace LoLa::Compiler
 {
@@ -96,6 +97,9 @@ namespace LoLa::AST
         std::vector<Function> functions;
         std::vector<Statement> statements;
     };
+
+    std::optional<Program> parse(std::string_view src);
+    std::optional<Program> parse(std::istream & src);
 }
 
 #endif // AST_HPP

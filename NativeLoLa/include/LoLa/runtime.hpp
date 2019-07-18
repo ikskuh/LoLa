@@ -13,7 +13,7 @@
 #include <ostream>
 #include <functional>
 
-#include "common_runtime.hpp"
+#include "common.hpp"
 
 namespace LoLa::Runtime
 {

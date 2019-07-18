@@ -21,18 +21,17 @@ void LoLa::LoLaDriver::parse( const char * const filename )
    return;
 }
 
-void LoLa::LoLaDriver::parse( std::istream &stream )
+bool LoLa::LoLaDriver::parse( std::istream &stream )
 {
    if( ! stream.good()  && stream.eof() )
    {
-       return;
+       return false;
    }
    //else
-   parse_helper( stream );
-   return;
+   return parse_helper( stream );
 }
 
-void LoLa::LoLaDriver::parse_helper( std::istream &stream )
+bool LoLa::LoLaDriver::parse_helper( std::istream &stream )
 {
     scanner = std::make_unique<LoLa::LoLaScanner>( &stream );
     parser = std::make_unique<LoLa::LoLaParser>(*scanner, *this);
@@ -47,16 +46,19 @@ void LoLa::LoLaDriver::parse_helper( std::istream &stream )
 //        fflush(stdout);
 //    }
 
-    try {
-
-
-    const int accept( 0 );
-    if( parser->parse() != accept )
+    try
     {
-        std::cerr << "Parse failed!!\n";
+        const int accept( 0 );
+        if( parser->parse() != accept )
+        {
+            std::cerr << "Parse failed!!\n";
+            return false;
+        }
     }
-    } catch (std::string const & msg) {
+    catch (std::string const & msg)
+    {
         std::cerr << msg << std::endl;
+        return false;
     }
-    return;
+    return true;
 }

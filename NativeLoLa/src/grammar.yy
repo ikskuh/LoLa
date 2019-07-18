@@ -37,7 +37,7 @@ namespace LoLa {
 #include <fstream>
 
 /* include for all driver functions */
-#include "driver.hpp"
+#include "src/driver.hpp"
 
 #undef yylex
 #define yylex scanner.grammarlex

@@ -28,12 +28,12 @@ public:
     * parse - parse from a c++ input stream
     * @param is - std::istream&, valid input stream
     */
-   void parse( std::istream &iss );
+   bool parse( std::istream &iss );
 
    LoLa::AST::Program program;
 private:
 
-   void parse_helper( std::istream &stream );
+   bool parse_helper( std::istream &stream );
 
    std::unique_ptr<LoLa::LoLaParser>  parser;
    std::unique_ptr<LoLa::LoLaScanner> scanner;

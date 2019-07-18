@@ -1,6 +1,8 @@
 #include "ast.hpp"
 #include "compiler.hpp"
+#include "driver.hpp"
 #include <cassert>
+#include <sstream>
 
 using namespace LoLa::AST;
 using std::move;
@@ -490,4 +492,20 @@ Statement LoLa::AST::SubScope(List<Statement> body)
         }
     };
     return std::make_unique<Foo>(move(body));
+}
+
+std::optional<LoLa::AST::Program> LoLa::AST::parse(std::string_view src)
+{
+    std::stringstream source;
+    source << src;
+    return parse(source);
+}
+
+std::optional<LoLa::AST::Program> LoLa::AST::parse(std::istream &src)
+{
+    LoLa::LoLaDriver driver;
+    if(driver.parse(src))
+        return std::move(driver.program);
+    else
+        return std::nullopt;
 }
