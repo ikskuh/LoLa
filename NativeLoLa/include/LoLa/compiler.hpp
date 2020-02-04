@@ -9,6 +9,7 @@
 
 #include <map>
 #include <optional>
+#include <ostream>
 
 namespace LoLa::Compiler
 {
@@ -36,6 +37,8 @@ namespace LoLa::Compiler
         uint16_t global_count;
         std::vector<uint8_t> code;
         std::map<std::string, std::unique_ptr<ScriptFunction>> functions;
+
+        void save(std::ostream & stream);
     };
 
     struct Label {

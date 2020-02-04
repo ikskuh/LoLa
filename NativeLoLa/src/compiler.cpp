@@ -369,3 +369,37 @@ LoLa::Runtime::Function::CallOrImmediate LoLa::Compiler::ScriptFunction::call(Lo
 
     return ptr;
 }
+
+void LoLa::Compiler::CompilationUnit::save(std::ostream &stream)
+{
+    uint32_t version = 1;
+    std::array<char, 256> comment { "Created with NativeLola.cpp" };
+
+    stream.write("LoLa\xB9\x40\x80\x5A", 8);
+    stream.write(reinterpret_cast<char const *>(&version), 4);
+    stream.write(comment.data(), comment.size());
+
+    uint16_t globalCount = this->global_count;
+    stream.write(reinterpret_cast<char const *>(&globalCount), 2);
+
+    uint16_t functionCount = static_cast<uint16_t>(this->functions.size());
+    stream.write(reinterpret_cast<char const *>(&functionCount), 2);
+
+    uint32_t codeSize = static_cast<uint32_t>( this->code.size() );
+    stream.write(reinterpret_cast<char const *>(&codeSize), 4);
+
+    for(auto const & fnpair : this->functions)
+    {
+        std::array<char, 256> name;
+        strncpy(name.data(), fnpair.first.c_str(), name.size());
+        stream.write(name.data(), name.size());
+
+        uint32_t ep = fnpair.second->entry_point;
+        stream.write(reinterpret_cast<char const *>(&ep), 4);
+
+        uint16_t localCount = fnpair.second->local_count;
+        stream.write(reinterpret_cast<char const *>(&localCount), 2);
+    }
+
+    stream.write(reinterpret_cast<char const *>(this->code.data()), this->code.size());
+}

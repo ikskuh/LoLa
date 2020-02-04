@@ -44,7 +44,7 @@ Print("Stack Length: ", stack.GetSize());
 - Void (single value type, marks something "not existent")
 - Boolean (Logic value, is either `true` or `false`)
 - Number (IEEE754 binary64)
-- String (UTF-8 encoded string)
+- String (ASCII-like or UTF-8 encoded string)
 - Array (A ordered list of values, zero-indexed)
 - Object (A thing that has methods which can be called)
 

@@ -246,7 +246,7 @@ int main()
     );
 
     Runtime::VirtualMachine machine { env };
-    machine.enable_trace = true;
+    // machine.enable_trace = true;
 
 //    try
     {
