@@ -262,6 +262,9 @@ Argument types are noted in `name:type` notation where type is one of the follow
 | jif               | 38    | `target:u32`       | jump when false                                |
 | store_global_idx  | 39    | `idx:u16`          | stores global variable by index                |
 | load_global_idx   | 40    | `idx:u16`          | loads global variable by index                 |
+| push_true | 41 | | pushes a boolean `true` |
+| push_false | 42 | | pushes a boolean `false` |
+| push_void | 43 | | pushes a `void` value. |
 
 ### Types
 
