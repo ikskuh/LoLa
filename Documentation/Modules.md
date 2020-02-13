@@ -17,8 +17,10 @@ File {
 	globalCount: u16,   // number of global script variables
   functionCount: u16, // number of declared functions
   codeSize: u32,      // size of the intermediate code in bytes
+  numSymbols: u32,    // number of debug symbols
   functions: [functionCount]Function, // contains the function meta data
   code: [codeSize]u8, // intermediate code
+  debugSymbols: [numSymbols]DebugSymbol, // debug symbols
 }
 
 FileHeader {
@@ -31,6 +33,12 @@ Function {
 	name: [128]u8,   // zero-terminated function name
 	entryPoint: u32, // start of the function in the intermediate code
 	localCount: u16, // number of local variable slots.
+}
+
+DebugSymbol {
+  offset: u32,       // offset in code
+  sourceLine: u32,   // line of the original source
+  sourceColumn: u16, // 
 }
 ```
 
