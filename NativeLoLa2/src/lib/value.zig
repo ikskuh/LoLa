@@ -91,6 +91,22 @@ pub const Value = union(enum) {
         self.* = other;
     }
 
+    /// Checks if two values are equal.
+    pub fn eql(lhs: Self, rhs: Self) bool {
+        const Tag = @TagType(Self);
+        if (@as(Tag, lhs) != @as(Tag, rhs))
+            return false;
+        return switch (lhs) {
+            .void => true,
+            .number => |n| n == rhs.number,
+            .object => |o| o == rhs.object,
+            .boolean => |b| b == rhs.boolean,
+            .string => |s| String.eql(s, rhs.string),
+            .array => |a| Array.eql(a, rhs.array),
+            .enumerator => |e| Enumerator.eql(e, rhs.enumerator),
+        };
+    }
+
     pub fn deinit(self: Self) void {
         switch (self) {
             .array => |a| a.deinit(),
@@ -145,6 +161,62 @@ test "Value.string (init)" {
     std.debug.assert(std.mem.eql(u8, value.string.contents, "Malloc'd"));
 }
 
+test "Value.eql (void)" {
+    var v1 = Value.initVoid();
+    var v2 = Value.initVoid();
+
+    std.debug.assert(v1.eql(v2));
+}
+
+test "Value.eql (boolean)" {
+    var v1 = Value.initBoolean(true);
+    var v2 = Value.initBoolean(true);
+    var v3 = Value.initBoolean(false);
+
+    std.debug.assert(v1.eql(v2));
+    std.debug.assert(v2.eql(v1));
+    std.debug.assert(v1.eql(v3) == false);
+    std.debug.assert(v2.eql(v3) == false);
+}
+
+test "Value.eql (number)" {
+    var v1 = Value.initNumber(1.3);
+    var v2 = Value.initNumber(1.3);
+    var v3 = Value.initNumber(2.3);
+
+    std.debug.assert(v1.eql(v2));
+    std.debug.assert(v2.eql(v1));
+    std.debug.assert(v1.eql(v3) == false);
+    std.debug.assert(v2.eql(v3) == false);
+}
+
+test "Value.eql (object)" {
+    var v1 = Value.initObject(1);
+    var v2 = Value.initObject(1);
+    var v3 = Value.initObject(2);
+
+    std.debug.assert(v1.eql(v2));
+    std.debug.assert(v2.eql(v1));
+    std.debug.assert(v1.eql(v3) == false);
+    std.debug.assert(v2.eql(v3) == false);
+}
+
+test "Value.eql (string)" {
+    var v1 = try Value.initString(std.testing.allocator, "a");
+    defer v1.deinit();
+
+    var v2 = try Value.initString(std.testing.allocator, "a");
+    defer v2.deinit();
+
+    var v3 = try Value.initString(std.testing.allocator, "b");
+    defer v3.deinit();
+
+    std.debug.assert(v1.eql(v2));
+    std.debug.assert(v2.eql(v1));
+    std.debug.assert(v1.eql(v3) == false);
+    std.debug.assert(v2.eql(v3) == false);
+}
+
 /// Immutable string type.
 /// Both
 const String = struct {
@@ -184,6 +256,10 @@ const String = struct {
         };
     }
 
+    pub fn eql(lhs: Self, rhs: Self) bool {
+        return std.mem.eql(u8, lhs.contents, rhs.contents);
+    }
+
     pub fn deinit(self: Self) void {
         self.allocator.free(self.contents);
     }
@@ -199,6 +275,22 @@ test "String" {
 
     std.debug.assert(std.mem.eql(u8, text2.contents, "Hello, World!"));
     text2.deinit();
+}
+
+test "String.eql" {
+    var str1 = try String.init(std.testing.allocator, "Hello, World!");
+    defer str1.deinit();
+
+    var str2 = try String.init(std.testing.allocator, "Hello, World!");
+    defer str2.deinit();
+
+    var str3 = try String.init(std.testing.allocator, "World, Hello!");
+    defer str3.deinit();
+
+    std.debug.assert(str1.eql(str2));
+    std.debug.assert(str2.eql(str1));
+    std.debug.assert(str1.eql(str3) == false);
+    std.debug.assert(str2.eql(str3) == false);
 }
 
 const Array = struct {
@@ -241,6 +333,16 @@ const Array = struct {
         return arr;
     }
 
+    pub fn eql(lhs: Self, rhs: Self) bool {
+        if (lhs.contents.len != rhs.contents.len)
+            return false;
+        for (lhs.contents) |v, i| {
+            if (!Value.eql(v, rhs.contents[i]))
+                return false;
+        }
+        return true;
+    }
+
     pub fn deinit(self: Self) void {
         for (self.contents) |item| {
             item.deinit();
@@ -265,6 +367,39 @@ test "Array" {
     std.debug.assert(array.contents[0] == .boolean);
     std.debug.assert(array.contents[1] == .string);
     std.debug.assert(array.contents[2] == .number);
+}
+
+test "Array.eql" {
+    var array1 = try Array.init(std.testing.allocator, 2);
+    defer array1.deinit();
+
+    array1.contents[0] = Value.initBoolean(true);
+    array1.contents[1] = Value.initNumber(42);
+
+    var array2 = try Array.init(std.testing.allocator, 2);
+    defer array2.deinit();
+
+    array2.contents[0] = Value.initBoolean(true);
+    array2.contents[1] = Value.initNumber(42);
+
+    var array3 = try Array.init(std.testing.allocator, 2);
+    defer array3.deinit();
+
+    array3.contents[0] = Value.initBoolean(true);
+    array3.contents[1] = Value.initNumber(43);
+
+    var array4 = try Array.init(std.testing.allocator, 3);
+    defer array4.deinit();
+
+    std.debug.assert(array1.eql(array2));
+    std.debug.assert(array2.eql(array1));
+
+    std.debug.assert(array1.eql(array3) == false);
+    std.debug.assert(array2.eql(array3) == false);
+
+    std.debug.assert(array1.eql(array4) == false);
+    std.debug.assert(array2.eql(array4) == false);
+    std.debug.assert(array3.eql(array4) == false);
 }
 
 const Enumerator = struct {
@@ -313,6 +448,11 @@ const Enumerator = struct {
         };
     }
 
+    // Enumerators are never equal to each other.
+    pub fn eql(lhs: Self, rhs: Self) bool {
+        return false;
+    }
+
     pub fn deinit(self: Self) void {
         self.array.deinit();
     }
@@ -342,4 +482,17 @@ test "Enumerator" {
     std.debug.assert(std.mem.eql(u8, a.string.contents, "a"));
     std.debug.assert(std.mem.eql(u8, b.string.contents, "b"));
     std.debug.assert(std.mem.eql(u8, c.string.contents, "c"));
+}
+
+test "Enumerator.eql" {
+    var array = try Array.init(std.testing.allocator, 0);
+    defer array.deinit();
+
+    var enumerator1 = try Enumerator.init(array);
+    defer enumerator1.deinit();
+
+    var enumerator2 = try Enumerator.init(array);
+    defer enumerator2.deinit();
+
+    std.debug.assert(enumerator1.eql(enumerator2) == false);
 }
