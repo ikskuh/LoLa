@@ -13,7 +13,7 @@ pub const CompileUnit = struct {
 
     /// Description of a script function.
     pub const Function = struct {
-        name: []u8,
+        name: []const u8,
         entryPoint: u32,
         localCount: u16,
     };
@@ -33,7 +33,7 @@ pub const CompileUnit = struct {
     };
 
     arena: std.heap.ArenaAllocator,
-    comment: []u8,
+    comment: []const u8,
     globalCount: u16,
     code: []u8,
     functions: []Function,
