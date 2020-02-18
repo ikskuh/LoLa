@@ -3,4 +3,5 @@ CONFIG += ordered
 
 SUBDIRS += \
   NativeLoLa \
-  Example
+  Example \
+  lola-compiler

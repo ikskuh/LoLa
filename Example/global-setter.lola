@@ -1,0 +1,6 @@
+var name;
+function SetName(n)
+{
+    name = n;
+}
+Print(name);
