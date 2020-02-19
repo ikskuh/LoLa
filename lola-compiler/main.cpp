@@ -164,6 +164,7 @@ static int compile(int argc, char ** argv)
 
 static int disasm(int argc, char ** argv)
 {
+    fprintf(stderr, "not implemented yet!\n");
     return 1;
 //    int opt;
 //    while((opt = getopt(argc, argv, "o:")) != -1)

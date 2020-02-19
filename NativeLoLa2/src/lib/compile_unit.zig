@@ -72,6 +72,13 @@ pub const CompileUnit = struct {
         const codeSize = try stream.readIntLittle(u32);
         const numSymbols = try stream.readIntLittle(u32);
 
+        if (functionCount > codeSize or numSymbols > codeSize) {
+            // It is not reasonable to have multiple functions per
+            // byte of code.
+            // The same is valid for debug symbols.
+            return error.CorruptedData;
+        }
+
         unit.functions = try unit.arena.allocator.alloc(Function, functionCount);
         unit.code = try unit.arena.allocator.alloc(u8, codeSize);
         unit.debugSymbols = try unit.arena.allocator.alloc(DebugSymbol, numSymbols);

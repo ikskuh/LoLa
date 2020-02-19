@@ -6,8 +6,9 @@ pub fn build(b: *Builder) void {
     lib.setBuildMode(mode);
     lib.install();
 
-    const exe = b.addExecutable("NativeLoLa2", "src/main.zig");
+    const exe = b.addExecutable("NativeLoLa2", "src/demo/main.zig");
     exe.setBuildMode(mode);
+    exe.addPackagePath("lola", "src/lib/main.zig");
     exe.linkLibrary(lib);
     exe.install();
 

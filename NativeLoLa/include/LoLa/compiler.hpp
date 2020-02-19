@@ -134,11 +134,6 @@ namespace LoLa::Compiler
 
     struct Disassembler
     {
-        bool emit_addresses = true; //!< The disassembler shoud emit the addresses/offsets
-        bool emit_binary = true;    //!< The disassembler shoud emit the binary data decoded
-        bool emit_assembly = true;  //!< The disassembler shoud emit the assembly code
-        bool emit_source = true;    //!< The disassembler shoud emit the source code
-
         void disassemble(CompilationUnit const & cu, std::ostream & stream) const;
 
         void disassemble_instruction(CodeReader & reader, std::ostream & stream) const;

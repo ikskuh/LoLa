@@ -388,6 +388,9 @@ void LoLa::Compiler::CompilationUnit::save(std::ostream &stream)
     uint32_t codeSize = static_cast<uint32_t>( this->code.size() );
     stream.write(reinterpret_cast<char const *>(&codeSize), 4);
 
+    uint32_t numDebugSymbols = static_cast<uint32_t>( 0 );
+    stream.write(reinterpret_cast<char const *>(&numDebugSymbols), 4);
+
     for(auto const & fnpair : this->functions)
     {
         std::array<char, 256> name;

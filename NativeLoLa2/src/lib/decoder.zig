@@ -21,6 +21,10 @@ pub const Decoder = struct {
         };
     }
 
+    pub fn isEof(self: Self) bool {
+        return self.offset >= self.data.len;
+    }
+
     pub fn readRaw(self: *Self, dest: []u8) !void {
         if (self.offset == self.data.len)
             return error.EndOfStream;
@@ -43,7 +47,7 @@ pub const Decoder = struct {
         switch (T) {
             u8, u16, u32 => return std.mem.readIntLittle(T, &data),
             f64 => return @bitCast(f64, data),
-            Instruction => return @intToEnum(Instruction, data[0]),
+            Instruction => return try std.meta.intToEnum(Instruction, data[0]),
             else => @compileError("Unsupported type " ++ @typeName(T) ++ " for Decoder.read!"),
         }
     }

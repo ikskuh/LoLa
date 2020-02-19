@@ -42,5 +42,4 @@ pub const Instruction = enum(u8) {
     push_true = 41,
     push_false = 42,
     push_void = 43,
-    _,
 };
