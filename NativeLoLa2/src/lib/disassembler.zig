@@ -50,7 +50,9 @@ pub fn disassemble(allocator: *std.mem.Allocator, comptime Error: type, stream: 
             try stream.print("{X:0>6}\t", .{decoder.offset});
 
         const start = decoder.offset;
-        const instr = try decoder.read(Instruction);
+        const instr = try decoder.read(InstructionName);
+
+        // TODO: Refactor to read(Instruction)
 
         const formatted = switch (instr) {
             .push_str, .store_global_name, .load_global_name => blk: {

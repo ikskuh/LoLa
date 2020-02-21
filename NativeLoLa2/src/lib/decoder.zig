@@ -42,12 +42,16 @@ pub const Decoder = struct {
 
     /// Reads a value of the given type from the data stream.
     /// Allowed types are `u8`, `u16`, `u32`, `f64`, `Instruction`.
-    fn read(self: *Self, comptime T: type) !T {
+    pub fn read(self: *Self, comptime T: type) !T {
+        if (T == Instruction) {
+            return readInstruction(self);
+        }
+
         const data = try self.readBytes(@sizeOf(T));
         switch (T) {
             u8, u16, u32 => return std.mem.readIntLittle(T, &data),
             f64 => return @bitCast(f64, data),
-            Instruction => return try std.meta.intToEnum(Instruction, data[0]),
+            InstructionName => return try std.meta.intToEnum(InstructionName, data[0]),
             else => @compileError("Unsupported type " ++ @typeName(T) ++ " for Decoder.read!"),
         }
     }
@@ -75,6 +79,40 @@ pub const Decoder = struct {
         self.offset += len;
         return utility.clampFixedString(fullMem);
     }
+
+    /// Reads a a full instruction from the source.
+    /// This will provide full decoding and error checking.
+    fn readInstruction(self: *Self) !Instruction {
+        const instr = try self.read(InstructionName);
+        inline for (std.meta.fields(Instruction)) |fld| {
+            if (instr == @field(InstructionName, fld.name)) {
+                if (fld.field_type == Instruction.Deprecated) {
+                    return error.DeprecatedInstruction;
+                } else if (fld.field_type == Instruction.NoArg) {
+                    return @unionInit(Instruction, fld.name, .{});
+                } else if (fld.field_type == Instruction.CallArg) {
+                    const fun = try self.readVarString();
+                    const argc = try self.read(u8);
+                    return @unionInit(Instruction, fld.name, Instruction.CallArg{
+                        .function = fun,
+                        .argc = argc,
+                    });
+                } else {
+                    const ValType = std.meta.fieldInfo(fld.field_type, "value").field_type;
+                    if (ValType == []const u8) {
+                        return @unionInit(Instruction, fld.name, fld.field_type{
+                            .value = try self.readVarString(),
+                        });
+                    } else {
+                        return @unionInit(Instruction, fld.name, fld.field_type{
+                            .value = try self.read(ValType),
+                        });
+                    }
+                }
+            }
+        }
+        unreachable;
+    }
 };
 
 // zig fmt: off
@@ -97,7 +135,7 @@ test "Decoder" {
     std.debug.assert((try decoder.read(u8)) == 8);
     std.debug.assert((try decoder.read(u16)) == 16);
     std.debug.assert((try decoder.read(u32)) == 32);
-    std.debug.assert((try decoder.read(Instruction)) == .add);
+    std.debug.assert((try decoder.read(InstructionName)) == .add);
     std.debug.assert(std.mem.eql(u8, try decoder.readVarString(), "Hello"));
     std.debug.assert((try decoder.read(f64)) == 3.14000000000000012434);
     std.debug.assert(std.mem.eql(u8, try decoder.readFixedString(8), "Bye"));

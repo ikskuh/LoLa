@@ -1,4 +1,4 @@
-pub const Instruction = enum(u8) {
+pub const InstructionName = enum(u8) {
     nop = 0,
     scope_push = 1,
     scope_pop = 2,
@@ -42,4 +42,60 @@ pub const Instruction = enum(u8) {
     push_true = 41,
     push_false = 42,
     push_void = 43,
+};
+
+pub const Instruction = union(InstructionName) {
+    pub const Deprecated = struct {};
+    pub const NoArg = struct {};
+    fn SingleArg(comptime T: type) type {
+        return struct { value: []const u8 };
+    }
+    pub const CallArg = struct {
+        function: []const u8,
+        argc: u8,
+    };
+
+    nop: NoArg,
+    scope_push: Deprecated,
+    scope_pop: Deprecated,
+    declare: Deprecated,
+    store_global_name: SingleArg([]const u8),
+    load_global_name: SingleArg([]const u8),
+    push_str: SingleArg([]const u8),
+    push_num: SingleArg(f64),
+    array_pack: SingleArg(u8),
+    call_fn: CallArg,
+    call_obj: CallArg,
+    pop: NoArg,
+    add: NoArg,
+    sub: NoArg,
+    mul: NoArg,
+    div: NoArg,
+    mod: NoArg,
+    bool_and: NoArg,
+    bool_or: NoArg,
+    bool_not: NoArg,
+    negate: NoArg,
+    eq: NoArg,
+    neq: NoArg,
+    less_eq: NoArg,
+    greater_eq: NoArg,
+    less: NoArg,
+    greater: NoArg,
+    jmp: SingleArg(u32),
+    jnf: SingleArg(u32),
+    iter_make: NoArg,
+    iter_next: NoArg,
+    array_store: NoArg,
+    array_load: NoArg,
+    ret: NoArg,
+    store_local: SingleArg(u16),
+    load_local: SingleArg(u16),
+    retval: NoArg,
+    jif: SingleArg(u32),
+    store_global_idx: SingleArg(u16),
+    load_global_idx: SingleArg(u16),
+    push_true: NoArg,
+    push_false: NoArg,
+    push_void: NoArg,
 };
