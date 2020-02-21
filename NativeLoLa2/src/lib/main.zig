@@ -8,6 +8,7 @@ usingnamespace @import("ir.zig");
 usingnamespace @import("compile_unit.zig");
 usingnamespace @import("decoder.zig");
 usingnamespace @import("named_global.zig");
+usingnamespace @import("disassembler.zig");
 
 /// Reference to an abstract object.
 pub const ObjectHandle = u64;
