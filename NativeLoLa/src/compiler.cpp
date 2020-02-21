@@ -393,7 +393,7 @@ void LoLa::Compiler::CompilationUnit::save(std::ostream &stream)
 
     for(auto const & fnpair : this->functions)
     {
-        std::array<char, 256> name;
+        std::array<char, 128> name;
         strncpy(name.data(), fnpair.first.c_str(), name.size());
         stream.write(name.data(), name.size());
 
