@@ -48,7 +48,7 @@ pub const Instruction = union(InstructionName) {
     pub const Deprecated = struct {};
     pub const NoArg = struct {};
     fn SingleArg(comptime T: type) type {
-        return struct { value: []const u8 };
+        return struct { value: T };
     }
     pub const CallArg = struct {
         function: []const u8,

@@ -18,5 +18,5 @@ pub fn main() anyerror!void {
 
     var stream = &std.io.getStdOut().outStream().stream;
 
-    try lola.disassemble(allocator, std.fs.File.OutStream.Error, stream, cu, lola.DisassemblerOptions{});
+    try lola.disassemble(std.fs.File.OutStream.Error, stream, cu, lola.DisassemblerOptions{});
 }

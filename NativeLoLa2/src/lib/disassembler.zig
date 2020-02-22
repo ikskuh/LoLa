@@ -26,7 +26,7 @@ pub const DisassemblerOptions = struct {
 /// The output of the disassembler is adjustable to different formats.
 /// If all output is disabled in the config, this function can also be used
 /// to verify that a compile unit can be parsed completly without any problems.
-pub fn disassemble(allocator: *std.mem.Allocator, comptime Error: type, stream: *std.io.OutStream(Error), cu: CompileUnit, options: DisassemblerOptions) !void {
+pub fn disassemble(comptime Error: type, stream: *std.io.OutStream(Error), cu: CompileUnit, options: DisassemblerOptions) !void {
     var decoder = Decoder.init(cu.code);
 
     const anyOutput = options.addressPrefix or options.labelOutput or options.instructionOutput or (options.hexwidth != null);
@@ -50,38 +50,7 @@ pub fn disassemble(allocator: *std.mem.Allocator, comptime Error: type, stream: 
             try stream.print("{X:0>6}\t", .{decoder.offset});
 
         const start = decoder.offset;
-        const instr = try decoder.read(InstructionName);
-
-        // TODO: Refactor to read(Instruction)
-
-        const formatted = switch (instr) {
-            .push_str, .store_global_name, .load_global_name => blk: {
-                const str = try decoder.readVarString();
-                break :blk try std.fmt.allocPrint(allocator, "{} \"{}\"", .{ @tagName(instr), str });
-            },
-            .push_num => blk: {
-                const val = try decoder.read(f64);
-                break :blk try std.fmt.allocPrint(allocator, "{} \"{}\"", .{ @tagName(instr), val });
-            },
-            .call_fn, .call_obj => blk: {
-                const str = try decoder.readVarString();
-                const argc = try decoder.read(u8);
-                break :blk try std.fmt.allocPrint(allocator, "{} \"{}\" {}", .{ @tagName(instr), str, argc });
-            },
-            .jmp, .jnf, .jif => blk: {
-                const dest = try decoder.read(u32);
-                break :blk try std.fmt.allocPrint(allocator, "{} {}", .{ @tagName(instr), dest });
-            },
-            .store_local, .load_local, .store_global_idx, .load_global_idx, .array_pack => blk: {
-                const dest = try decoder.read(u16);
-                break :blk try std.fmt.allocPrint(allocator, "{} {}", .{ @tagName(instr), dest });
-            },
-            else => blk: {
-                break :blk try std.fmt.allocPrint(allocator, "{}", .{@tagName(instr)});
-            },
-        };
-        defer allocator.free(formatted);
-
+        const instr = try decoder.read(Instruction);
         const end = decoder.offset;
 
         if (options.hexwidth) |hw| {
@@ -90,7 +59,22 @@ pub fn disassemble(allocator: *std.mem.Allocator, comptime Error: type, stream: 
 
         if (options.instructionOutput) {
             try stream.write("\t");
-            try stream.write(formatted);
+            try stream.write(@tagName(@as(InstructionName, instr)));
+
+            inline for (std.meta.fields(Instruction)) |fld| {
+                if (instr == @field(InstructionName, fld.name)) {
+                    if (fld.field_type == Instruction.Deprecated) {
+                        // no-op
+                    } else if (fld.field_type == Instruction.NoArg) {
+                        // no-op
+                    } else if (fld.field_type == Instruction.CallArg) {
+                        const args = @field(instr, fld.name);
+                        try stream.print(" {} {}", .{ args.function, args.argc });
+                    } else {
+                        try stream.print(" {}", .{@field(instr, fld.name).value});
+                    }
+                }
+            }
         }
 
         if (anyOutput)
