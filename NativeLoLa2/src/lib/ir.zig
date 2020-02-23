@@ -35,6 +35,7 @@ pub const InstructionName = enum(u8) {
     ret = 33,
     store_local = 34,
     load_local = 35,
+    // HERE BE HOLE
     retval = 37,
     jif = 38,
     store_global_idx = 39,
@@ -63,7 +64,7 @@ pub const Instruction = union(InstructionName) {
     load_global_name: SingleArg([]const u8),
     push_str: SingleArg([]const u8),
     push_num: SingleArg(f64),
-    array_pack: SingleArg(u8),
+    array_pack: SingleArg(u16),
     call_fn: CallArg,
     call_obj: CallArg,
     pop: NoArg,

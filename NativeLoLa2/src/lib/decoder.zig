@@ -61,7 +61,7 @@ pub const Decoder = struct {
     pub fn readVarString(self: *Self) ![]const u8 {
         const len = try self.read(u16);
         if (self.offset + len > self.data.len)
-            return error.CorruptedData; // this is when a string tells you it's longer than the actual data storage.
+            return error.NotEnoughData; // this is when a string tells you it's longer than the actual data storage.
         const string = self.data[self.offset .. self.offset + len];
         self.offset += len;
         return string;
@@ -91,8 +91,8 @@ pub const Decoder = struct {
                 } else if (fld.field_type == Instruction.NoArg) {
                     return @unionInit(Instruction, fld.name, .{});
                 } else if (fld.field_type == Instruction.CallArg) {
-                    const fun = try self.readVarString();
-                    const argc = try self.read(u8);
+                    const fun = self.readVarString() catch |err| return mapEndOfStreamToNotEnoughData(err);
+                    const argc = self.read(u8) catch |err| return mapEndOfStreamToNotEnoughData(err);
                     return @unionInit(Instruction, fld.name, Instruction.CallArg{
                         .function = fun,
                         .argc = argc,
@@ -101,17 +101,24 @@ pub const Decoder = struct {
                     const ValType = std.meta.fieldInfo(fld.field_type, "value").field_type;
                     if (ValType == []const u8) {
                         return @unionInit(Instruction, fld.name, fld.field_type{
-                            .value = try self.readVarString(),
+                            .value = self.readVarString() catch |err| return mapEndOfStreamToNotEnoughData(err),
                         });
                     } else {
                         return @unionInit(Instruction, fld.name, fld.field_type{
-                            .value = try self.read(ValType),
+                            .value = self.read(ValType) catch |err| return mapEndOfStreamToNotEnoughData(err),
                         });
                     }
                 }
             }
         }
         unreachable;
+    }
+
+    fn mapEndOfStreamToNotEnoughData(err: var) @TypeOf(err) {
+        return switch (err) {
+            error.EndOfStream => error.NotEnoughData,
+            else => err,
+        };
     }
 };
 
@@ -158,13 +165,115 @@ test "Decoder.NotEnoughData" {
     }
 }
 
-test "Decoder.CorruptedData" {
+test "Decoder.NotEnoughData (string)" {
     const blob = [_]u8{ 1, 0 };
     var decoder = Decoder.init(&blob);
 
     if (decoder.readVarString()) |_| {
         std.debug.assert(false);
     } else |err| {
-        std.debug.assert(err == error.CorruptedData);
+        std.debug.assert(err == error.NotEnoughData);
+    }
+}
+
+test "Decoder.read(Instruction)" {
+    const Pattern = struct {
+        const ResultType = std.meta.declarationInfo(Decoder, "readInstruction").data.Fn.return_type;
+
+        text: []const u8,
+        instr: ResultType,
+
+        fn isMatch(self: @This(), testee: ResultType) bool {
+            if (self.instr) |a_p| {
+                if (testee) |b_p| return eql(a_p, b_p) else |_| return false;
+            } else |a_e| {
+                if (testee) |_| return false else |b_e| return a_e == b_e;
+            }
+        }
+
+        fn eql(a: Instruction, b: Instruction) bool {
+            @setEvalBranchQuota(5000);
+            const activeField = @as(InstructionName, a);
+            if (activeField != @as(InstructionName, b))
+                return false;
+            inline for (std.meta.fields(InstructionName)) |fld| {
+                if (activeField == @field(InstructionName, fld.name)) {
+                    const FieldType = std.meta.fieldInfo(Instruction, fld.name).field_type;
+                    const lhs = @field(a, fld.name);
+                    const rhs = @field(b, fld.name);
+                    if ((FieldType == Instruction.Deprecated) or (FieldType == Instruction.NoArg)) {
+                        return true;
+                    } else if (FieldType == Instruction.CallArg) {
+                        return lhs.argc == rhs.argc and std.mem.eql(u8, lhs.function, rhs.function);
+                    } else {
+                        const ValType = std.meta.fieldInfo(FieldType, "value").field_type;
+                        if (ValType == []const u8) {
+                            return std.mem.eql(u8, lhs.value, rhs.value);
+                        } else {
+                            return lhs.value == rhs.value;
+                        }
+                    }
+                }
+            }
+            unreachable;
+        }
+    };
+    const patterns = [_]Pattern{
+        .{ .text = "\x00", .instr = Instruction{ .nop = .{} } },
+        .{ .text = "\x01", .instr = error.DeprecatedInstruction },
+        .{ .text = "\x02", .instr = error.DeprecatedInstruction },
+        .{ .text = "\x03", .instr = error.DeprecatedInstruction },
+        .{ .text = "\x04\x01\x00X", .instr = Instruction{ .store_global_name = .{ .value = "X" } } },
+        .{ .text = "\x05\x02\x00YZ", .instr = Instruction{ .load_global_name = .{ .value = "YZ" } } },
+        .{ .text = "\x06\x03\x00ABC", .instr = Instruction{ .push_str = .{ .value = "ABC" } } },
+        .{ .text = "\x07\x00\x00\x00\x00\x00\x00\x00\x00", .instr = Instruction{ .push_num = .{ .value = 0 } } },
+        .{ .text = "\x08\x00\x10", .instr = Instruction{ .array_pack = .{ .value = 0x1000 } } },
+        .{ .text = "\x09\x01\x00x\x01", .instr = Instruction{ .call_fn = .{ .function = "x", .argc = 1 } } },
+        .{ .text = "\x0A\x02\x00yz\x03", .instr = Instruction{ .call_obj = .{ .function = "yz", .argc = 3 } } },
+        .{ .text = "\x0B", .instr = Instruction{ .pop = .{} } },
+        .{ .text = "\x0C", .instr = Instruction{ .add = .{} } },
+        .{ .text = "\x0D", .instr = Instruction{ .sub = .{} } },
+        .{ .text = "\x0E", .instr = Instruction{ .mul = .{} } },
+        .{ .text = "\x0F", .instr = Instruction{ .div = .{} } },
+        .{ .text = "\x10", .instr = Instruction{ .mod = .{} } },
+        .{ .text = "\x11", .instr = Instruction{ .bool_and = .{} } },
+        .{ .text = "\x12", .instr = Instruction{ .bool_or = .{} } },
+        .{ .text = "\x13", .instr = Instruction{ .bool_not = .{} } },
+        .{ .text = "\x14", .instr = Instruction{ .negate = .{} } },
+        .{ .text = "\x15", .instr = Instruction{ .eq = .{} } },
+        .{ .text = "\x16", .instr = Instruction{ .neq = .{} } },
+        .{ .text = "\x17", .instr = Instruction{ .less_eq = .{} } },
+        .{ .text = "\x18", .instr = Instruction{ .greater_eq = .{} } },
+        .{ .text = "\x19", .instr = Instruction{ .less = .{} } },
+        .{ .text = "\x1A", .instr = Instruction{ .greater = .{} } },
+        .{ .text = "\x1B\x00\x11\x22\x33", .instr = Instruction{ .jmp = .{ .value = 0x33221100 } } },
+        .{ .text = "\x1C\x44\x33\x22\x11", .instr = Instruction{ .jnf = .{ .value = 0x11223344 } } },
+        .{ .text = "\x1D", .instr = Instruction{ .iter_make = .{} } },
+        .{ .text = "\x1E", .instr = Instruction{ .iter_next = .{} } },
+        .{ .text = "\x1F", .instr = Instruction{ .array_store = .{} } },
+        .{ .text = "\x20", .instr = Instruction{ .array_load = .{} } },
+        .{ .text = "\x21", .instr = Instruction{ .ret = .{} } },
+        .{ .text = "\x22\xDE\xBA", .instr = Instruction{ .store_local = .{ .value = 0xBADE } } },
+        .{ .text = "\x23\xFE\xAF", .instr = Instruction{ .load_local = .{ .value = 0xAFFE } } },
+        .{ .text = "\x25", .instr = Instruction{ .retval = .{} } },
+        .{ .text = "\x26\x00\x12\x34\x56", .instr = Instruction{ .jif = .{ .value = 0x56341200 } } },
+        .{ .text = "\x27\x34\x12", .instr = Instruction{ .store_global_idx = .{ .value = 0x1234 } } },
+        .{ .text = "\x28\x21\x43", .instr = Instruction{ .load_global_idx = .{ .value = 0x4321 } } },
+        .{ .text = "\x29", .instr = Instruction{ .push_true = .{} } },
+        .{ .text = "\x2A", .instr = Instruction{ .push_false = .{} } },
+        .{ .text = "\x2B", .instr = Instruction{ .push_void = .{} } },
+        .{ .text = "", .instr = error.EndOfStream },
+        .{ .text = "\x26", .instr = error.NotEnoughData },
+        .{ .text = "\x09\xFF", .instr = error.NotEnoughData },
+        .{ .text = "\x26\x00\x00", .instr = error.NotEnoughData },
+        .{ .text = "\x09\xFF\xFF", .instr = error.NotEnoughData },
+    };
+    for (patterns) |pattern| {
+        var decoder = Decoder.init(pattern.text);
+        const instruction = decoder.read(Instruction);
+        if (!pattern.isMatch(instruction)) {
+            std.debug.warn("expected {}, got {}\n", .{ pattern.instr, instruction });
+            std.debug.assert(false);
+        }
     }
 }
