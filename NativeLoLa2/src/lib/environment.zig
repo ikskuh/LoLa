@@ -254,7 +254,7 @@ pub const Environment = struct {
     /// the name must be kept alive until end of the environment.
     functions: std.StringHashMap(Function),
 
-    fn init(allocator: *std.mem.Allocator, compileUnit: *const CompileUnit, objectInterface: ObjectInterface) !Self {
+    pub fn init(allocator: *std.mem.Allocator, compileUnit: *const CompileUnit, objectInterface: ObjectInterface) !Self {
         var self = Self{
             .allocator = allocator,
             .compileUnit = compileUnit,
@@ -291,7 +291,7 @@ pub const Environment = struct {
         return self;
     }
 
-    fn deinit(self: Self) void {
+    pub fn deinit(self: Self) void {
         var iter = self.functions.iterator();
         while (iter.next()) |fun| {
             fun.value.deinit();

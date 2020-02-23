@@ -26,8 +26,16 @@ pub const VM = struct {
     const Self = @This();
 
     const Context = struct {
+        /// Stores the local variables for this call.
         locals: []Value,
+
+        /// Provides instruction fetches for the right compile unit
         decoder: Decoder,
+
+        /// Stores the stack balance at start of the function call.
+        /// This is used to reset the stack to the right balance at the
+        /// end of a function call. It is also used to check for stack underflows.
+        stackBalance: usize,
     };
 
     allocator: *std.mem.Allocator,
@@ -78,6 +86,7 @@ pub const VM = struct {
 
         ctx.* = Context{
             .decoder = Decoder.init(fun.compileUnit.code),
+            .stackBalance = self.stack.len,
             .locals = undefined,
         };
         ctx.locals = try self.allocator.alloc(Value, fun.localCount);
@@ -101,6 +110,17 @@ pub const VM = struct {
 
     /// Pops a value from the stack. The ownership will be transferred to the caller.
     fn pop(self: *Self) !Value {
+        if (self.calls.len > 0) {
+            const ctx = &self.calls.toSlice()[self.calls.len - 1];
+
+            // Assert we did not accidently have a stack underflow
+            std.debug.assert(self.stack.len >= ctx.stackBalance);
+
+            // this pop would produce a stack underrun for the current function call.
+            if (self.stack.len == ctx.stackBalance)
+                return error.StackImbalance;
+        }
+
         return if (self.stack.popOrNull()) |v| v else return error.StackImbalance;
     }
 
@@ -116,22 +136,123 @@ pub const VM = struct {
                 q.* -= 1;
             }
 
-            switch (try self.executeSingle()) {
-                .completed => return ExecutionResult.completed,
-                .yield => return ExecutionResult.paused,
-                .@"continue" => {},
+            if (try self.executeSingle()) |result| {
+                switch (result) {
+                    .completed => {
+                        // A execution may only be completed if no calls
+                        // are active anymore.
+                        std.debug.assert(self.calls.len == 0);
+                        std.debug.assert(self.stack.len == 0);
+
+                        return ExecutionResult.completed;
+                    },
+                    .yield => return ExecutionResult.paused,
+                }
             }
         }
     }
 
     /// Executes a single instruction and returns the state of the machine.
-    fn executeSingle(self: *Self) !SingleResult {
+    fn executeSingle(self: *Self) !?SingleResult {
         const ctx = &self.calls.toSlice()[self.calls.len - 1];
 
         const instruction = try ctx.decoder.read(Instruction);
         switch (instruction) {
-            else => @panic("Not implemented yet!"),
+            .nop => return null,
+
+            // Immediate Section:
+
+            .push_num => |i| {
+                try self.push(Value.initNumber(i.value));
+                return null;
+            },
+            .push_str => |i| {
+                var val = try Value.initString(self.allocator, i.value);
+                errdefer val.deinit();
+
+                try self.push(val);
+                return null;
+            },
+
+            .push_true => {
+                try self.push(Value.initBoolean(true));
+                return null;
+            },
+
+            .push_false => {
+                try self.push(Value.initBoolean(false));
+                return null;
+            },
+
+            .push_void => {
+                try self.push(Value.initVoid());
+                return null;
+            },
+
+            // Memory Access Section:
+
+            .store_global_idx => |i| {
+                if (i.value >= self.environment.scriptGlobals.len)
+                    return error.InvalidGlobalVariable;
+
+                const value = try self.pop();
+
+                self.environment.scriptGlobals[i.value].replaceWith(value);
+
+                return null;
+            },
+
+            .load_global_idx => |i| {
+                if (i.value >= self.environment.scriptGlobals.len)
+                    return error.InvalidGlobalVariable;
+
+                const value = try self.environment.scriptGlobals[i.value].clone();
+                errdefer value.deinit();
+
+                try self.push(value);
+
+                return null;
+            },
+
+            // Control Flow Section:
+
+            .ret => {
+                const call = self.calls.pop();
+
+                // Restore stack balance
+                while (self.stack.len > call.stackBalance) {
+                    const item = self.stack.pop();
+                    item.deinit();
+                }
+
+                // No more context to execute: we have completed execution
+                if (self.calls.len == 0)
+                    return .completed;
+                return null;
+            },
+
+            // Arithmetic Section:
+
+            .add => {
+                const lhs = try self.pop();
+                defer lhs.deinit();
+
+                const rhs = try self.pop();
+                defer rhs.deinit();
+
+                // TODO: Implement "add" for other types than number
+
+                try self.push(Value.initNumber(lhs.number + rhs.number));
+
+                return null;
+            },
+
+            // Deperecated Section:
+            .scope_push, .scope_pop, .declare => return error.DeprectedInstruction,
+            else => return error.NotImplementedYet, // @panic("Not implemented yet!"),
         }
+
+        unreachable;
     }
 
     const SingleResult = enum {
@@ -140,9 +261,6 @@ pub const VM = struct {
 
         /// execution and waits for completion.
         yield,
-
-        /// The instruction has finished and awaits execution of the next.
-        @"continue",
     };
 };
 
