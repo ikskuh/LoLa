@@ -34,7 +34,16 @@ LValueExpression LoLa::AST::VariableRef(String var)
 
         void emit(CodeWriter & code, Scope & scope) override
         {
-            if(auto local = scope.get(name); local)
+            if(name == "true") {
+                code.emit(Instruction::push_true);
+            }
+            else if(name == "false") {
+                code.emit(Instruction::push_false);
+            }
+            else if(name == "void") {
+                code.emit(Instruction::push_void);
+            }
+            else if(auto local = scope.get(name); local)
             {
                 if(local->second == Scope::Global)
                     code.emit(Instruction::load_global_idx);
@@ -57,7 +66,11 @@ LValueExpression LoLa::AST::VariableRef(String var)
         }
 
         void emitStore(CodeWriter & code, Scope & scope) override {
-            if(auto local = scope.get(name); local)
+
+            if((name == "true") or (name == "false") or (name == "void")) {
+                throw Error::InvalidStore;
+            }
+            else if(auto local = scope.get(name); local)
             {
                 if(local->second == Scope::Global)
                     code.emit(Instruction::store_global_idx);
@@ -130,7 +143,7 @@ LValueExpression LoLa::AST::ArrayIndexer(Expression value, Expression index)
             {
                 // read-modify-write the lvalue expression
                 index->emit(code, scope); // load the index on the stack
-                lvalue->emit(code, scope); // load the function on the stack
+                lvalue->emit(code, scope); // load the array on the stack
                 code.emit(Instruction::array_store);
                 lvalue->emitStore(code, scope); // now store back the value on the stack
             }

@@ -15,6 +15,7 @@ namespace LoLa
         InvalidTopLevelReturn,
         ObjectDisposed,
         ReadOnlyVariable,
+        InvalidStore,
     };
 
     char const * to_string(Error err);

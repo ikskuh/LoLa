@@ -115,6 +115,83 @@ pub const Value = union(enum) {
             else => {},
         }
     }
+
+    const ConversionError = error{TypeMismatch};
+
+    pub fn toNumber(self: Self) ConversionError!f64 {
+        if (self != .number)
+            return error.TypeMismatch;
+        return self.number;
+    }
+
+    pub fn toBoolean(self: Self) ConversionError!bool {
+        if (self != .boolean)
+            return error.TypeMismatch;
+        return self.boolean;
+    }
+
+    pub fn toVoid(self: Self) ConversionError!void {
+        if (self != .void)
+            return error.TypeMismatch;
+    }
+
+    pub fn toObject(self: Self) ConversionError!u64 {
+        if (self != .object)
+            return error.TypeMismatch;
+        return self.object;
+    }
+
+    pub fn toArray(self: Self) ConversionError!Array {
+        if (self != .array)
+            return error.TypeMismatch;
+        return self.array;
+    }
+
+    /// Gets the contained array or fails.
+    pub fn getArray(self: *Self) ConversionError!*Array {
+        if (self.* != .array)
+            return error.TypeMismatch;
+        return &self.array;
+    }
+
+    /// Gets the contained string or fails.
+    pub fn getString(self: *Self) ConversionError!*String {
+        if (self.* != .string)
+            return error.TypeMismatch;
+        return &self.string;
+    }
+
+    /// Gets the contained enumerator or fails.
+    pub fn getEnumerator(self: *Self) ConversionError!*Enumerator {
+        if (self.* != .enumerator)
+            return error.TypeMismatch;
+        return &self.enumerator;
+    }
+
+    /// Checks if two values are equal.
+    pub fn format(value: Self, comptime fmt: []const u8, options: std.fmt.FormatOptions, context: var, comptime Errors: type, comptime output: fn (@TypeOf(context), []const u8) Errors!void) Errors!void {
+        return switch (value) {
+            .void => output(context, "void"),
+            .number => |n| std.fmt.format(context, Errors, output, "{d}", .{n}),
+            .object => |o| std.fmt.format(context, Errors, output, "{d}", .{o}),
+            .boolean => |b| if (b) output(context, "true") else output(context, "false"),
+            .string => |s| std.fmt.format(context, Errors, output, "\"{}\"", .{s.contents}),
+            .array => |a| {
+                try output(context, "[");
+                for (a.contents) |item, i| {
+                    if (i > 0)
+                        try output(context, ",");
+
+                    // Workaround until #???? is fixed:
+                    // Print only the type name of the array item.
+                    const itemType = @as(TypeId, item);
+                    try std.fmt.format(context, Errors, output, " {}", .{@tagName(itemType)});
+                }
+                try output(context, " ]");
+            },
+            .enumerator => |e| output(context, "enumerator"),
+        };
+    }
 };
 
 test "Value.void" {
@@ -219,7 +296,7 @@ test "Value.eql (string)" {
 
 /// Immutable string type.
 /// Both
-const String = struct {
+pub const String = struct {
     const Self = @This();
 
     allocator: *std.mem.Allocator,
@@ -293,7 +370,7 @@ test "String.eql" {
     std.debug.assert(str2.eql(str3) == false);
 }
 
-const Array = struct {
+pub const Array = struct {
     const Self = @This();
 
     allocator: *std.mem.Allocator,
@@ -402,7 +479,7 @@ test "Array.eql" {
     std.debug.assert(array3.eql(array4) == false);
 }
 
-const Enumerator = struct {
+pub const Enumerator = struct {
     const Self = @This();
 
     array: Array,
@@ -429,16 +506,17 @@ const Enumerator = struct {
         return self.index < self.array.contents.len;
     }
 
-    /// Returns either a non-owned value or nothing.
-    /// Do not deinit the returned value!
-    /// The returned value is only valid as long as the
-    /// enumerator is valid.
+    /// Returns either a owned value or nothing.
+    /// Will replace the returned value in the enumerator array with `void`.
+    /// As the enumerator can only yield values from the array and does not "store"
+    /// them for later use, this prevents unnecessary clones.
     pub fn next(self: *Self) ?Value {
         if (self.index >= self.array.contents.len)
             return null;
-        const val = self.array.contents[self.index];
+        var result = Value.initVoid();
+        self.array.contents[self.index].exchangeWith(&result);
         self.index += 1;
-        return val;
+        return result;
     }
 
     pub fn clone(self: Self) !Self {

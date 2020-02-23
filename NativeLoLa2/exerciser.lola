@@ -1,0 +1,65 @@
+// LoLa exerciser
+// This file covers all possible instructions and constructs
+// in the LoLa language
+
+var _; // variable for discarding stuff
+
+var x;
+
+// push_num
+// store_global_index
+x = 10;
+
+var y = 30; // syntax variant
+
+// load_global_index
+// store_global_index
+var z = x;
+
+var z0 = x + y; // add (number + number)
+var z1 = x - y; // sub
+var z2 = x * y; // mul
+var z3 = x / y; // div
+var z4 = x % y; // mod
+
+_ = true; // push_true
+_ = false; // push_false
+_ = void; // push_void
+_ = "Hello, World!"; // push_string
+_ = 10.0; // push_num
+_ = [ ]; // array_pack 0
+_ = [ true, void, 3 ]; // array_pack *
+
+x = -5; // negate
+
+
+var a = [ 42.0 ];
+_ = a[0]; // array_load
+a[0] = 10; // array_store
+
+var a = true;
+
+if(a) { // jif, jmp
+  a = 1;
+} else {
+  a = 2;
+}
+
+var a = true;
+while(a) { // jif, jmp
+  a = false;
+}
+
+_ = (1 == 2); // eq
+_ = (1 != 2); // neq
+_ = (1 <  2); // less
+_ = (1 <= 2); // less_eq
+_ = (1 >  2); // greater
+_ = (1 >= 2); // greater_eq
+
+function Add(x,y)
+{
+  return x + y; // load_local
+}
+
+_ = Add(1, 2); // call_fn 

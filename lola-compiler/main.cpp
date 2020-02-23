@@ -116,7 +116,7 @@ static int compile(int argc, char ** argv)
 
     FILE * f = fopen(infile, "r");
     if(f == nullptr) {
-        fprintf(stderr, "File not found!\n", infile);
+        fprintf(stderr, "File %s not found!\n", infile);
         return 1;
     }
 

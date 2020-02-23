@@ -71,7 +71,11 @@ pub fn disassemble(comptime Error: type, stream: *std.io.OutStream(Error), cu: C
                         const args = @field(instr, fld.name);
                         try stream.print(" {} {}", .{ args.function, args.argc });
                     } else {
-                        try stream.print(" {}", .{@field(instr, fld.name).value});
+                        if (@TypeOf(@field(instr, fld.name).value) == f64) {
+                            try stream.print(" {d}", .{@field(instr, fld.name).value});
+                        } else {
+                            try stream.print(" {}", .{@field(instr, fld.name).value});
+                        }
                     }
                 }
             }

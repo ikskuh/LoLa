@@ -56,6 +56,9 @@ namespace LoLa::IL
         jif = 38,               //!< jump when false[ target:u32 ]
         store_global_idx = 39,  //!< stores global variable by index [ idx:u16 ]
         load_global_idx = 40,   //!< loads global variable by index [ idx:u16 ]
+        push_true = 41, //!< pushes `true` literal
+        push_false = 42, //!< pushes `false` literal
+        push_void = 43, //!< pushes `void` literal
     };
 }
 

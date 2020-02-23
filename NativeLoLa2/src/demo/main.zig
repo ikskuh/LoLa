@@ -18,12 +18,21 @@ pub fn main() anyerror!void {
 
     var stream = &std.io.getStdOut().outStream().stream;
 
-    try lola.disassemble(std.fs.File.OutStream.Error, stream, cu, lola.DisassemblerOptions{});
+    try lola.disassemble(std.fs.File.OutStream.Error, stream, cu, lola.DisassemblerOptions{
+        .addressPrefix = true,
+    });
+
+    var counterAllocator = std.testing.LeakCountAllocator.init(std.heap.direct_allocator);
+    defer {
+        if (counterAllocator.count > 0) {
+            std.debug.warn("error - detected leaked allocations without matching free: {}\n", .{counterAllocator.count});
+        }
+    }
 
     var env = try lola.Environment.init(std.heap.direct_allocator, &cu, lola.ObjectInterface.empty);
     defer env.deinit();
 
-    var vm = try lola.VM.init(std.heap.direct_allocator, &env);
+    var vm = try lola.VM.init(&counterAllocator.allocator, &env);
     defer vm.deinit();
 
     var result = vm.execute(1000) catch |err| {
@@ -34,8 +43,7 @@ pub fn main() anyerror!void {
         for (vm.stack.toSliceConst()) |item, i| {
             std.debug.warn("[{}]\t= {}\n", .{ i, item });
         }
-
-        return;
+        return err;
     };
 
     std.debug.warn("result: {}\n", .{result});

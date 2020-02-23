@@ -1,6 +1,24 @@
-var x;
-x = 10;
 
-var y = 20;
+// var a = [ 1, 2, 3 ];
 
-var z = x + y;
+// for(x in a)
+// {
+// }
+
+function Fibonacci(num)
+{
+    var a = 1;
+    var b = 0;
+
+    while (num > 0)
+    {
+         var temp = a;
+         a = a + b;
+         b = temp;
+         num = num - 1;
+    }
+
+    return b;
+}
+
+var x = Fibonacci(10);

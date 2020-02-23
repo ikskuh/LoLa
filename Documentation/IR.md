@@ -29,12 +29,12 @@ The following list contains each instruction and describes it's effects on the v
 - `pop` destroys stack top
 	- pops a value and discards it
 - `add` adds rhs and lhs together
-	- first pops the left hand side,
-	- then the right hand side,
+	- first pops the right hand side,
+	- then the left hand side,
 	- then adds right to left, pushes the result
 - `sub` subtracts rhs and lhs together
-	- first pops the left hand side,
-	- then the right hand side,
+	- first pops the right hand side,
+	- then the left hand side,
 	- then subtracts right from left, pushes the result
 - `mul` multiplies rhs and lhs together
 	- first pops the left hand side,
@@ -44,10 +44,11 @@ The following list contains each instruction and describes it's effects on the v
 	- first pops the left hand side,
 	- then the right hand side,
 	- then divides left by right, pushing the divisor
-- `mod` reminder division of rhs and lhs
+- `mod` modulo division of rhs and lhs
 	- first pops the left hand side,
 	- then the right hand side,
-	- then divides left by right, pushing the remainder
+	- then divides left by right, pushing the module
+	- `(-5 % 2) == 1`
 - `bool_and` conjunct rhs and lhs
 	- first pops the left hand side,
 	- then the right hand side,
@@ -69,20 +70,20 @@ The following list contains each instruction and describes it's effects on the v
   - pops two values from the stack and compares if they are not equal
   - pushes a boolean containing the result of the comparison
 - `less_eq`
-  - first pops the left hand side,
-  - then the right hand side,
+  - first pops the right hand side,
+  - then the left hand side,
   - then pushes `true` when left hand side is less or equal to the right hand side.
 - `greater_eq`
-  - first pops the left hand side,
-  - then the right hand side,
+  - first pops the right hand side,
+  - then the left hand side,
   - then pushes `true` when left hand side is greater or equal to the right hand side.
 - `less`
-  - first pops the left hand side,
-  - then the right hand side,
+  - first pops the right hand side,
+  - then the left hand side,
   - then pushes `true` when left hand side is less to the right hand side.
 - `greater`
-  - first pops the left hand side,
-  - then the right hand side,
+  - first pops the right hand side,
+  - then the left hand side,
   - then pushes `true` when left hand side is greater to the right hand side.
 - `jmp` jumps unconditionally `[target:u32 ]`
 	- Sets the instruction pointer to `target`
@@ -103,9 +104,9 @@ The following list contains each instruction and describes it's effects on the v
   - else:
     - Push `false`
 - `array_store`
-  - Pops the *value* from the stack
-  - Then pops the *index* from the stack
   - Then pops the *array* from the stack
+  - Then pops the *index* from the stack
+  - Pops the *value* from the stack
   - Stores *value* at *index* in *array*
   - Pushes *array* to the stack.
 - `array_load`
@@ -134,83 +135,12 @@ The following list contains each instruction and describes it's effects on the v
 - `load_global_idx` loads global variable by index `[ idx:u16 ]`
   - Loads a value from the object-global storage
   - Pushes that value to the stack
-
-## Example
-
-```asm
-000000	<main>:
-000000		call_fn CreateStack, 0
-00000F		store_global 0
-000012		push_num 10
-00001B		load_global 0
-00001E		call_obj Push, 1
-000026		pop
-000027		push_num 20
-000030		load_global 0
-000033		call_obj Push, 1
-00003B		pop
-00003C		push_num 30
-000045		load_global 0
-000048		call_obj Push, 1
-000050		pop
-000051		push_str 'mul'
-000057		call_fn Operation, 1
-000064		pop
-000065		push_str 'add'
-00006B		call_fn Operation, 1
-000078		pop
-000079		push_str 'print'
-000081		call_fn Operation, 1
-00008E		pop
-00008F		load_global 0
-000092		call_obj GetSize, 0
-00009D		push_str 'Stack Length: '
-0000AE		call_fn Print, 2
-0000B7		pop
-0000B8		ret
-0000B9	Operation:
-0000B9		load_local 0
-0000BC		push_str 'print'
-0000C4		eq
-0000C5		jif DE
-0000CA		load_global 0
-0000CD		call_obj Pop, 0
-0000D4		call_fn Print, 1
-0000DD		pop
-0000DE		load_local 0
-0000E1		push_str 'add'
-0000E7		eq
-0000E8		jif 11A
-0000ED		load_global 0
-0000F0		call_obj Pop, 0
-0000F7		store_local 1
-0000FA		load_global 0
-0000FD		call_obj Pop, 0
-000104		store_local 2
-000107		load_local 1
-00010A		load_local 2
-00010D		add
-00010E		load_global 0
-000111		call_obj Push, 1
-000119		pop
-00011A		load_local 0
-00011D		push_str 'mul'
-000123		eq
-000124		jif 156
-000129		load_global 0
-00012C		call_obj Pop, 0
-000133		store_local 1
-000136		load_global 0
-000139		call_obj Pop, 0
-000140		store_local 2
-000143		load_local 1
-000146		load_local 2
-000149		mul
-00014A		load_global 0
-00014D		call_obj Push, 1
-000155		pop
-000156		ret
-```
+- `push_true`
+  - pushes literal boolean `true`
+- `push_false`
+  - pushes literal boolean `false`
+- `push_void`
+  - pushes void value
 
 ## Encoding
 

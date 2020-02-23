@@ -56,11 +56,14 @@ pub const VM = struct {
 
         // Initialize with special "init context" that runs the script itself
         // and hosts the global variables.
-        _ = try vm.pushContext(ScriptFunction{
+        const initFun = try vm.createContext(ScriptFunction{
             .compileUnit = environment.compileUnit,
             .entryPoint = 0, // start at the very first byte
             .localCount = 0, // and don't store any global variables as the "core" context is not a function
         });
+        errdefer vm.deinitContext(initFun);
+
+        try vm.calls.append(initFun);
 
         return vm;
     }
@@ -70,27 +73,31 @@ pub const VM = struct {
             v.deinit();
         }
         for (self.calls.toSliceConst()) |c| {
-            for (c.locals) |v| {
-                v.deinit();
-            }
-            self.allocator.free(c.locals);
+            deinitContext(self, c);
         }
         self.stack.deinit();
         self.calls.deinit();
     }
 
-    /// Pushes a new execution context to the call stack.
-    fn pushContext(self: *Self, fun: ScriptFunction) !*Context {
-        const ctx = try self.calls.addOne();
-        errdefer _ = self.calls.pop();
+    fn deinitContext(self: Self, ctx: Context) void {
+        for (ctx.locals) |v| {
+            v.deinit();
+        }
+        self.allocator.free(ctx.locals);
+    }
 
-        ctx.* = Context{
+    /// Creates a new execution context.
+    fn createContext(self: *Self, fun: ScriptFunction) !Context {
+        var ctx = Context{
             .decoder = Decoder.init(fun.compileUnit.code),
             .stackBalance = self.stack.len,
             .locals = undefined,
         };
+        ctx.decoder.offset = fun.entryPoint;
         ctx.locals = try self.allocator.alloc(Value, fun.localCount);
-
+        for (ctx.locals) |*local| {
+            local.* = Value.initVoid();
+        }
         return ctx;
     }
 
@@ -156,38 +163,24 @@ pub const VM = struct {
     fn executeSingle(self: *Self) !?SingleResult {
         const ctx = &self.calls.toSlice()[self.calls.len - 1];
 
+        std.debug.warn("execute {}…\n", .{ctx.decoder.offset});
+
         const instruction = try ctx.decoder.read(Instruction);
         switch (instruction) {
-            .nop => return null,
+            .nop => {},
 
             // Immediate Section:
-
-            .push_num => |i| {
-                try self.push(Value.initNumber(i.value));
-                return null;
-            },
+            .push_num => |i| try self.push(Value.initNumber(i.value)),
             .push_str => |i| {
                 var val = try Value.initString(self.allocator, i.value);
                 errdefer val.deinit();
 
                 try self.push(val);
-                return null;
             },
 
-            .push_true => {
-                try self.push(Value.initBoolean(true));
-                return null;
-            },
-
-            .push_false => {
-                try self.push(Value.initBoolean(false));
-                return null;
-            },
-
-            .push_void => {
-                try self.push(Value.initVoid());
-                return null;
-            },
+            .push_true => try self.push(Value.initBoolean(true)),
+            .push_false => try self.push(Value.initBoolean(false)),
+            .push_void => try self.push(Value.initVoid()),
 
             // Memory Access Section:
 
@@ -198,8 +191,6 @@ pub const VM = struct {
                 const value = try self.pop();
 
                 self.environment.scriptGlobals[i.value].replaceWith(value);
-
-                return null;
             },
 
             .load_global_idx => |i| {
@@ -210,14 +201,105 @@ pub const VM = struct {
                 errdefer value.deinit();
 
                 try self.push(value);
+            },
 
-                return null;
+            .store_local => |i| {
+                if (i.value >= ctx.locals.len)
+                    return error.InvalidLocalVariable;
+
+                const value = try self.pop();
+
+                ctx.locals[i.value].replaceWith(value);
+            },
+
+            .load_local => |i| {
+                if (i.value >= ctx.locals.len)
+                    return error.InvalidLocalVariable;
+
+                const value = try ctx.locals[i.value].clone();
+                errdefer value.deinit();
+
+                try self.push(value);
+            },
+
+            // Array Operations:
+
+            .array_pack => |i| {
+                var array = try Array.init(self.allocator, i.value);
+                errdefer array.deinit();
+
+                for (array.contents) |*item| {
+                    const value = try self.pop();
+                    errdefer value.deinit();
+
+                    item.replaceWith(value);
+                }
+
+                try self.push(Value.fromArray(array));
+            },
+
+            .array_load => {
+                var array_val = try self.pop();
+                defer array_val.deinit();
+
+                const index_val = try self.pop();
+                defer index_val.deinit();
+
+                const item = try getArrayItem(&array_val, index_val);
+
+                const dupe = try item.clone();
+                errdefer dupe.deinit();
+
+                try self.push(dupe);
+            },
+
+            .array_store => {
+                var array_val = try self.pop();
+                errdefer array_val.deinit();
+
+                const index_val = try self.pop();
+                defer index_val.deinit();
+
+                const value = try self.pop();
+                defer value.deinit();
+
+                const item = try getArrayItem(&array_val, index_val);
+
+                item.replaceWith(value);
+
+                try self.push(array_val);
+            },
+
+            // Iterator Section:
+            .iter_make => {
+                const array_val = try self.pop();
+                errdefer array_val.deinit();
+
+                // is still owned by array_val and will be destroyed in case of array.
+                const array = try array_val.toArray();
+
+                try self.push(Value.fromEnumerator(Enumerator.initFromOwned(array)));
+            },
+
+            .iter_next => {
+                var enumerator_val = try self.peek();
+                var enumerator = try enumerator_val.getEnumerator();
+                if (enumerator.next()) |value| {
+                    self.push(value) catch |err| {
+                        value.deinit();
+                        return err;
+                    };
+                    try self.push(Value.initBoolean(true));
+                } else {
+                    try self.push(Value.initBoolean(true));
+                }
             },
 
             // Control Flow Section:
 
             .ret => {
                 const call = self.calls.pop();
+                defer self.deinitContext(call);
 
                 // Restore stack balance
                 while (self.stack.len > call.stackBalance) {
@@ -228,10 +310,78 @@ pub const VM = struct {
                 // No more context to execute: we have completed execution
                 if (self.calls.len == 0)
                     return .completed;
-                return null;
+            },
+
+            .retval => {
+                const value = try self.pop();
+                errdefer value.deinit();
+
+                const call = self.calls.pop();
+                defer self.deinitContext(call);
+
+                // Restore stack balance
+                while (self.stack.len > call.stackBalance) {
+                    const item = self.stack.pop();
+                    item.deinit();
+                }
+
+                try self.push(value);
+
+                // No more context to execute: we have completed execution
+                if (self.calls.len == 0)
+                    return .completed;
+            },
+
+            .jmp => |target| {
+                ctx.decoder.offset = target.value;
+            },
+
+            .jif, .jnf => |target| {
+                const value = try self.pop();
+                defer value.deinit();
+
+                const boolean = try value.toBoolean();
+
+                if (boolean == (instruction == .jnf)) {
+                    ctx.decoder.offset = target.value;
+                }
+            },
+
+            .call_fn => |call| {
+                const fun_kv = self.environment.functions.get(call.function);
+                if (fun_kv == null)
+                    return error.FunctionNotFound;
+                switch (fun_kv.?.value) {
+                    .script => |fun| {
+                        var context = try self.createContext(fun);
+                        errdefer self.deinitContext(context);
+
+                        try self.readLocals(call, context.locals);
+
+                        // Fixup stack balance after popping all locals
+                        context.stackBalance = self.stack.len;
+
+                        try self.calls.append(context);
+                    },
+                    .syncUser => |fun| {
+                        return error.NotImplementedYet;
+                    },
+                    .asyncUser => |fun| {
+                        return error.NotImplementedYet;
+                    },
+                }
             },
 
             // Arithmetic Section:
+
+            .negate => {
+                const value = try self.pop();
+                defer value.deinit();
+
+                const num = try value.toNumber();
+
+                try self.push(Value.initNumber(-num));
+            },
 
             .add => {
                 const lhs = try self.pop();
@@ -243,16 +393,138 @@ pub const VM = struct {
                 // TODO: Implement "add" for other types than number
 
                 try self.push(Value.initNumber(lhs.number + rhs.number));
-
-                return null;
             },
+
+            .sub => {
+                try self.executeNumberArithmetic(struct {
+                    fn operator(lhs: f64, rhs: f64) error{DivideByZero}!f64 {
+                        return lhs - rhs;
+                    }
+                }.operator);
+            },
+            .mul => {
+                try self.executeNumberArithmetic(struct {
+                    fn operator(lhs: f64, rhs: f64) error{DivideByZero}!f64 {
+                        return lhs * rhs;
+                    }
+                }.operator);
+            },
+            .div => {
+                try self.executeNumberArithmetic(struct {
+                    fn operator(lhs: f64, rhs: f64) error{DivideByZero}!f64 {
+                        if (rhs == 0)
+                            return error.DivideByZero;
+                        return lhs / rhs;
+                    }
+                }.operator);
+            },
+            .mod => {
+                try self.executeNumberArithmetic(struct {
+                    fn operator(lhs: f64, rhs: f64) error{DivideByZero}!f64 {
+                        if (rhs == 0)
+                            return error.DivideByZero;
+                        return @mod(lhs, rhs);
+                    }
+                }.operator);
+            },
+
+            // Comparisons:
+            .eq => {
+                const lhs = try self.pop();
+                defer lhs.deinit();
+
+                const rhs = try self.pop();
+                defer rhs.deinit();
+
+                try self.push(Value.initBoolean(lhs.eql(rhs)));
+            },
+            .neq => {
+                const lhs = try self.pop();
+                defer lhs.deinit();
+
+                const rhs = try self.pop();
+                defer rhs.deinit();
+
+                try self.push(Value.initBoolean(!lhs.eql(rhs)));
+            },
+            .less => try self.executeCompareValues(.lt, false),
+            .less_eq => try self.executeCompareValues(.lt, true),
+            .greater => try self.executeCompareValues(.gt, false),
+            .greater_eq => try self.executeCompareValues(.gt, true),
 
             // Deperecated Section:
             .scope_push, .scope_pop, .declare => return error.DeprectedInstruction,
-            else => return error.NotImplementedYet, // @panic("Not implemented yet!"),
+            else => {
+                std.debug.warn("Instruction `{}` not implemented yet!\n", .{
+                    @tagName(@as(InstructionName, instruction)),
+                });
+                return error.NotImplementedYet; // @panic("Not implemented yet!"),
+            },
         }
 
-        unreachable;
+        return null;
+    }
+
+    /// Reads a number of call arguments into a slice.
+    /// If an error happens, all items in `locals` are valid and must be deinitialized.
+    fn readLocals(self: *Self, call: Instruction.CallArg, locals: []Value) !void {
+        var i: usize = 0;
+        while (i < call.argc) : (i += 1) {
+            const value = try self.pop();
+            if (i < locals.len) {
+                locals[i].replaceWith(value);
+            } else {
+                value.deinit(); // Discard the value
+            }
+        }
+    }
+
+    fn executeCompareValues(self: *Self, wantedOrder: std.math.Order, allowEql: bool) !void {
+        const rhs = try self.pop();
+        defer rhs.deinit();
+
+        const lhs = try self.pop();
+        defer lhs.deinit();
+
+        if (@as(TypeId, lhs) != @as(TypeId, rhs))
+            return error.TypeMismatch;
+
+        const order = switch (lhs) {
+            .number => |num| std.math.order(num, rhs.number),
+            .string => |str| std.mem.order(u8, str.contents, rhs.string.contents),
+            else => return error.InvalidOperator,
+        };
+
+        try self.push(Value.initBoolean(
+            if (order == .eq and allowEql) true else order == wantedOrder,
+        ));
+    }
+
+    fn getArrayItem(array_val: *Value, index_val: Value) !*Value {
+        const array = try array_val.getArray();
+        const flt_index = try index_val.toNumber();
+
+        if (flt_index < 0)
+            return error.IndexOutOfRange;
+
+        const index = try floatToInt(usize, std.math.trunc(flt_index));
+        std.debug.assert(index >= 0);
+        if (index >= array.contents.len)
+            return error.IndexOutOfRange;
+
+        return &array.contents[index];
+    }
+
+    fn floatToInt(comptime T: type, flt: var) error{Overflow}!T {
+        comptime std.debug.assert(@typeId(T) == .Int); // must pass an integer
+        comptime std.debug.assert(@typeId(@TypeOf(flt)) == .Float); // must pass a float
+        if (flt > std.math.maxInt(T)) {
+            return error.Overflow;
+        } else if (flt < std.math.minInt(T)) {
+            return error.Overflow;
+        } else {
+            return @floatToInt(T, flt);
+        }
     }
 
     const SingleResult = enum {
@@ -262,6 +534,21 @@ pub const VM = struct {
         /// execution and waits for completion.
         yield,
     };
+
+    fn executeNumberArithmetic(self: *Self, operator: fn (f64, f64) error{DivideByZero}!f64) !void {
+        const rhs = try self.pop();
+        defer rhs.deinit();
+
+        const lhs = try self.pop();
+        defer lhs.deinit();
+
+        const n_lhs = try lhs.toNumber();
+        const n_rhs = try rhs.toNumber();
+
+        const result = try operator(n_lhs, n_rhs);
+
+        try self.push(Value.initNumber(result));
+    }
 };
 
 test "VM" {
