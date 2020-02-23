@@ -189,7 +189,9 @@ pub const Value = union(enum) {
                 }
                 try output(context, " ]");
             },
-            .enumerator => |e| output(context, "enumerator"),
+            .enumerator => |e| {
+                try std.fmt.format(context, Errors, output, "enumerator({}/{})", .{ e.index, e.array.contents.len });
+            },
         };
     }
 };

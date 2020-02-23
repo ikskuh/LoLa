@@ -108,11 +108,11 @@ pub const VM = struct {
 
     /// Peeks at the top of the stack. The returned value is still owned
     /// by the stack.
-    fn peek(self: Self) !Value {
-        const slice = self.stack.toSliceConst();
+    fn peek(self: Self) !*Value {
+        const slice = self.stack.toSlice();
         if (slice.len == 0)
             return error.StackImbalance;
-        return slice[slice.len - 1];
+        return &slice[slice.len - 1];
     }
 
     /// Pops a value from the stack. The ownership will be transferred to the caller.
@@ -163,11 +163,18 @@ pub const VM = struct {
     fn executeSingle(self: *Self) !?SingleResult {
         const ctx = &self.calls.toSlice()[self.calls.len - 1];
 
-        std.debug.warn("execute {}…\n", .{ctx.decoder.offset});
+        std.debug.warn("execute 0x{X}…\n", .{ctx.decoder.offset});
 
         const instruction = try ctx.decoder.read(Instruction);
         switch (instruction) {
+
+            // Auxiliary Section:
             .nop => {},
+
+            .pop => {
+                const value = try self.pop();
+                value.deinit();
+            },
 
             // Immediate Section:
             .push_num => |i| try self.push(Value.initNumber(i.value)),
@@ -282,8 +289,8 @@ pub const VM = struct {
             },
 
             .iter_next => {
-                var enumerator_val = try self.peek();
-                var enumerator = try enumerator_val.getEnumerator();
+                const enumerator_val = try self.peek();
+                const enumerator = try enumerator_val.getEnumerator();
                 if (enumerator.next()) |value| {
                     self.push(value) catch |err| {
                         value.deinit();
@@ -291,7 +298,7 @@ pub const VM = struct {
                     };
                     try self.push(Value.initBoolean(true));
                 } else {
-                    try self.push(Value.initBoolean(true));
+                    try self.push(Value.initBoolean(false));
                 }
             },
 
@@ -310,6 +317,8 @@ pub const VM = struct {
                 // No more context to execute: we have completed execution
                 if (self.calls.len == 0)
                     return .completed;
+
+                try self.push(Value.initVoid());
             },
 
             .retval => {
@@ -364,12 +373,64 @@ pub const VM = struct {
                         try self.calls.append(context);
                     },
                     .syncUser => |fun| {
-                        return error.NotImplementedYet;
+                        var locals = try self.allocator.alloc(Value, call.argc);
+                        for (locals) |*l| {
+                            l.* = Value.initVoid();
+                        }
+                        defer {
+                            for (locals) |l| {
+                                l.deinit();
+                            }
+                            self.allocator.free(locals);
+                        }
+
+                        try self.readLocals(call, locals);
+
+                        const result = try fun.call(fun.context, locals);
+                        errdefer result.deinit();
+
+                        try self.push(result);
                     },
                     .asyncUser => |fun| {
                         return error.NotImplementedYet;
                     },
                 }
+            },
+
+            // Logic Section:
+            .bool_and => {
+                const lhs = try self.pop();
+                defer lhs.deinit();
+
+                const rhs = try self.pop();
+                defer rhs.deinit();
+
+                const a = try lhs.toBoolean();
+                const b = try rhs.toBoolean();
+
+                try self.push(Value.initBoolean(a and b));
+            },
+
+            .bool_or => {
+                const lhs = try self.pop();
+                defer lhs.deinit();
+
+                const rhs = try self.pop();
+                defer rhs.deinit();
+
+                const a = try lhs.toBoolean();
+                const b = try rhs.toBoolean();
+
+                try self.push(Value.initBoolean(a or b));
+            },
+
+            .bool_not => {
+                const val = try self.pop();
+                defer val.deinit();
+
+                const a = try val.toBoolean();
+
+                try self.push(Value.initBoolean(!a));
             },
 
             // Arithmetic Section:

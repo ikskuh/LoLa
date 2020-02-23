@@ -32,17 +32,37 @@ pub fn main() anyerror!void {
     var env = try lola.Environment.init(std.heap.direct_allocator, &cu, lola.ObjectInterface.empty);
     defer env.deinit();
 
+    try env.functions.putNoClobber("Print", lola.Function{
+        .syncUser = lola.UserFunction{
+            .context = undefined,
+            .destructor = null,
+            .call = struct {
+                fn call(context: []const u8, args: []const lola.Value) anyerror!lola.Value {
+                    var stdout = &std.io.getStdOut().outStream().stream;
+                    for (args) |value, i| {
+                        if (i > 0)
+                            try stdout.write(" ");
+                        try stdout.print("{}", .{value});
+                    }
+                    try stdout.write("\n");
+                    return lola.Value.initVoid();
+                }
+            }.call,
+        },
+    });
+
     var vm = try lola.VM.init(&counterAllocator.allocator, &env);
     defer vm.deinit();
 
-    var result = vm.execute(1000) catch |err| {
-        std.debug.warn("Failed to execute code: {}\n", .{err});
-
+    defer {
         std.debug.warn("Stack:\n", .{});
-
         for (vm.stack.toSliceConst()) |item, i| {
             std.debug.warn("[{}]\t= {}\n", .{ i, item });
         }
+    }
+
+    var result = vm.execute(100) catch |err| {
+        std.debug.warn("Failed to execute code: {}\n", .{err});
         return err;
     };
 

@@ -1,24 +1,4 @@
 
-// var a = [ 1, 2, 3 ];
 
-// for(x in a)
-// {
-// }
 
-function Fibonacci(num)
-{
-    var a = 1;
-    var b = 0;
-
-    while (num > 0)
-    {
-         var temp = a;
-         a = a + b;
-         b = temp;
-         num = num - 1;
-    }
-
-    return b;
-}
-
-var x = Fibonacci(10);
+Print("Hello, World!", 10, 20, [ 30, 40 ], true, void, 42.0);

@@ -73,6 +73,8 @@ pub fn disassemble(comptime Error: type, stream: *std.io.OutStream(Error), cu: C
                     } else {
                         if (@TypeOf(@field(instr, fld.name).value) == f64) {
                             try stream.print(" {d}", .{@field(instr, fld.name).value});
+                        } else if (instr == .jif or instr == .jmp or instr == .jnf) {
+                            try stream.print(" 0x{X}", .{@field(instr, fld.name).value});
                         } else {
                             try stream.print(" {}", .{@field(instr, fld.name).value});
                         }

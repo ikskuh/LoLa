@@ -57,9 +57,19 @@ _ = (1 <= 2); // less_eq
 _ = (1 >  2); // greater
 _ = (1 >= 2); // greater_eq
 
-function Add(x,y)
+function LoadStore(a)
 {
-  return x + y; // load_local
+    var b = a; // load_local, store_local
+    return b;  // load_local
 }
 
 _ = Add(1, 2); // call_fn 
+
+for(x in [1,2,3]) // iter_make, iter_next
+{
+
+}
+
+_ = true and true; // bool_and
+_ = false or true; // bool_or
+_ = not false;     // bool_not
