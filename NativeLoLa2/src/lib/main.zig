@@ -42,6 +42,7 @@ pub const VM = struct {
     environment: *const Environment,
     stack: std.ArrayList(Value),
     calls: std.ArrayList(Context),
+    currentAsynCall: ?AsyncFunctionCall,
 
     /// Initialize a new virtual machine that will run the given environment.
     pub fn init(allocator: *std.mem.Allocator, environment: *const Environment) !Self {
@@ -50,6 +51,7 @@ pub const VM = struct {
             .environment = environment,
             .stack = std.ArrayList(Value).init(allocator),
             .calls = std.ArrayList(Context).init(allocator),
+            .currentAsynCall = null,
         };
         errdefer vm.stack.deinit();
         errdefer vm.calls.deinit();
@@ -69,6 +71,9 @@ pub const VM = struct {
     }
 
     pub fn deinit(self: Self) void {
+        if (self.currentAsynCall) |asyncCall| {
+            asyncCall.deinit();
+        }
         for (self.stack.toSliceConst()) |v| {
             v.deinit();
         }
@@ -161,6 +166,20 @@ pub const VM = struct {
 
     /// Executes a single instruction and returns the state of the machine.
     fn executeSingle(self: *Self) !?SingleResult {
+        if (self.currentAsynCall) |*asyncCall| {
+            const res = try asyncCall.execute(asyncCall.context);
+            if (res) |result| {
+                asyncCall.deinit();
+                self.currentAsynCall = null;
+
+                errdefer result.deinit();
+                try self.push(result);
+            } else {
+                // We are not finished, continue later...
+                return .yield;
+            }
+        }
+
         const ctx = &self.calls.toSlice()[self.calls.len - 1];
 
         std.debug.warn("execute 0x{X}…\n", .{ctx.decoder.offset});
@@ -392,7 +411,23 @@ pub const VM = struct {
                         try self.push(result);
                     },
                     .asyncUser => |fun| {
-                        return error.NotImplementedYet;
+                        var locals = try self.allocator.alloc(Value, call.argc);
+                        for (locals) |*l| {
+                            l.* = Value.initVoid();
+                        }
+                        defer {
+                            for (locals) |l| {
+                                l.deinit();
+                            }
+                            self.allocator.free(locals);
+                        }
+
+                        try self.readLocals(call, locals);
+
+                        self.currentAsynCall = try fun.call(fun.context, locals);
+                        self.currentAsynCall.?.object = null;
+
+                        return .yield;
                     },
                 }
             },

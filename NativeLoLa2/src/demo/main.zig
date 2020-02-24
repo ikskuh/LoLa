@@ -51,6 +51,46 @@ pub fn main() anyerror!void {
         },
     });
 
+    try env.functions.putNoClobber("Sleep", lola.Function{
+        .asyncUser = lola.AsyncUserFunction{
+            .context = undefined,
+            .destructor = null,
+            .call = struct {
+                fn call(call_context: []const u8, args: []const lola.Value) anyerror!lola.AsyncFunctionCall {
+                    const ptr = try std.heap.direct_allocator.create(f64);
+
+                    if (args.len > 0) {
+                        ptr.* = try args[0].toNumber();
+                    } else {
+                        ptr.* = 1;
+                    }
+
+                    return lola.AsyncFunctionCall{
+                        .context = std.mem.asBytes(ptr),
+                        .destructor = struct {
+                            fn dtor(exec_context: []u8) void {
+                                std.heap.direct_allocator.destroy(@ptrCast(*f64, @alignCast(@alignOf(f64), exec_context.ptr)));
+                            }
+                        }.dtor,
+                        .execute = struct {
+                            fn execute(exec_context: []u8) anyerror!?lola.Value {
+                                const count = @ptrCast(*f64, @alignCast(@alignOf(f64), exec_context.ptr));
+
+                                count.* -= 1;
+
+                                if (count.* <= 0) {
+                                    return lola.Value.initVoid();
+                                } else {
+                                    return null;
+                                }
+                            }
+                        }.execute,
+                    };
+                }
+            }.call,
+        },
+    });
+
     var vm = try lola.VM.init(&counterAllocator.allocator, &env);
     defer vm.deinit();
 
@@ -61,12 +101,15 @@ pub fn main() anyerror!void {
         }
     }
 
-    var result = vm.execute(100) catch |err| {
-        std.debug.warn("Failed to execute code: {}\n", .{err});
-        return err;
-    };
-
-    std.debug.warn("result: {}\n", .{result});
+    while (true) {
+        var result = vm.execute(100) catch |err| {
+            std.debug.warn("Failed to execute code: {}\n", .{err});
+            return err;
+        };
+        std.debug.warn("result: {}\n", .{result});
+        if (result == .completed)
+            break;
+    }
 
     for (env.scriptGlobals) |global, i| {
         std.debug.warn("[{}]\t= {}\n", .{ i, global });

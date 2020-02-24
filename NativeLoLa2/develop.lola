@@ -1,4 +1,4 @@
 
 
 
-Print("Hello, World!", 10, 20, [ 30, 40 ], true, void, 42.0);
+Sleep(10);

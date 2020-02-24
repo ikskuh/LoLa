@@ -63,7 +63,7 @@ function LoadStore(a)
     return b;  // load_local
 }
 
-_ = Add(1, 2); // call_fn 
+_ = LoadStore(1); // call_fn (script function)
 
 for(x in [1,2,3]) // iter_make, iter_next
 {
@@ -73,3 +73,7 @@ for(x in [1,2,3]) // iter_make, iter_next
 _ = true and true; // bool_and
 _ = false or true; // bool_or
 _ = not false;     // bool_not
+
+Print("a"); // call_fn (script function)
+
+Sleep(1); // call_fn (async script function)

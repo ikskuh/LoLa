@@ -110,7 +110,9 @@ pub const AsyncFunctionCall = struct {
 
     /// The object this call state is associated with. This is required to
     /// prevent calling functions that operate on dead objects.
-    object: ?ObjectHandle,
+    /// This field is set by the VM and should not be initialized by the creator
+    /// of the call.
+    object: ?ObjectHandle = null,
 
     /// The context may be used to to store the state of this function call.
     /// This may be created with `@sliceToBytes`.
@@ -118,15 +120,15 @@ pub const AsyncFunctionCall = struct {
 
     /// Executor that will run this function call.
     /// May return a value (function call completed) or `null` (function call still in progress).
-    execute: fn (self: Self) anyerror!?Value,
+    execute: fn (context: []u8) anyerror!?Value,
 
     /// Optional destructor that may free the memory stored in `context`.
     /// Is called when the function call is deinitialized.
-    destructor: ?fn (self: Self) void,
+    destructor: ?fn (context: []u8) void,
 
     fn deinit(self: Self) void {
         if (self.destructor) |dtor| {
-            dtor(self);
+            dtor(self.context);
         }
     }
 };
