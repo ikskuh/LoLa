@@ -59,7 +59,7 @@ pub const VM = struct {
         const initFun = try vm.createContext(ScriptFunction{
             .compileUnit = environment.compileUnit,
             .entryPoint = 0, // start at the very first byte
-            .localCount = 0, // and don't store any global variables as the "core" context is not a function
+            .localCount = environment.compileUnit.temporaryCount,
         });
         errdefer vm.deinitContext(initFun);
 

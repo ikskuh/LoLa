@@ -35,6 +35,7 @@ namespace LoLa::Compiler
         ~CompilationUnit() = default;
 
         uint16_t global_count;
+        uint16_t temporary_count;
         std::vector<uint8_t> code;
         std::map<std::string, std::unique_ptr<ScriptFunction>> functions;
 

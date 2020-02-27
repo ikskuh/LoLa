@@ -314,6 +314,7 @@ test "Environment" {
         .arena = undefined,
         .comment = "",
         .globalCount = 4,
+        .temporaryCount = 0,
         .code = "",
         .functions = &[_]CompileUnit.Function{
             CompileUnit.Function{

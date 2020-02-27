@@ -33,10 +33,23 @@ pub const CompileUnit = struct {
     };
 
     arena: std.heap.ArenaAllocator,
+
+    /// Freeform file structure comment. This usually contains the file name of the compile file.
     comment: []const u8,
+
+    /// Number of global (persistent) variables stored in the environment
     globalCount: u16,
+
+    /// Number of temporary (local) variables in the global scope.
+    temporaryCount: u16,
+
+    /// The compiled binary code.
     code: []u8,
+
+    /// Array of function definitions
     functions: []Function,
+
+    /// Sorted array of debug symbols
     debugSymbols: []DebugSymbol,
 
     /// Loads a compile unit from a data stream.
@@ -57,6 +70,7 @@ pub const CompileUnit = struct {
         var unit = Self{
             .arena = std.heap.ArenaAllocator.init(allocator),
             .globalCount = undefined,
+            .temporaryCount = undefined,
             .code = undefined,
             .functions = undefined,
             .debugSymbols = undefined,
@@ -67,6 +81,7 @@ pub const CompileUnit = struct {
         unit.comment = try std.mem.dupe(&unit.arena.allocator, u8, utility.clampFixedString(&comment));
 
         unit.globalCount = try stream.readIntLittle(u16);
+        unit.temporaryCount = try stream.readIntLittle(u16);
 
         const functionCount = try stream.readIntLittle(u16);
         const codeSize = try stream.readIntLittle(u32);
@@ -125,6 +140,7 @@ pub const CompileUnit = struct {
         try stream.writeIntLittle(u32, 1);
         try stream.write("Made with NativeLola.zig!" ++ ("\x00" ** (256 - 25)));
         try stream.writeIntLittle(u16, self.globalCount);
+        try stream.writeIntLittle(u16, self.temporaryCount);
         try stream.writeIntLittle(u16, @intCast(u16, self.functions.len));
         try stream.writeIntLittle(u32, @intCast(u32, self.code.len));
         try stream.writeIntLittle(u32, @intCast(u32, self.debugSymbols.len));
@@ -167,6 +183,7 @@ const serializedCompileUnit = "" // SoT
     ++ "\x01\x00\x00\x00" // Version
     ++ "Made with NativeLola.zig!" ++ ("\x00" ** (256 - 25)) // Comment
     ++ "\x03\x00" // globalCount
+    ++ "\x55\x11" // temporaryCount
     ++ "\x02\x00" // functionCount
     ++ "\x05\x00\x00\x00" // codeSize
     ++ "\x03\x00\x00\x00" // numSymbols
@@ -190,6 +207,7 @@ test "CompileUnit I/O" {
 
     std.debug.assert(std.mem.eql(u8, cu.comment, "Made with NativeLola.zig!"));
     std.debug.assert(cu.globalCount == 3);
+    std.debug.assert(cu.temporaryCount == 0x1155);
     std.debug.assert(std.mem.eql(u8, cu.code, "Hello"));
     std.debug.assert(cu.functions.len == 2);
     std.debug.assert(cu.debugSymbols.len == 3);

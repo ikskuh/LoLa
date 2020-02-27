@@ -13,11 +13,12 @@ Some fields are commented with C++ style comments, introduced by a `//`.
 ```rust
 // Structure of the whole file
 File {
-	header: FileHeader, // contains the module header
-	globalCount: u16,   // number of global script variables
-  functionCount: u16, // number of declared functions
-  codeSize: u32,      // size of the intermediate code in bytes
-  numSymbols: u32,    // number of debug symbols
+	header: FileHeader,  // contains the module header
+	globalCount: u16,    // number of global script variables
+  temporaryCount: u16, // number of temporary variables (global)
+  functionCount: u16,  // number of declared functions
+  codeSize: u32,       // size of the intermediate code in bytes
+  numSymbols: u32,     // number of debug symbols
   functions: [functionCount]Function, // contains the function meta data
   code: [codeSize]u8, // intermediate code
   debugSymbols: [numSymbols]DebugSymbol, // debug symbols

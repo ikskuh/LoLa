@@ -16,7 +16,10 @@ std::shared_ptr<LoLa::Compiler::CompilationUnit> LoLa::Compiler::Compiler::compi
         stmt->emit(writer, global_scope);
     writer.emit(IL::Instruction::ret); // implicit return at the end of the block
 
-    cu->global_count = global_scope.max_variables;
+    assert(global_scope.return_point.size() == 1);
+
+    cu->global_count = global_scope.local_variables.size();
+    cu->temporary_count =global_scope.max_variables - global_scope.local_variables.size();
 
     for(auto const & fn : program.functions)
     {
@@ -167,6 +170,7 @@ std::optional<std::pair<uint16_t, LoLa::Compiler::Scope::Type>>  LoLa::Compiler:
 {
     if(local_variables.empty())
         return std::nullopt;
+    size_t offset = (is_global and (return_point.size() > 1)) ? return_point.at(1) : 0;
     size_t i = local_variables.size();
     while(i > 0)
     {
@@ -177,7 +181,7 @@ std::optional<std::pair<uint16_t, LoLa::Compiler::Scope::Type>>  LoLa::Compiler:
             if(is_global and ((return_point.size() <= 1) or (i < return_point.at(1))))
                 return std::make_pair(uint16_t(i), Global);
             else
-                return std::make_pair(uint16_t(i), Local);
+                return std::make_pair(uint16_t(i - offset), Local);
         }
     }
     return std::nullopt;
@@ -381,6 +385,9 @@ void LoLa::Compiler::CompilationUnit::save(std::ostream &stream)
 
     uint16_t globalCount = this->global_count;
     stream.write(reinterpret_cast<char const *>(&globalCount), 2);
+
+    uint16_t temporaryCount = this->temporary_count;
+    stream.write(reinterpret_cast<char const *>(&temporaryCount), 2);
 
     uint16_t functionCount = static_cast<uint16_t>(this->functions.size());
     stream.write(reinterpret_cast<char const *>(&functionCount), 2);
