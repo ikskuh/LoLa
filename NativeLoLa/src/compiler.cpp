@@ -18,8 +18,8 @@ std::shared_ptr<LoLa::Compiler::CompilationUnit> LoLa::Compiler::Compiler::compi
 
     assert(global_scope.return_point.size() == 1);
 
-    cu->global_count = global_scope.local_variables.size();
-    cu->temporary_count =global_scope.max_variables - global_scope.local_variables.size();
+    cu->global_count = global_scope.global_variables.size();
+    cu->temporary_count =global_scope.max_locals;
 
     for(auto const & fn : program.functions)
     {
@@ -38,7 +38,7 @@ std::shared_ptr<LoLa::Compiler::CompilationUnit> LoLa::Compiler::Compiler::compi
         fn.body->emit(writer, scope);
         writer.emit(IL::Instruction::ret); // implicit return at the end of the function
 
-        fun->second->local_count = scope.max_variables;
+        fun->second->local_count = scope.max_locals;
     }
 
     return cu;
@@ -161,30 +161,62 @@ void LoLa::Compiler::Scope::leave()
 void LoLa::Compiler::Scope::declare(const std::string &name)
 {
     // TODO: Test here for shadowing
-    local_variables.emplace_back(name);
-    assert(local_variables.size() < 65536);
-    max_variables = std::max<uint16_t>(max_variables, local_variables.size());
+
+    if(is_global and (return_point.size() == 1)) {
+        global_variables.emplace_back(name);
+        assert(local_variables.size() < 65536);
+        return;
+    }
+    else {
+        local_variables.emplace_back(name);
+        assert(local_variables.size() < 65536);
+        max_locals = std::max<uint16_t>(max_locals, local_variables.size());
+    }
+}
+
+void LoLa::Compiler::Scope::declareExtern(const std::string &name)
+{
+    // TODO: Test here for shadowing
+    extern_variables.emplace_back(name);
 }
 
 std::optional<std::pair<uint16_t, LoLa::Compiler::Scope::Type>>  LoLa::Compiler::Scope::get(std::string const & name) const
 {
-    if(local_variables.empty())
-        return std::nullopt;
-    size_t offset = (is_global and (return_point.size() > 1)) ? return_point.at(1) : 0;
-    size_t i = local_variables.size();
-    while(i > 0)
     {
-        i -= 1;
-        if(local_variables[i] == name)
+        size_t i = local_variables.size();
+        while(i > 0)
         {
-            // only top-level variables in the global scope are really global ones
-            if(is_global and ((return_point.size() <= 1) or (i < return_point.at(1))))
-                return std::make_pair(uint16_t(i), Global);
-            else
-                return std::make_pair(uint16_t(i - offset), Local);
+            i -= 1;
+            if(local_variables[i] == name)
+                return std::make_pair(uint16_t(i), Local);
         }
     }
-    return std::nullopt;
+
+    if(is_global)
+    {
+        size_t i = global_variables.size();
+        while(i > 0) {
+            i -= 1;
+            if(global_variables[i] == name) {
+                return std::make_pair(uint16_t(i), Global);
+            }
+        }
+    }
+
+    for(auto const & extvar : extern_variables) {
+        if(extvar == name) {
+            return std::make_pair(uint16_t(-1), Extern);
+        }
+    }
+
+    if(global_scope != nullptr) {
+        auto glob = global_scope->get(name);
+        assert(not glob or glob->second != Local);
+        return glob;
+    }
+    else {
+        return std::nullopt;
+    }
 }
 
 void LoLa::Compiler::Disassembler::disassemble(const LoLa::Compiler::CompilationUnit &cu, std::ostream &stream) const

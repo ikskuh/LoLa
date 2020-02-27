@@ -44,6 +44,7 @@ using token = LoLa::LoLaParser::token;
 \]                          { return token::SQUARE_C; }
 
 var                         { return token::VAR; }
+extern                      { return token::EXTERN; }
 for                         { return token::FOR; }
 while                       { return token::WHILE; }
 if                          { return token::IF; }
@@ -82,7 +83,7 @@ not                         { lval->emplace<Operator>(Operator::Not); return tok
 
 \"(\\\"|[^\"])*?\"            { lval->emplace<std::string>(yytext); return token::STRING; }
 
-[A-Za-z_][A-Za-z0-9_]*        { lval->emplace<std::string>(yytext); return token::IDENT; }
+[A-Za-z_][A-Za-z0-9_]*      { lval->emplace<std::string>(yytext); return token::IDENT; }
 
 .                           { printf("damn. [[%s]] \n", yytext); }
 

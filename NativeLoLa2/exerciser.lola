@@ -84,3 +84,13 @@ Print(valGlobal); // load_global_name
 
 Print(refGlobal); // load_global_name
 refGlobal = void; // store_global_name
+
+var global;
+
+function StoreGlobal(x)
+{
+  global = x; // Store to script global
+  valGlobal = x; // Store to named global
+}
+
+StoreGlobal(10);

@@ -39,7 +39,7 @@ var a = [ 42.0 ];
 _ = a[0]; // array_load
 a[0] = 10; // array_store
 
-a = true;
+var a = true;
 
 if(a) { // jif, jmp
   a = 1;
@@ -47,7 +47,7 @@ if(a) { // jif, jmp
   a = 2;
 }
 
-a = true;
+var a = true;
 while(a) { // jif, jmp
   a = false;
 }
@@ -80,7 +80,20 @@ Print("a"); // call_fn (script function)
 
 Sleep(1); // call_fn (async script function)
 
-_ = valGlobal; // load_global_name
+extern valGlobal;
+extern refGlobal;
 
-_ = refGlobal; // load_global_name
+Print(valGlobal); // load_global_name
+
+Print(refGlobal); // load_global_name
 refGlobal = void; // store_global_name
+
+var global;
+
+function StoreGlobal(x)
+{
+  global = x; // Store to script global
+  valGlobal = x; // Store to named global
+}
+
+StoreGlobal(10);

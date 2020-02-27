@@ -106,12 +106,14 @@ namespace LoLa::Compiler
 
     struct Scope
     {
-        enum Type { Local = 0, Global = 1 };
+        enum Type { Local = 0, Global = 1, Extern = 2 };
 
+        std::vector<std::string> extern_variables;
         std::vector<std::string> local_variables;
+        std::vector<std::string> global_variables;
         std::vector<size_t> return_point;
 
-        uint16_t max_variables = 0;
+        uint16_t max_locals = 0;
         bool is_global = false; //!< Scope is a global scope. Access to variables in this scope must be global
 
         //! upwards reference to another scope that serves as global scope
@@ -124,6 +126,7 @@ namespace LoLa::Compiler
         void leave(); //!< removes a previously pushed scope and all variables
 
         void declare(std::string const & name);
+        void declareExtern(std::string const & name);
 
         std::optional<std::pair<uint16_t, Type>> get(std::string const & name) const;
     };

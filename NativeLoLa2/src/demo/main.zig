@@ -18,6 +18,16 @@ pub fn main() anyerror!void {
 
     var stream = &std.io.getStdOut().outStream().stream;
 
+    try stream.write("metadata:\n");
+    try stream.print("\tcomment:         {}\n", .{cu.comment});
+    try stream.print("\tcode size:       {} bytes\n", .{cu.code.len});
+    try stream.print("\tnum globals:     {}\n", .{cu.globalCount});
+    try stream.print("\tnum temporaries: {}\n", .{cu.temporaryCount});
+    try stream.print("\tnum functions:   {}\n", .{cu.functions.len});
+    try stream.print("\tnum debug syms:  {}\n", .{cu.debugSymbols.len});
+
+    try stream.write("disassembly:\n");
+
     try lola.disassemble(std.fs.File.OutStream.Error, stream, cu, lola.DisassemblerOptions{
         .addressPrefix = true,
     });

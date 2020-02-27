@@ -45,23 +45,27 @@ LValueExpression LoLa::AST::VariableRef(String var)
             }
             else if(auto local = scope.get(name); local)
             {
-                if(local->second == Scope::Global)
+                switch(local->second)
+                {
+                case Scope::Extern:
+                    code.emit(Instruction::load_global_name);
+                    code.emit(name);
+                    break;
+
+                case Scope::Global:
                     code.emit(Instruction::load_global_idx);
-                else
+                    code.emit(local->first);
+                    break;
+
+                case Scope::Local:
                     code.emit(Instruction::load_local);
-                code.emit(local->first);
-            }
-            else if(auto global = (scope.global_scope != nullptr) ? scope.global_scope->get(name) : std::nullopt; global)
-            {
-                assert(scope.global_scope->is_global);
-                assert(global->second == Scope::Global);
-                code.emit(Instruction::load_global_idx);
-                code.emit(global->first);
+                    code.emit(local->first);
+                    break;
+                }
             }
             else
             {
-                code.emit(Instruction::load_global_name);
-                code.emit(name);
+                throw Error::VariableNotFound;
             }
         }
 
@@ -72,23 +76,24 @@ LValueExpression LoLa::AST::VariableRef(String var)
             }
             else if(auto local = scope.get(name); local)
             {
-                if(local->second == Scope::Global)
+                switch(local->second) {
+                case Scope::Extern:
+                    code.emit(Instruction::store_global_name);
+                    code.emit(name);
+                    break;
+                case Scope::Global:
                     code.emit(Instruction::store_global_idx);
-                else
+                    code.emit(local->first);
+                    break;
+                case Scope::Local:
                     code.emit(Instruction::store_local);
-                code.emit(local->first);
-            }
-            else if(auto global = (scope.global_scope != nullptr) ? scope.global_scope->get(name) : std::nullopt; global)
-            {
-                assert(scope.global_scope->is_global);
-                assert(global->second == Scope::Global);
-                code.emit(Instruction::store_global_idx);
-                code.emit(global->first);
+                    code.emit(local->first);
+                    break;
+                }
             }
             else
             {
-                code.emit(Instruction::store_global_name);
-                code.emit(name);
+                throw Error::VariableNotFound;
             }
         }
     };
@@ -462,6 +467,19 @@ Statement LoLa::AST::Declaration(String name)
 
         void emit(CodeWriter &, Scope & scope) override {
             scope.declare(name);
+        }
+    };
+    return std::make_unique<Foo>(name);
+}
+
+Statement LoLa::AST::ExternDeclaration(String name)
+{
+    struct Foo : StatementBase {
+        String name;
+        Foo(String name) :name(move(name)){ }
+
+        void emit(CodeWriter &, Scope & scope) override {
+            scope.declareExtern(name);
         }
     };
     return std::make_unique<Foo>(name);

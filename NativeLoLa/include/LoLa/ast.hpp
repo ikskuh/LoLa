@@ -82,6 +82,7 @@ namespace LoLa::AST
 
     Statement Declaration(String name);
     Statement Declaration(String name, Expression value);
+    Statement ExternDeclaration(String name);
 
     Statement SubScope(List<Statement> body);
 

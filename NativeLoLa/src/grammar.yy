@@ -54,7 +54,7 @@ namespace LoLa {
 %token CURLY_O, CURLY_C, ROUND_O, ROUND_C, SQUARE_O, SQUARE_C
 
 // Keywords
-%token VAR, FOR, WHILE, IF, ELSE, FUNCTION
+%token VAR, EXTERN, FOR, WHILE, IF, ELSE, FUNCTION
 %token BREAK, CONTINUE, RETURN, IN
 
 // Operators
@@ -135,6 +135,7 @@ statement   : decl          { $$ = move($1); }
 
 decl		: VAR IDENT IS expr_0 TERMINATOR			{ $$ = Declaration(move($2), move($4)); }
             | VAR IDENT TERMINATOR						{ $$ = Declaration(move($2)); }
+            | EXTERN IDENT TERMINATOR					{ $$ = ExternDeclaration(move($2)); }
             ;
 
 ass			: lvalue IS expr_0 TERMINATOR				{ $$ = Assignment(move($1), move($3)); }
