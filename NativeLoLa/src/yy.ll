@@ -82,7 +82,7 @@ not                         { lval->emplace<Operator>(Operator::Not); return tok
 
 \"(\\\"|[^\"])*?\"            { lval->emplace<std::string>(yytext); return token::STRING; }
 
-[A-Za-z][A-Za-z0-9]*        { lval->emplace<std::string>(yytext); return token::IDENT; }
+[A-Za-z_][A-Za-z0-9_]*        { lval->emplace<std::string>(yytext); return token::IDENT; }
 
 .                           { printf("damn. [[%s]] \n", yytext); }
 
