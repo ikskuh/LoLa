@@ -16,11 +16,13 @@ var y = 30; // syntax variant
 // store_global_index
 var z = x;
 
-var z0 = x + y; // add (number + number)
-var z1 = x - y; // sub
-var z2 = x * y; // mul
-var z3 = x / y; // div
-var z4 = x % y; // mod
+_ = 1 + 1; // add (number)
+_ = "Hallo," + " Welt!"; // add (string)
+_ = [ 1, 2 ] + [ 3, 4 ]; // add (array)
+_ = 1 - 1; // sub
+_ = 1 * 1; // mul
+_ = 1 / 1; // div
+_ = 1 % 1; // mod
 
 _ = true; // push_true
 _ = false; // push_false
@@ -77,3 +79,8 @@ _ = not false;     // bool_not
 Print("a"); // call_fn (script function)
 
 Sleep(1); // call_fn (async script function)
+
+Print(valGlobal); // load_global_name
+
+Print(refGlobal); // load_global_name
+refGlobal = void; // store_global_name

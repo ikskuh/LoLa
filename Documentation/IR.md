@@ -16,13 +16,13 @@ The following list contains each instruction and describes it's effects on the v
 - `push_num` pushes number literal  `[ val:f64 ]`
 	- pushes the number `val`
 - `array_pack` packs *num* elements into an array `[ num:u16 ]`
-	- pops `num` elements and packs them into an array front to back
+	- pops `num` elements front-to-back and packs them into an array front to back
 	- stack top will be the first element
 - `call_fn` calls a function `[ fun:str ] [argc:u8 ]`
-	- pops `argc` elements into the argument list, then calls function `fun`
+	- pops `argc` elements front-to-back into the argument list, then calls function `fun`
 	- stack top will be the first argument
 - `call_obj` calls an object method `[ fun:str ] [argc:u8 ]`
-	- pops `argc` elements into the argument list,
+	- pops `argc` elements front-to-back into the argument list,
 	- then pops the object to call,
 	- then calls function `fun`
 	- stack top will be the first argument

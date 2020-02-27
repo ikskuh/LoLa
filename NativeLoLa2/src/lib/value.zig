@@ -550,8 +550,13 @@ test "Enumerator" {
     std.debug.assert(enumerator.hasNext());
 
     var a = enumerator.next() orelse return error.NotEnoughItems;
+    defer a.deinit();
+
     var b = enumerator.next() orelse return error.NotEnoughItems;
+    defer b.deinit();
+
     var c = enumerator.next() orelse return error.NotEnoughItems;
+    defer c.deinit();
 
     std.debug.assert(enumerator.next() == null);
 

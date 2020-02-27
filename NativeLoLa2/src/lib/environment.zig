@@ -135,10 +135,10 @@ pub const AsyncFunctionCall = struct {
 
 test "AsyncFunctionCall.deinit" {
     const Helper = struct {
-        fn destroy(self: AsyncFunctionCall) void {
-            std.testing.allocator.free(self.context);
+        fn destroy(context: []u8) void {
+            std.testing.allocator.free(context);
         }
-        fn exec(self: AsyncFunctionCall) anyerror!?Value {
+        fn exec(context: []u8) anyerror!?Value {
             return error.NotSupported;
         }
     };

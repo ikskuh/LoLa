@@ -91,6 +91,36 @@ pub fn main() anyerror!void {
         },
     });
 
+    var refValue = lola.Value.initNumber(23.0);
+
+    try env.namedGlobals.putNoClobber("valGlobal", lola.NamedGlobal.initStored(lola.Value.initNumber(42.0)));
+    try env.namedGlobals.putNoClobber("refGlobal", lola.NamedGlobal.initReferenced(&refValue));
+
+    // var smartCounter: u32 = 0;
+    // try env.namedGlobals.putNoClobber("smartCounter", lola.NamedGlobal.initSmart(lola.SmartGlobal.initRead(
+    //     lola.SmartGlobal.Context.init(u32, &smartCounter),
+    //     struct {
+    //         fn read(ctx: lola.SmartGlobal.Context) lola.Value {
+    //             const ptr = ctx.get(u32);
+    //             const res = ptr.*;
+    //             ptr.* += 1;
+    //             return lola.Value.initNumber(@intToFloat(f64, res));
+    //         }
+    //     }.read,
+    // )));
+
+    // try env.namedGlobals.putNoClobber("smartDumper", lola.NamedGlobal.initSmart(lola.SmartGlobal.initRead(
+    //     lola.SmartGlobal.Context.init(u32, &smartCounter),
+    //     struct {
+    //         fn read(ctx: lola.SmartGlobal.Context) lola.Value {
+    //             const ptr = ctx.get(u32);
+    //             const res = ptr.*;
+    //             ptr.* += 1;
+    //             return lola.Value.initNumber(@intToFloat(f64, res));
+    //         }
+    //     }.read,
+    // )));
+
     var vm = try lola.VM.init(&counterAllocator.allocator, &env);
     defer vm.deinit();
 
@@ -114,4 +144,6 @@ pub fn main() anyerror!void {
     for (env.scriptGlobals) |global, i| {
         std.debug.warn("[{}]\t= {}\n", .{ i, global });
     }
+
+    // std.debug.assert(refValue.eql(lola.Value.initVoid()));
 }

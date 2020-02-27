@@ -6,11 +6,7 @@
 - 
 
 ## Missing instructions
-- store_global_name
-- load_global_name
-- call_fn
 - call_obj
-- add
 
 ## Missing features
 - locals in global scope
