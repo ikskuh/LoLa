@@ -188,10 +188,6 @@ pub const ObjectInterface = struct {
     /// Context that will be passed to all functions.
     context: []const u8,
 
-    /// Resolves the given object `name` to an identifier.
-    /// Returns `null` if the object was not found.
-    resolveObject: fn (context: []const u8, name: []const u8) ?ObjectHandle,
-
     /// Returns `true` if `handle` is still a valid object reference.
     isHandleValid: fn (context: []const u8, object: ObjectHandle) bool,
 
@@ -202,11 +198,6 @@ pub const ObjectInterface = struct {
     /// Returns an object interface that does not provide any objects at all.
     pub const empty = Self{
         .context = undefined,
-        .resolveObject = struct {
-            fn f(ctx: []const u8, name: []const u8) ?ObjectHandle {
-                return null;
-            }
-        }.f,
         .isHandleValid = struct {
             fn f(ctx: []const u8, h: ObjectHandle) bool {
                 return false;
@@ -223,7 +214,6 @@ pub const ObjectInterface = struct {
 test "ObjectInterface.empty" {
     const oi = &ObjectInterface.empty;
 
-    std.debug.assert(oi.resolveObject(oi.context, "some") == null);
     std.debug.assert(oi.isHandleValid(oi.context, 1234) == false);
     std.debug.assert(if (oi.getFunction(oi.context, 1234, "some")) |_| false else |e| e == error.ObjectNotFound);
 }

@@ -168,27 +168,30 @@ pub const Value = union(enum) {
         return &self.enumerator;
     }
 
+    fn formatArray(a: Array, context: var, comptime Errors: type, comptime output: fn (@TypeOf(context), []const u8) Errors!void) Errors!void {
+        try output(context, "[");
+        for (a.contents) |item, i| {
+            if (i > 0)
+                try output(context, ",");
+
+            // Workaround until #???? is fixed:
+            // Print only the type name of the array item.
+            // const itemType = @as(TypeId, item);
+            // try std.fmt.format(context, Errors, output, " {}", .{@tagName(itemType)});
+            try std.fmt.format(context, Errors, output, " {}", .{item});
+        }
+        try output(context, " ]");
+    }
+
     /// Checks if two values are equal.
     pub fn format(value: Self, comptime fmt: []const u8, options: std.fmt.FormatOptions, context: var, comptime Errors: type, comptime output: fn (@TypeOf(context), []const u8) Errors!void) Errors!void {
         return switch (value) {
             .void => output(context, "void"),
             .number => |n| std.fmt.format(context, Errors, output, "{d}", .{n}),
-            .object => |o| std.fmt.format(context, Errors, output, "{d}", .{o}),
+            .object => |o| std.fmt.format(context, Errors, output, "${d}", .{o}),
             .boolean => |b| if (b) output(context, "true") else output(context, "false"),
             .string => |s| std.fmt.format(context, Errors, output, "\"{}\"", .{s.contents}),
-            .array => |a| {
-                try output(context, "[");
-                for (a.contents) |item, i| {
-                    if (i > 0)
-                        try output(context, ",");
-
-                    // Workaround until #???? is fixed:
-                    // Print only the type name of the array item.
-                    const itemType = @as(TypeId, item);
-                    try std.fmt.format(context, Errors, output, " {}", .{@tagName(itemType)});
-                }
-                try output(context, " ]");
-            },
+            .array => |a| formatArray(a, context, Errors, output),
             .enumerator => |e| {
                 try std.fmt.format(context, Errors, output, "enumerator({}/{})", .{ e.index, e.array.contents.len });
             },

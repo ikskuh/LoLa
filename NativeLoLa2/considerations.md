@@ -2,7 +2,6 @@
 
 - object references should be non-pointer types
   - two callbacks:
-    - `getObject(objectName: []const u8) ?oid`
     - `callFunction(object: oid, name: []const u8) FunCallOrImmediate`
     - `isObjectHandleValid(object: oid) bool`
   - objects may be invalidated at any time, but never at VM execution time

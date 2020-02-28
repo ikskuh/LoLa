@@ -255,7 +255,7 @@ Expression LoLa::AST::BinaryOperator(Operator op, Expression lhs, Expression rhs
     struct Foo : ExpressionBase {
         Expression lhs, rhs;
         Operator op;
-        Foo(Operator o, Expression l, Expression r) : op(o), lhs(move(l)), rhs(move(r)) { }
+        Foo(Operator o, Expression l, Expression r) : lhs(move(l)), rhs(move(r)), op(o) { }
 
         void emit(CodeWriter & code, Scope & scope) override {
             lhs->emit(code, scope);

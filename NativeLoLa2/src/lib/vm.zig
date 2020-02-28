@@ -401,56 +401,27 @@ pub const VM = struct {
                 const fun_kv = self.environment.functions.get(call.function);
                 if (fun_kv == null)
                     return error.FunctionNotFound;
-                switch (fun_kv.?.value) {
-                    .script => |fun| {
-                        var context = try self.createContext(fun);
-                        errdefer self.deinitContext(context);
 
-                        try self.readLocals(call, context.locals);
+                if (try self.executeFunctionCall(call, fun_kv.?.value, null))
+                    return .yield;
+            },
 
-                        // Fixup stack balance after popping all locals
-                        context.stackBalance = self.stack.len;
+            .call_obj => |call| {
+                const obj_val = try self.pop();
+                if (obj_val != .object)
+                    return error.TypeMismatch;
 
-                        try self.calls.append(context);
-                    },
-                    .syncUser => |fun| {
-                        var locals = try self.allocator.alloc(Value, call.argc);
-                        for (locals) |*l| {
-                            l.* = Value.initVoid();
-                        }
-                        defer {
-                            for (locals) |l| {
-                                l.deinit();
-                            }
-                            self.allocator.free(locals);
-                        }
+                const obj = obj_val.object;
+                if (!self.environment.objectInterface.isHandleValid(self.environment.objectInterface.context, obj))
+                    return error.InvalidObject;
 
-                        try self.readLocals(call, locals);
+                const function_or_null = try self.environment.objectInterface.getFunction(self.environment.objectInterface.context, obj, call.function);
 
-                        const result = try fun.call(fun.context, locals);
-                        errdefer result.deinit();
-
-                        try self.push(result);
-                    },
-                    .asyncUser => |fun| {
-                        var locals = try self.allocator.alloc(Value, call.argc);
-                        for (locals) |*l| {
-                            l.* = Value.initVoid();
-                        }
-                        defer {
-                            for (locals) |l| {
-                                l.deinit();
-                            }
-                            self.allocator.free(locals);
-                        }
-
-                        try self.readLocals(call, locals);
-
-                        self.currentAsynCall = try fun.call(fun.context, locals);
-                        self.currentAsynCall.?.object = null;
-
+                if (function_or_null) |function| {
+                    if (try self.executeFunctionCall(call, function, obj))
                         return .yield;
-                    },
+                } else {
+                    return error.FunctionNotFound;
                 }
             },
 
@@ -624,6 +595,66 @@ pub const VM = struct {
         return null;
     }
 
+    fn executeFunctionCall(self: *Self, call: var, function: Function, object: ?ObjectHandle) !bool {
+        switch (function) {
+            .script => |fun| {
+                var context = try self.createContext(fun);
+                errdefer self.deinitContext(context);
+
+                try self.readLocals(call, context.locals);
+
+                // Fixup stack balance after popping all locals
+                context.stackBalance = self.stack.len;
+
+                try self.calls.append(context);
+
+                return false;
+            },
+            .syncUser => |fun| {
+                var locals = try self.allocator.alloc(Value, call.argc);
+                for (locals) |*l| {
+                    l.* = Value.initVoid();
+                }
+                defer {
+                    for (locals) |l| {
+                        l.deinit();
+                    }
+                    self.allocator.free(locals);
+                }
+
+                try self.readLocals(call, locals);
+
+                const result = try fun.call(fun.context, locals);
+                errdefer result.deinit();
+
+                try self.push(result);
+
+                return false;
+            },
+            .asyncUser => |fun| {
+                var locals = try self.allocator.alloc(Value, call.argc);
+                for (locals) |*l| {
+                    l.* = Value.initVoid();
+                }
+                defer {
+                    for (locals) |l| {
+                        l.deinit();
+                    }
+                    self.allocator.free(locals);
+                }
+
+                try self.readLocals(call, locals);
+
+                self.currentAsynCall = try fun.call(fun.context, locals);
+                self.currentAsynCall.?.object = object;
+
+                return true;
+            },
+        }
+
+        unreachable;
+    }
+
     /// Reads a number of call arguments into a slice.
     /// If an error happens, all items in `locals` are valid and must be deinitialized.
     fn readLocals(self: *Self, call: Instruction.CallArg, locals: []Value) !void {
@@ -675,8 +706,8 @@ pub const VM = struct {
     }
 
     fn floatToInt(comptime T: type, flt: var) error{Overflow}!T {
-        comptime std.debug.assert(@typeId(T) == .Int); // must pass an integer
-        comptime std.debug.assert(@typeId(@TypeOf(flt)) == .Float); // must pass a float
+        comptime std.debug.assert(@typeInfo(T) == .Int); // must pass an integer
+        comptime std.debug.assert(@typeInfo(@TypeOf(flt)) == .Float); // must pass a float
         if (flt > std.math.maxInt(T)) {
             return error.Overflow;
         } else if (flt < std.math.minInt(T)) {

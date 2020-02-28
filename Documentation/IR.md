@@ -22,8 +22,8 @@ The following list contains each instruction and describes it's effects on the v
 	- pops `argc` elements front-to-back into the argument list, then calls function `fun`
 	- stack top will be the first argument
 - `call_obj` calls an object method `[ fun:str ] [argc:u8 ]`
-	- pops `argc` elements front-to-back into the argument list,
-	- then pops the object to call,
+	- pops the object to call,
+	- then pops `argc` elements front-to-back into the argument list,
 	- then calls function `fun`
 	- stack top will be the first argument
 - `pop` destroys stack top
