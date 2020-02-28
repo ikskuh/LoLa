@@ -43,20 +43,20 @@ pub fn main() anyerror!void {
         .context = undefined,
         .isHandleValid = struct {
             fn f(ctx: []const u8, h: lola.ObjectHandle) bool {
-                return (h == 1);
+                return (h == 1) or (h == 2);
             }
         }.f,
         .getFunction = struct {
             fn f(context: []const u8, object: lola.ObjectHandle, name: []const u8) error{ObjectNotFound}!?lola.Function {
-                if (object != 1)
+                if (object != 1 and object != 2)
                     return error.ObjectNotFound;
                 return lola.Function{
                     .syncUser = lola.UserFunction{
-                        .context = undefined,
+                        .context = if (object == 1) "Obj1" else "Obj2",
                         .destructor = null,
                         .call = struct {
                             fn call(obj_context: []const u8, args: []const lola.Value) anyerror!lola.Value {
-                                return lola.Value.initNumber(@intToFloat(f64, args.len));
+                                return lola.Value.initString(std.testing.allocator, obj_context);
                             }
                         }.call,
                     },
@@ -131,7 +131,8 @@ pub fn main() anyerror!void {
 
     try env.namedGlobals.putNoClobber("valGlobal", lola.NamedGlobal.initStored(lola.Value.initNumber(42.0)));
     try env.namedGlobals.putNoClobber("refGlobal", lola.NamedGlobal.initReferenced(&refValue));
-    try env.namedGlobals.putNoClobber("objGlobal", lola.NamedGlobal.initStored(lola.Value.initObject(1)));
+    try env.namedGlobals.putNoClobber("objGlobal1", lola.NamedGlobal.initStored(lola.Value.initObject(1)));
+    try env.namedGlobals.putNoClobber("objGlobal2", lola.NamedGlobal.initStored(lola.Value.initObject(2)));
 
     // var smartCounter: u32 = 0;
     // try env.namedGlobals.putNoClobber("smartCounter", lola.NamedGlobal.initSmart(lola.SmartGlobal.initRead(

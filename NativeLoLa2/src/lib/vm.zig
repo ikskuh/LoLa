@@ -165,6 +165,11 @@ pub const VM = struct {
     /// Executes a single instruction and returns the state of the machine.
     fn executeSingle(self: *Self) !?SingleResult {
         if (self.currentAsynCall) |*asyncCall| {
+            if (asyncCall.object) |obj| {
+                if (!self.environment.objectInterface.isHandleValid(self.environment.objectInterface.context, obj))
+                    return error.AsyncCallWithInvalidObject;
+            }
+
             const res = try asyncCall.execute(asyncCall.context);
             if (res) |result| {
                 asyncCall.deinit();

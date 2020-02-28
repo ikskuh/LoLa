@@ -1,3 +1,5 @@
 
-extern objGlobal;
-Print(objGlobal.call("hey"));
+extern objGlobal1;
+extern objGlobal2;
+Print(objGlobal1.call("hey"));
+Print(objGlobal2.call("hey"));
