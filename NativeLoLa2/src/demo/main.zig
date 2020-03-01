@@ -73,7 +73,7 @@ pub fn main() anyerror!void {
             .context = undefined,
             .destructor = null,
             .call = struct {
-                fn call(context: []const u8, args: []const lola.Value) anyerror!lola.Value {
+                fn call(context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
                     var stdout = &std.io.getStdOut().outStream().stream;
                     for (args) |value, i| {
                         if (i > 0)
@@ -92,7 +92,7 @@ pub fn main() anyerror!void {
             .context = undefined,
             .destructor = null,
             .call = struct {
-                fn call(call_context: []const u8, args: []const lola.Value) anyerror!lola.AsyncFunctionCall {
+                fn call(call_context: lola.Context, args: []const lola.Value) anyerror!lola.AsyncFunctionCall {
                     const ptr = try std.heap.direct_allocator.create(f64);
 
                     if (args.len > 0) {
@@ -102,15 +102,15 @@ pub fn main() anyerror!void {
                     }
 
                     return lola.AsyncFunctionCall{
-                        .context = std.mem.asBytes(ptr),
+                        .context = lola.Context.init(f64, ptr),
                         .destructor = struct {
-                            fn dtor(exec_context: []u8) void {
-                                std.heap.direct_allocator.destroy(@ptrCast(*f64, @alignCast(@alignOf(f64), exec_context.ptr)));
+                            fn dtor(exec_context: lola.Context) void {
+                                std.heap.direct_allocator.destroy(exec_context.get(f64));
                             }
                         }.dtor,
                         .execute = struct {
-                            fn execute(exec_context: []u8) anyerror!?lola.Value {
-                                const count = @ptrCast(*f64, @alignCast(@alignOf(f64), exec_context.ptr));
+                            fn execute(exec_context: lola.Context) anyerror!?lola.Value {
+                                const count = exec_context.get(f64);
 
                                 count.* -= 1;
 
@@ -134,7 +134,7 @@ pub fn main() anyerror!void {
 
         name: []const u8,
 
-        fn getMethod(self: Self, name: []const u8) ?lola.Function {
+        fn getMethod(self: *Self, name: []const u8) ?lola.Function {
             std.debug.warn("getMethod({}, {})\n", .{
                 self.name,
                 name,
@@ -143,11 +143,11 @@ pub fn main() anyerror!void {
                 std.debug.warn("return call!\n", .{});
                 return lola.Function{
                     .syncUser = lola.UserFunction{
-                        .context = self.name,
+                        .context = lola.Context.init(Self, self),
                         .destructor = null,
                         .call = struct {
-                            fn call(obj_context: []const u8, args: []const lola.Value) anyerror!lola.Value {
-                                return lola.Value.initString(std.testing.allocator, obj_context);
+                            fn call(obj_context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+                                return lola.Value.initString(std.testing.allocator, obj_context.get(Self).name);
                             }
                         }.call,
                     },
@@ -162,6 +162,89 @@ pub fn main() anyerror!void {
             });
         }
     };
+
+    const LoLaStack = struct {
+        const Self = @This();
+
+        allocator: *std.mem.Allocator,
+        contents: std.ArrayList(lola.Value),
+
+        fn deinit(self: Self) void {
+            for (self.contents.toSliceConst()) |item| {
+                item.deinit();
+            }
+            self.contents.deinit();
+        }
+
+        fn getMethod(self: *Self, name: []const u8) ?lola.Function {
+            if (std.mem.eql(u8, name, "Push")) {
+                return lola.Function{
+                    .syncUser = lola.UserFunction{
+                        .context = lola.Context.init(Self, self),
+                        .destructor = null,
+                        .call = struct {
+                            fn call(obj_context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+                                for (args) |arg| {
+                                    const v = try arg.clone();
+                                    errdefer v.deinit();
+
+                                    try obj_context.get(Self).contents.append(v);
+                                }
+                                return lola.Value.initVoid();
+                            }
+                        }.call,
+                    },
+                };
+            } else if (std.mem.eql(u8, name, "Pop")) {
+                return lola.Function{
+                    .syncUser = lola.UserFunction{
+                        .context = lola.Context.init(Self, self),
+                        .destructor = null,
+                        .call = struct {
+                            fn call(obj_context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+                                var stack = obj_context.get(Self);
+                                if (stack.contents.len > 0) {
+                                    return stack.contents.pop();
+                                } else {
+                                    return lola.Value.initVoid();
+                                }
+                            }
+                        }.call,
+                    },
+                };
+            }
+            return null;
+        }
+
+        fn destroyObject(self: Self) void {
+            self.deinit();
+            self.allocator.destroy(&self);
+            std.debug.warn("destroy stack\n", .{});
+        }
+    };
+
+    try env.functions.putNoClobber("CreateStack", lola.Function{
+        .syncUser = lola.UserFunction{
+            .context = lola.Context.init(lola.Environment, &env),
+            .destructor = null,
+            .call = struct {
+                fn call(context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+                    var stack = try std.testing.allocator.create(LoLaStack);
+                    errdefer std.testing.allocator.destroy(stack);
+
+                    stack.* = LoLaStack{
+                        .allocator = std.testing.allocator,
+                        .contents = std.ArrayList(lola.Value).init(std.testing.allocator),
+                    };
+                    errdefer stack.deinit();
+
+                    const oid = try context.get(lola.Environment).objectPool.createObject(try lola.Object.init(.{stack}));
+
+                    return lola.Value.initObject(oid);
+                }
+            }.call,
+        },
+    });
 
     var obj1 = MyObject{
         .name = "Object 1",

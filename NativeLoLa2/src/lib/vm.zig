@@ -185,7 +185,7 @@ pub const VM = struct {
 
         const ctx = &self.calls.toSlice()[self.calls.len - 1];
 
-        std.debug.warn("execute 0x{X}…\n", .{ctx.decoder.offset});
+        // std.debug.warn("execute 0x{X}…\n", .{ctx.decoder.offset});
 
         const instruction = try ctx.decoder.read(Instruction);
         switch (instruction) {

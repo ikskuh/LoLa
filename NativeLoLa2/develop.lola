@@ -10,8 +10,17 @@ Print("objGlobal2.call() = ", objGlobal2.call("hey"));
 // Object Interface Rework
 
 // Goal:
+var cnt = 0;
+while(cnt < 100)
 {
   var stack = CreateStack();
-  stack.Push(10);
-  stack.Push(20);
+
+  var x = 0;
+  while(x < 10) {
+    stack.Push(x);
+    x = x + 1;
+  }
+
+  Sleep(1);
+  cnt = cnt + 1;
 }

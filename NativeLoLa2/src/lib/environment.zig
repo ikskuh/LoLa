@@ -8,6 +8,7 @@ usingnamespace @import("value.zig");
 usingnamespace @import("compile_unit.zig");
 usingnamespace @import("named_global.zig");
 usingnamespace @import("disassembler.zig");
+usingnamespace @import("context.zig");
 
 /// A script function contained in either this or a foreign
 /// environment. For foreign environments.
@@ -22,36 +23,36 @@ pub const UserFunction = struct {
     const Self = @This();
 
     /// Context, will be passed to `call`.
-    context: []const u8,
+    context: Context,
 
     /// Executes the function, returns a value synchronously.
-    call: fn (context: []const u8, args: []const Value) anyerror!Value,
+    call: fn (context: Context, args: []const Value) anyerror!Value,
 
     /// Optional destructor that may free the memory stored in `context`.
     /// Is called when the function call is deinitialized.
-    destructor: ?fn (self: Self) void,
+    destructor: ?fn (context: Context) void,
 
     fn deinit(self: Self) void {
         if (self.destructor) |dtor| {
-            dtor(self);
+            dtor(self.context);
         }
     }
 };
 
 test "UserFunction (destructor)" {
     var uf1: UserFunction = .{
-        .context = "Hello",
+        .context = Context.initVoid(),
         .call = undefined,
         .destructor = null,
     };
     defer uf1.deinit();
 
     var uf2: UserFunction = .{
-        .context = try std.mem.dupe(std.testing.allocator, u8, "Hello"),
+        .context = Context.init(u32, try std.testing.allocator.create(u32)),
         .call = undefined,
         .destructor = struct {
-            fn destructor(uf: UserFunction) void {
-                std.testing.allocator.free(uf.context);
+            fn destructor(ctx: Context) void {
+                std.testing.allocator.destroy(ctx.get(u32));
             }
         }.destructor,
     };
@@ -64,38 +65,38 @@ pub const AsyncUserFunction = struct {
     const Self = @This();
 
     /// Context, will be passed to `call`.
-    context: []const u8,
+    context: Context,
 
     /// Begins execution of this function.
     /// After the initialization, the return value will be invoked once
     /// to check if the function can finish synchronously.
-    call: fn (context: []const u8, args: []const Value) anyerror!AsyncFunctionCall,
+    call: fn (context: Context, args: []const Value) anyerror!AsyncFunctionCall,
 
     /// Optional destructor that may free the memory stored in `context`.
     /// Is called when the function call is deinitialized.
-    destructor: ?fn (self: Self) void,
+    destructor: ?fn (context: Context) void,
 
     fn deinit(self: Self) void {
         if (self.destructor) |dtor| {
-            dtor(self);
+            dtor(self.context);
         }
     }
 };
 
 test "AsyncUserFunction (destructor)" {
     var uf1: AsyncUserFunction = .{
-        .context = "Hello",
+        .context = undefined,
         .call = undefined,
         .destructor = null,
     };
     defer uf1.deinit();
 
     var uf2: AsyncUserFunction = .{
-        .context = try std.mem.dupe(std.testing.allocator, u8, "Hello"),
+        .context = Context.init(u32, try std.testing.allocator.create(u32)),
         .call = undefined,
         .destructor = struct {
-            fn destructor(uf: AsyncUserFunction) void {
-                std.testing.allocator.free(uf.context);
+            fn destructor(ctx: Context) void {
+                std.testing.allocator.destroy(ctx.get(u32));
             }
         }.destructor,
     };
@@ -114,15 +115,15 @@ pub const AsyncFunctionCall = struct {
 
     /// The context may be used to to store the state of this function call.
     /// This may be created with `@sliceToBytes`.
-    context: []u8,
+    context: Context,
 
     /// Executor that will run this function call.
     /// May return a value (function call completed) or `null` (function call still in progress).
-    execute: fn (context: []u8) anyerror!?Value,
+    execute: fn (context: Context) anyerror!?Value,
 
     /// Optional destructor that may free the memory stored in `context`.
     /// Is called when the function call is deinitialized.
-    destructor: ?fn (context: []u8) void,
+    destructor: ?fn (context: Context) void,
 
     fn deinit(self: Self) void {
         if (self.destructor) |dtor| {
@@ -133,17 +134,17 @@ pub const AsyncFunctionCall = struct {
 
 test "AsyncFunctionCall.deinit" {
     const Helper = struct {
-        fn destroy(context: []u8) void {
-            std.testing.allocator.free(context);
+        fn destroy(context: Context) void {
+            std.testing.allocator.destroy(context.get(u32));
         }
-        fn exec(context: []u8) anyerror!?Value {
+        fn exec(context: Context) anyerror!?Value {
             return error.NotSupported;
         }
     };
 
     var callWithDtor = AsyncFunctionCall{
         .object = null,
-        .context = try std.mem.dupe(std.testing.allocator, u8, "Hello!"),
+        .context = Context.init(u32, try std.testing.allocator.create(u32)),
         .execute = Helper.exec,
         .destructor = Helper.destroy,
     };

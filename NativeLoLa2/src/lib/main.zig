@@ -8,3 +8,4 @@ usingnamespace @import("named_global.zig");
 usingnamespace @import("disassembler.zig");
 usingnamespace @import("environment.zig");
 usingnamespace @import("vm.zig");
+usingnamespace @import("context.zig");
