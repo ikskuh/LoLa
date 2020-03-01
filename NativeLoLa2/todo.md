@@ -7,7 +7,9 @@
 
 ## Missing features
 
-## The great object interface refactoring
-- Functions take an additional parameter: `?ObjectHandle`
-  - This removes the need for an additional context parameter on the functions itself
-- Introduce `ObjectPool` that will manage dynamic-lifetime objects
+## More tasks
+- Tests for the ObjectPool struct
+- Tests for VM
+  - Endless loop should not be endless with execution limit
+  - Instructions should yield correct errors when called with inappropriate inputs
+  - Instructions should yield correct output
