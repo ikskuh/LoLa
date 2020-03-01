@@ -212,6 +212,18 @@ pub fn main() anyerror!void {
                         }.call,
                     },
                 };
+            } else if (std.mem.eql(u8, name, "GetSize")) {
+                return lola.Function{
+                    .syncUser = lola.UserFunction{
+                        .context = lola.Context.init(Self, self),
+                        .destructor = null,
+                        .call = struct {
+                            fn call(obj_context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+                                return lola.Value.initNumber(@intToFloat(f64, obj_context.get(Self).contents.len));
+                            }
+                        }.call,
+                    },
+                };
             }
             return null;
         }
@@ -256,6 +268,9 @@ pub fn main() anyerror!void {
     const objref1 = try env.objectPool.createObject(try lola.Object.init(.{&obj1}));
     const objref2 = try env.objectPool.createObject(try lola.Object.init(.{&obj2}));
 
+    try env.objectPool.retainObject(objref1);
+    try env.objectPool.retainObject(objref2);
+
     try env.namedGlobals.putNoClobber("valGlobal", lola.NamedGlobal.initStored(lola.Value.initNumber(42.0)));
     try env.namedGlobals.putNoClobber("refGlobal", lola.NamedGlobal.initReferenced(&refValue));
     try env.namedGlobals.putNoClobber("objGlobal1", lola.NamedGlobal.initStored(lola.Value.initObject(objref1)));
@@ -297,11 +312,23 @@ pub fn main() anyerror!void {
     }
 
     while (true) {
-        var result = vm.execute(100) catch |err| {
+        var result = vm.execute(1000) catch |err| {
             std.debug.warn("Failed to execute code: {}\n", .{err});
             return err;
         };
-        std.debug.warn("result: {}\n", .{result});
+
+        const previous = env.objectPool.objects.size;
+
+        env.objectPool.clearUsageCounters();
+
+        try env.objectPool.walkEnvironment(env);
+        try env.objectPool.walkVM(vm);
+
+        env.objectPool.collectGarbage();
+
+        const now = env.objectPool.objects.size;
+
+        std.debug.warn("result: {}\tcollected {} objects\n", .{ result, previous - now });
         if (result == .completed)
             break;
     }

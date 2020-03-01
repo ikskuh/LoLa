@@ -1,8 +1,6 @@
 
 extern objGlobal1;
 extern objGlobal2;
-Print("objGlobal1.call() = ", objGlobal1.call("hey"));
-Print("objGlobal2.call() = ", objGlobal2.call("hey"));
 
 
 
@@ -21,6 +19,38 @@ while(cnt < 100)
     x = x + 1;
   }
 
-  Sleep(1);
   cnt = cnt + 1;
 }
+
+// How do i prevent those from beeing collected?!
+Print("objGlobal1.call() = ", objGlobal1.call("hey"));
+Print("objGlobal2.call() = ", objGlobal2.call("hey"));
+
+var stack = CreateStack();
+
+stack.Push(10);
+stack.Push(20);
+stack.Push(30);
+
+function Operation(op)
+{
+	if(op == "print") {
+		Print(stack.Pop());
+	}
+	if(op == "add") {
+		var lhs = stack.Pop();
+		var rhs = stack.Pop();
+		stack.Push(lhs + rhs);
+	}
+	if(op == "mul") {
+		var lhs = stack.Pop();
+		var rhs = stack.Pop();
+		stack.Push(lhs * rhs);
+	}
+}
+
+Operation("mul");
+Operation("add");
+Operation("print");
+
+Print("Stack Length: ", stack.GetSize());

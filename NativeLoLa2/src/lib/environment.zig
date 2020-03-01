@@ -9,6 +9,7 @@ usingnamespace @import("compile_unit.zig");
 usingnamespace @import("named_global.zig");
 usingnamespace @import("disassembler.zig");
 usingnamespace @import("context.zig");
+usingnamespace @import("vm.zig");
 
 /// A script function contained in either this or a foreign
 /// environment. For foreign environments.
@@ -190,21 +191,29 @@ pub const ObjectHandle = u64;
 pub const ObjectPool = struct {
     const Self = @This();
 
+    const ManagedObject = struct {
+        refcount: usize,
+        manualRefcount: usize,
+        object: Object,
+    };
+
+    const ObjectGetError = error{InvalidObject};
+
     objectCounter: ObjectHandle,
-    objects: std.AutoHashMap(ObjectHandle, Object),
+    objects: std.AutoHashMap(ObjectHandle, ManagedObject),
 
     // Initializer API
-    fn init(allocator: *std.mem.Allocator) Self {
+    pub fn init(allocator: *std.mem.Allocator) Self {
         return Self{
             .objectCounter = 0,
-            .objects = std.AutoHashMap(ObjectHandle, Object).init(allocator),
+            .objects = std.AutoHashMap(ObjectHandle, ManagedObject).init(allocator),
         };
     }
 
-    fn deinit(self: Self) void {
+    pub fn deinit(self: Self) void {
         var iter = self.objects.iterator();
         while (iter.next()) |obj| {
-            obj.value.call("destroyObject", .{});
+            obj.value.object.call("destroyObject", .{});
         }
         self.objects.deinit();
     }
@@ -212,28 +221,51 @@ pub const ObjectPool = struct {
     // Public API
 
     /// Inserts a new object into the pool
-    fn createObject(self: *Self, object: Object) !ObjectHandle {
+    pub fn createObject(self: *Self, object: Object) !ObjectHandle {
         self.objectCounter += 1;
-        try self.objects.putNoClobber(self.objectCounter, object);
+        try self.objects.putNoClobber(self.objectCounter, ManagedObject{
+            .object = object,
+            .refcount = 0,
+            .manualRefcount = 0,
+        });
         return self.objectCounter;
     }
 
-    /// Destroys an object by external means. This will also invoke the object destructor.
-    fn destroyObject(self: *Self, object: ObjectHandle) void {
+    /// Keeps the object from beeing garbage collected.
+    /// To allow recollection, call `releaseObject`.
+    pub fn retainObject(self: *Self, object: ObjectHandle) ObjectGetError!void {
         if (self.objects.get(object)) |obj| {
-            obj.value.call("destroyObject", .{});
+            obj.value.manualRefcount += 1;
+        } else {
+            return error.InvalidObject;
+        }
+    }
+
+    /// Removes a restrain from `retainObject` to re-allow garbage collection.
+    pub fn releaseObject(self: *Self, object: ObjectHandle) ObjectGetError!void {
+        if (self.objects.get(object)) |obj| {
+            obj.value.manualRefcount -= 1;
+        } else {
+            return error.InvalidObject;
+        }
+    }
+
+    /// Destroys an object by external means. This will also invoke the object destructor.
+    pub fn destroyObject(self: *Self, object: ObjectHandle) void {
+        if (self.objects.get(object)) |obj| {
+            obj.object.value.call("destroyObject", .{});
         }
     }
 
     /// Returns if an object handle is still valid.
-    fn isObjectValid(self: Self, object: ObjectHandle) bool {
+    pub fn isObjectValid(self: Self, object: ObjectHandle) bool {
         return if (self.objects.get(object)) |obj| true else false;
     }
 
     /// Gets the method of an object or `null` if the method does not exist.
-    fn getMethod(self: Self, object: ObjectHandle, name: []const u8) !?Function {
+    pub fn getMethod(self: Self, object: ObjectHandle, name: []const u8) ObjectGetError!?Function {
         if (self.objects.get(object)) |obj| {
-            return obj.value.call("getMethod", .{name});
+            return obj.value.object.call("getMethod", .{name});
         } else {
             return error.InvalidObject;
         }
@@ -242,13 +274,68 @@ pub const ObjectPool = struct {
     // Garbage Collector API
 
     /// Sets all usage counters to zero.
-    fn clearUsageCounters(self: *Self) void {}
+    pub fn clearUsageCounters(self: *Self) void {
+        var iter = self.objects.iterator();
+        while (iter.next()) |obj| {
+            obj.value.refcount = 0;
+        }
+    }
 
     /// Marks an object handle as used
-    fn markUsed(self: *Self, object: ObjectHandle) !void {}
+    pub fn markUsed(self: *Self, object: ObjectHandle) ObjectGetError!void {
+        if (self.objects.get(object)) |obj| {
+            obj.value.refcount += 1;
+        } else {
+            return error.InvalidObject;
+        }
+    }
+
+    pub fn walkValue(self: *Self, value: Value) ObjectGetError!void {
+        switch (value) {
+            .object => |oid| try self.markUsed(oid),
+            .array => |arr| for (arr.contents) |val| {
+                try self.walkValue(val);
+            },
+            else => {},
+        }
+    }
+
+    pub fn walkEnvironment(self: *Self, env: Environment) ObjectGetError!void {
+        for (env.scriptGlobals) |glob| {
+            try self.walkValue(glob);
+        }
+    }
+
+    pub fn walkVM(self: *Self, vm: VM) ObjectGetError!void {
+        for (vm.stack.toSliceConst()) |val| {
+            try self.walkValue(val);
+        }
+
+        for (vm.calls.toSliceConst()) |call| {
+            for (call.locals) |local| {
+                try self.walkValue(local);
+            }
+        }
+    }
 
     /// Removes and destroys all objects that are not marked as used.
-    fn collectGarbage(self: *Self) void {}
+    pub fn collectGarbage(self: *Self) void {
+        // Now this?!
+        var iter = self.objects.iterator();
+        while (iter.next()) |obj| {
+            if (obj.value.refcount == 0 and obj.value.manualRefcount == 0) {
+                if (self.objects.remove(obj.key)) |kv| {
+                    kv.value.object.call("destroyObject", .{});
+                } else {
+                    unreachable;
+                }
+
+                // Hack: Remove modification safety check,
+                // we want to mutate the HashMap!
+                iter.initial_modification_count = iter.hm.modification_count;
+            }
+        }
+    }
 };
 
 /// An execution environment provides all needed
