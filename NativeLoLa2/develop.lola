@@ -1,5 +1,17 @@
 
 extern objGlobal1;
 extern objGlobal2;
-Print(objGlobal1.call("hey"));
-Print(objGlobal2.call("hey"));
+Print("objGlobal1.call() = ", objGlobal1.call("hey"));
+Print("objGlobal2.call() = ", objGlobal2.call("hey"));
+
+
+
+// TODO: 28.02.20
+// Object Interface Rework
+
+// Goal:
+{
+  var stack = CreateStack();
+  stack.Push(10);
+  stack.Push(20);
+}

@@ -5,7 +5,9 @@
 - When new runtime done: Remove runtime features from compiler
 - Add better error message handling and error messages.
 
-## Missing instructions
-- call_obj
-
 ## Missing features
+
+## The great object interface refactoring
+- Functions take an additional parameter: `?ObjectHandle`
+  - This removes the need for an additional context parameter on the functions itself
+- Introduce `ObjectPool` that will manage dynamic-lifetime objects

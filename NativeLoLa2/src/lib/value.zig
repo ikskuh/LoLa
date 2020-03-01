@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const envsrc = @import("environment.zig");
+
 pub const TypeId = @TagType(Value);
 pub const Value = union(enum) {
     const Self = @This();
@@ -7,7 +9,7 @@ pub const Value = union(enum) {
     // non-allocating
     void: void,
     number: f64,
-    object: u64,
+    object: envsrc.ObjectHandle,
     boolean: bool,
 
     // allocating
@@ -23,7 +25,7 @@ pub const Value = union(enum) {
         return Self{ .number = val };
     }
 
-    pub fn initObject(id: u64) Self {
+    pub fn initObject(id: envsrc.ObjectHandle) Self {
         return Self{ .object = id };
     }
 
@@ -135,7 +137,7 @@ pub const Value = union(enum) {
             return error.TypeMismatch;
     }
 
-    pub fn toObject(self: Self) ConversionError!u64 {
+    pub fn toObject(self: Self) ConversionError!envsrc.ObjectHandle {
         if (self != .object)
             return error.TypeMismatch;
         return self.object;

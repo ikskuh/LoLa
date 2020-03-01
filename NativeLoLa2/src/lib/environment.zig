@@ -1,4 +1,5 @@
 const std = @import("std");
+const iface = @import("interface");
 
 const utility = @import("utility.zig");
 
@@ -7,9 +8,6 @@ usingnamespace @import("value.zig");
 usingnamespace @import("compile_unit.zig");
 usingnamespace @import("named_global.zig");
 usingnamespace @import("disassembler.zig");
-
-/// Reference to an abstract object.
-pub const ObjectHandle = u64;
 
 /// A script function contained in either this or a foreign
 /// environment. For foreign environments.
@@ -181,42 +179,76 @@ pub const Function = union(enum) {
     }
 };
 
-/// The interface to provide access to scriptable objects.
-pub const ObjectInterface = struct {
+pub const Object = iface.Interface(struct {
+    getMethod: fn (*iface.SelfType, name: []const u8) ?Function,
+    destroyObject: fn (*iface.SelfType) void,
+}, iface.Storage.NonOwning);
+
+pub const ObjectHandle = u64;
+
+pub const ObjectPool = struct {
     const Self = @This();
 
-    /// Context that will be passed to all functions.
-    context: []const u8,
+    objectCounter: ObjectHandle,
+    objects: std.AutoHashMap(ObjectHandle, Object),
 
-    /// Returns `true` if `handle` is still a valid object reference.
-    isHandleValid: fn (context: []const u8, object: ObjectHandle) bool,
+    // Initializer API
+    fn init(allocator: *std.mem.Allocator) Self {
+        return Self{
+            .objectCounter = 0,
+            .objects = std.AutoHashMap(ObjectHandle, Object).init(allocator),
+        };
+    }
 
-    /// Returns a function for the given object or `null` if the object does not have this function.
-    /// Note that the returned function is non-owned and **must not** be deinitialized!
-    getFunction: fn (context: []const u8, object: ObjectHandle, name: []const u8) error{ObjectNotFound}!?Function,
+    fn deinit(self: Self) void {
+        var iter = self.objects.iterator();
+        while (iter.next()) |obj| {
+            obj.value.call("destroyObject", .{});
+        }
+        self.objects.deinit();
+    }
 
-    /// Returns an object interface that does not provide any objects at all.
-    pub const empty = Self{
-        .context = undefined,
-        .isHandleValid = struct {
-            fn f(ctx: []const u8, h: ObjectHandle) bool {
-                return false;
-            }
-        }.f,
-        .getFunction = struct {
-            fn f(context: []const u8, object: ObjectHandle, name: []const u8) error{ObjectNotFound}!?Function {
-                return error.ObjectNotFound;
-            }
-        }.f,
-    };
+    // Public API
+
+    /// Inserts a new object into the pool
+    fn createObject(self: *Self, object: Object) !ObjectHandle {
+        self.objectCounter += 1;
+        try self.objects.putNoClobber(self.objectCounter, object);
+        return self.objectCounter;
+    }
+
+    /// Destroys an object by external means. This will also invoke the object destructor.
+    fn destroyObject(self: *Self, object: ObjectHandle) void {
+        if (self.objects.get(object)) |obj| {
+            obj.value.call("destroyObject", .{});
+        }
+    }
+
+    /// Returns if an object handle is still valid.
+    fn isObjectValid(self: Self, object: ObjectHandle) bool {
+        return if (self.objects.get(object)) |obj| true else false;
+    }
+
+    /// Gets the method of an object or `null` if the method does not exist.
+    fn getMethod(self: Self, object: ObjectHandle, name: []const u8) !?Function {
+        if (self.objects.get(object)) |obj| {
+            return obj.value.call("getMethod", .{name});
+        } else {
+            return error.InvalidObject;
+        }
+    }
+
+    // Garbage Collector API
+
+    /// Sets all usage counters to zero.
+    fn clearUsageCounters(self: *Self) void {}
+
+    /// Marks an object handle as used
+    fn markUsed(self: *Self, object: ObjectHandle) !void {}
+
+    /// Removes and destroys all objects that are not marked as used.
+    fn collectGarbage(self: *Self) void {}
 };
-
-test "ObjectInterface.empty" {
-    const oi = &ObjectInterface.empty;
-
-    std.debug.assert(oi.isHandleValid(oi.context, 1234) == false);
-    std.debug.assert(if (oi.getFunction(oi.context, 1234, "some")) |_| false else |e| e == error.ObjectNotFound);
-}
 
 /// An execution environment provides all needed
 /// data to execute a compiled piece of code.
@@ -234,7 +266,7 @@ pub const Environment = struct {
     scriptGlobals: []Value,
 
     /// Object interface to
-    objectInterface: ObjectInterface,
+    objectPool: ObjectPool,
 
     /// Stores all available named globals.
     /// Globals will be contained in this unit and will be deinitialized,
@@ -246,11 +278,11 @@ pub const Environment = struct {
     /// the name must be kept alive until end of the environment.
     functions: std.StringHashMap(Function),
 
-    pub fn init(allocator: *std.mem.Allocator, compileUnit: *const CompileUnit, objectInterface: ObjectInterface) !Self {
+    pub fn init(allocator: *std.mem.Allocator, compileUnit: *const CompileUnit) !Self {
         var self = Self{
             .allocator = allocator,
             .compileUnit = compileUnit,
-            .objectInterface = objectInterface,
+            .objectPool = ObjectPool.init(allocator),
             .scriptGlobals = undefined,
             .namedGlobals = undefined,
             .functions = undefined,
@@ -296,6 +328,7 @@ pub const Environment = struct {
         self.namedGlobals.deinit();
         self.functions.deinit();
         self.allocator.free(self.scriptGlobals);
+        self.objectPool.deinit();
     }
 };
 
@@ -326,7 +359,7 @@ test "Environment" {
         .debugSymbols = &[0]CompileUnit.DebugSymbol{},
     };
 
-    var env = try Environment.init(std.testing.allocator, &cu, ObjectInterface.empty);
+    var env = try Environment.init(std.testing.allocator, &cu);
     defer env.deinit();
 
     std.debug.assert(env.scriptGlobals.len == 4);

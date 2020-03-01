@@ -166,7 +166,7 @@ pub const VM = struct {
     fn executeSingle(self: *Self) !?SingleResult {
         if (self.currentAsynCall) |*asyncCall| {
             if (asyncCall.object) |obj| {
-                if (!self.environment.objectInterface.isHandleValid(self.environment.objectInterface.context, obj))
+                if (!self.environment.objectPool.isObjectValid(obj))
                     return error.AsyncCallWithInvalidObject;
             }
 
@@ -417,10 +417,10 @@ pub const VM = struct {
                     return error.TypeMismatch;
 
                 const obj = obj_val.object;
-                if (!self.environment.objectInterface.isHandleValid(self.environment.objectInterface.context, obj))
+                if (!self.environment.objectPool.isObjectValid(obj))
                     return error.InvalidObject;
 
-                const function_or_null = try self.environment.objectInterface.getFunction(self.environment.objectInterface.context, obj, call.function);
+                const function_or_null = try self.environment.objectPool.getMethod(obj, call.function);
 
                 if (function_or_null) |function| {
                     if (try self.executeFunctionCall(call, function, obj))

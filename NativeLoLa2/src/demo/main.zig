@@ -39,33 +39,33 @@ pub fn main() anyerror!void {
         }
     }
 
-    const OI = lola.ObjectInterface{
-        .context = undefined,
-        .isHandleValid = struct {
-            fn f(ctx: []const u8, h: lola.ObjectHandle) bool {
-                return (h == 1) or (h == 2);
-            }
-        }.f,
-        .getFunction = struct {
-            fn f(context: []const u8, object: lola.ObjectHandle, name: []const u8) error{ObjectNotFound}!?lola.Function {
-                if (object != 1 and object != 2)
-                    return error.ObjectNotFound;
-                return lola.Function{
-                    .syncUser = lola.UserFunction{
-                        .context = if (object == 1) "Obj1" else "Obj2",
-                        .destructor = null,
-                        .call = struct {
-                            fn call(obj_context: []const u8, args: []const lola.Value) anyerror!lola.Value {
-                                return lola.Value.initString(std.testing.allocator, obj_context);
-                            }
-                        }.call,
-                    },
-                };
-            }
-        }.f,
-    };
+    // const OI = lola.ObjectInterface{
+    //     .context = undefined,
+    //     .isHandleValid = struct {
+    //         fn f(ctx: []const u8, h: lola.ObjectHandle) bool {
+    //             return (h == 1) or (h == 2);
+    //         }
+    //     }.f,
+    //     .getFunction = struct {
+    //         fn f(context: []const u8, object: lola.ObjectHandle, name: []const u8) error{ObjectNotFound}!?lola.Function {
+    //             if (object != 1 and object != 2)
+    //                 return error.ObjectNotFound;
+    //             return lola.Function{
+    //                 .syncUser = lola.UserFunction{
+    //                     .context = if (object == 1) "Obj1" else "Obj2",
+    //                     .destructor = null,
+    //                     .call = struct {
+    //                         fn call(obj_context: []const u8, args: []const lola.Value) anyerror!lola.Value {
+    //                             return lola.Value.initString(std.testing.allocator, obj_context);
+    //                         }
+    //                     }.call,
+    //                 },
+    //             };
+    //         }
+    //     }.f,
+    // };
 
-    var env = try lola.Environment.init(std.heap.direct_allocator, &cu, OI);
+    var env = try lola.Environment.init(std.heap.direct_allocator, &cu);
     defer env.deinit();
 
     try env.functions.putNoClobber("Print", lola.Function{
@@ -129,10 +129,54 @@ pub fn main() anyerror!void {
 
     var refValue = lola.Value.initNumber(23.0);
 
+    const MyObject = struct {
+        const Self = @This();
+
+        name: []const u8,
+
+        fn getMethod(self: Self, name: []const u8) ?lola.Function {
+            std.debug.warn("getMethod({}, {})\n", .{
+                self.name,
+                name,
+            });
+            if (std.mem.eql(u8, name, "call")) {
+                std.debug.warn("return call!\n", .{});
+                return lola.Function{
+                    .syncUser = lola.UserFunction{
+                        .context = self.name,
+                        .destructor = null,
+                        .call = struct {
+                            fn call(obj_context: []const u8, args: []const lola.Value) anyerror!lola.Value {
+                                return lola.Value.initString(std.testing.allocator, obj_context);
+                            }
+                        }.call,
+                    },
+                };
+            }
+            return null;
+        }
+
+        fn destroyObject(self: Self) void {
+            std.debug.warn("destroyObject({})\n", .{
+                self.name,
+            });
+        }
+    };
+
+    var obj1 = MyObject{
+        .name = "Object 1",
+    };
+    var obj2 = MyObject{
+        .name = "Object 2",
+    };
+
+    const objref1 = try env.objectPool.createObject(try lola.Object.init(.{&obj1}));
+    const objref2 = try env.objectPool.createObject(try lola.Object.init(.{&obj2}));
+
     try env.namedGlobals.putNoClobber("valGlobal", lola.NamedGlobal.initStored(lola.Value.initNumber(42.0)));
     try env.namedGlobals.putNoClobber("refGlobal", lola.NamedGlobal.initReferenced(&refValue));
-    try env.namedGlobals.putNoClobber("objGlobal1", lola.NamedGlobal.initStored(lola.Value.initObject(1)));
-    try env.namedGlobals.putNoClobber("objGlobal2", lola.NamedGlobal.initStored(lola.Value.initObject(2)));
+    try env.namedGlobals.putNoClobber("objGlobal1", lola.NamedGlobal.initStored(lola.Value.initObject(objref1)));
+    try env.namedGlobals.putNoClobber("objGlobal2", lola.NamedGlobal.initStored(lola.Value.initObject(objref2)));
 
     // var smartCounter: u32 = 0;
     // try env.namedGlobals.putNoClobber("smartCounter", lola.NamedGlobal.initSmart(lola.SmartGlobal.initRead(
