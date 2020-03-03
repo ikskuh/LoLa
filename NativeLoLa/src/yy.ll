@@ -56,6 +56,12 @@ break                       { return token::BREAK; }
 continue                    { return token::CONTINUE; }
 return                      { return token::RETURN; }
 
+\+\=                        { return token::PLUS_IS; }
+\-\=                        { return token::MINUS_IS; }
+\*\=                        { return token::MULT_IS; }
+\/\=                        { return token::DIV_IS; }
+\%\=                        { return token::MOD_IS; }
+
 \<\=                        { lval->emplace<Operator>(Operator::LessOrEqual); return token::LEQUAL; }
 \>\=                        { lval->emplace<Operator>(Operator::MoreOrEqual); return token::GEQUAL; }
 \=\=                        { lval->emplace<Operator>(Operator::Equals); return token::EQUALS; }

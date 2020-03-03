@@ -10,6 +10,14 @@ using LoLa::Compiler::CodeWriter;
 using LoLa::Compiler::Scope;
 using LoLa::IL::Instruction;
 
+static List<Expression> clone(List<Expression> const & list) {
+    List<Expression> result(list.size());
+    for(size_t i = 0; i < result.size(); i++) {
+        result[i] = list[i]->clone();
+    }
+    return result;
+}
+
 LoLa::AST::StatementBase::~StatementBase()
 {
 
@@ -30,7 +38,6 @@ LValueExpression LoLa::AST::VariableRef(String var)
     struct Foo : LValueExpressionBase {
         std::string name;
         Foo(std::string str) : name(str) { }
-
 
         void emit(CodeWriter & code, Scope & scope) override
         {
@@ -96,6 +103,10 @@ LValueExpression LoLa::AST::VariableRef(String var)
                 throw Error::VariableNotFound;
             }
         }
+
+        std::unique_ptr<ExpressionBase> clone() const override {
+            return std::make_unique<Foo>(*this);
+        }
     };
     return std::make_unique<Foo>(var);
 }
@@ -110,6 +121,10 @@ Expression LoLa::AST::NumberLiteral(String literal)
             code.emit(Instruction::push_num);
             code.emit(value);
         }
+
+        std::unique_ptr<ExpressionBase> clone() const override {
+            return std::make_unique<Foo>(*this);
+        }
     };
     return std::make_unique<Foo>(std::strtod(literal.c_str(), nullptr));
 }
@@ -123,6 +138,10 @@ Expression LoLa::AST::StringLiteral(String literal)
         void emit(CodeWriter & code, Scope &) override {
             code.emit(Instruction::push_str);
             code.emit(text);
+        }
+
+        std::unique_ptr<ExpressionBase> clone() const override {
+            return std::make_unique<Foo>(*this);
         }
     };
     assert(literal.size() >= 2);
@@ -157,6 +176,10 @@ LValueExpression LoLa::AST::ArrayIndexer(Expression value, Expression index)
                 assert(false and "syntax error not implemented yet");
             }
         }
+
+        std::unique_ptr<ExpressionBase> clone() const override {
+            return std::make_unique<Foo>(value->clone(), index->clone());
+        }
     };
     return std::make_unique<Foo>(move(value), move(index));
 }
@@ -175,6 +198,10 @@ Expression LoLa::AST::ArrayLiteral(List<Expression> initializer)
 
             code.emit(Instruction::array_pack);
             code.emit(uint16_t(values.size()));
+        }
+
+        std::unique_ptr<ExpressionBase> clone() const override {
+            return std::make_unique<Foo>(::clone(values));
         }
     };
     return std::make_unique<Foo>(move(initializer));
@@ -197,6 +224,10 @@ Expression LoLa::AST::FunctionCall(String name, List<Expression> args)
             code.emit(Instruction::call_fn);
             code.emit(function);
             code.emit(uint8_t(args.size()));
+        }
+
+        std::unique_ptr<ExpressionBase> clone() const override {
+            return std::make_unique<Foo>(function, ::clone(args));
         }
     };
     return std::make_unique<Foo>(name, move(args));
@@ -223,6 +254,10 @@ Expression LoLa::AST::MethodCall(Expression object, String name, List<Expression
             code.emit(function);
             code.emit(uint8_t(args.size()));
         }
+
+        std::unique_ptr<ExpressionBase> clone() const override {
+            return std::make_unique<Foo>(this->object->clone(), this->function, ::clone(this->args));
+        }
     };
     return std::make_unique<Foo>(move(object), name, move(args));
 }
@@ -246,6 +281,10 @@ Expression LoLa::AST::UnaryOperator(Operator op, Expression value)
             default:
                 throw "invalid operator!";
             }
+        }
+
+        std::unique_ptr<ExpressionBase> clone() const override {
+            return std::make_unique<Foo>(this->op, this->value->clone());
         }
     };
     return std::make_unique<Foo>(op, move(value));
@@ -277,6 +316,10 @@ Expression LoLa::AST::BinaryOperator(Operator op, Expression lhs, Expression rhs
             default:
                 throw "invalid operator!";
             }
+        }
+
+        std::unique_ptr<ExpressionBase> clone() const override {
+            return std::make_unique<Foo>(this->op, this->lhs->clone(), this->rhs->clone());
         }
     };
     return std::make_unique<Foo>(op, move(lhs), move(rhs));

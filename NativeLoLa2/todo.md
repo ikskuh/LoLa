@@ -6,9 +6,10 @@
 - Add better error message handling and error messages.
 
 ## Missing features
-- String escaping
+- String literal escaping
 - Add `break` and `continue` to the language?
 - Add `+=` and stuff operators
+- Add `string` index operators?
 
 ## More tasks
 - Tests for the ObjectPool struct
@@ -24,3 +25,7 @@
 - Auto-constant detection
 - Type deduction and error checking
 - SSA-like analysis to reuse local variables
+
+## Documentation
+- Move examples to own folder / document
+- Document how *custom objects* are explicitly not a thing

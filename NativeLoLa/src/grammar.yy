@@ -59,7 +59,7 @@ namespace LoLa {
 
 // Operators
 %left  <Operator> LEQUAL, GEQUAL, EQUALS, DIFFERS, LESS, MORE
-%left  IS, DOT, COMMA, TERMINATOR
+%left  IS, DOT, COMMA, TERMINATOR, PLUS_IS, MINUS_IS, MULT_IS, DIV_IS, MOD_IS
 %left  <Operator> PLUS, MINUS, MULT, DIV, MOD, AND, OR, INVERT
 %token <std::string> IDENT
 
@@ -133,12 +133,17 @@ statement   : decl          { $$ = move($1); }
             | body          { $$ = move($1); }
             ;
 
-decl		: VAR IDENT IS expr_0 TERMINATOR			{ $$ = Declaration(move($2), move($4)); }
+decl        : VAR IDENT IS expr_0 TERMINATOR			{ $$ = Declaration(move($2), move($4)); }
             | VAR IDENT TERMINATOR						{ $$ = Declaration(move($2)); }
             | EXTERN IDENT TERMINATOR					{ $$ = ExternDeclaration(move($2)); }
             ;
 
-ass			: lvalue IS expr_0 TERMINATOR				{ $$ = Assignment(move($1), move($3)); }
+ass         : lvalue IS expr_0 TERMINATOR               { $$ = Assignment(move($1), move($3)); }
+            | lvalue PLUS_IS  expr_0 TERMINATOR          { auto dup = $1->clone(); $$ = Assignment(move($1), BinaryOperator(Operator::Plus, move(dup), move($3))); }
+            | lvalue MINUS_IS expr_0 TERMINATOR          { auto dup = $1->clone(); $$ = Assignment(move($1), BinaryOperator(Operator::Minus, move(dup), move($3))); }
+            | lvalue MULT_IS  expr_0 TERMINATOR          { auto dup = $1->clone(); $$ = Assignment(move($1), BinaryOperator(Operator::Multiply, move(dup), move($3))); }
+            | lvalue DIV_IS   expr_0 TERMINATOR          { auto dup = $1->clone(); $$ = Assignment(move($1), BinaryOperator(Operator::Divide, move(dup), move($3))); }
+            | lvalue MOD_IS   expr_0 TERMINATOR          { auto dup = $1->clone(); $$ = Assignment(move($1), BinaryOperator(Operator::Modulus, move(dup), move($3))); }
             ;
 
 for			: FOR ROUND_O IDENT IN expr_0 ROUND_C body	{ $$ = ForLoop($3,move($5),move($7)); }

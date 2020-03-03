@@ -1,7 +1,3 @@
-
-
-
-
 function BubbleSort(arr)
 {
 	var len = Length(arr);
@@ -17,9 +13,9 @@ function BubbleSort(arr)
 				arr[i+1] = tmp;
       }
 
-			i = i + 1;
+			i += 1;
     }
-		n = n - 1;
+		n -= 1;
   }
 
 	return arr;

@@ -47,6 +47,8 @@ namespace LoLa::AST
     struct ExpressionBase {
         virtual ~ExpressionBase();
         virtual void emit(Compiler::CodeWriter & writer, Compiler::Scope & scope) = 0;
+
+        virtual std::unique_ptr<ExpressionBase> clone() const = 0;
     };
 
     struct LValueExpressionBase : ExpressionBase {

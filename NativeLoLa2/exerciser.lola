@@ -24,6 +24,12 @@ _ = 1 * 1; // mul
 _ = 1 / 1; // div
 _ = 1 % 1; // mod
 
+_ += 1;
+_ -= 1;
+_ *= 1;
+_ /= 1;
+_ %= 1;
+
 _ = true; // push_true
 _ = false; // push_false
 _ = void; // push_void

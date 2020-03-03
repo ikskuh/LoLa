@@ -129,12 +129,12 @@ LoLa provides several operators that execute arithmetic, logic or comparison ope
 
 | Operator | Applies to                  | Description                               | Example                                                      |
 | -------- | --------------------------- | ----------------------------------------- | ------------------------------------------------------------ |
-| `a + b`  | `string`, `number`, `array` | Adds numbers, concats strings and arrays. | `3 + 2 == 5`, `"a" + "b" == "ab"`, `[ 1, 2 ] + [ 3 ] == [ 1, 2, 3 ]` |
-| `a - b` | `number` |Subtraction|`5 - 2 == 3`|
+| `a + b` <br /> `a += b` | `string`, `number`, `array` | Adds numbers, concats strings and arrays. | `3 + 2 == 5`, `"a" + "b" == "ab"`, `[ 1, 2 ] + [ 3 ] == [ 1, 2, 3 ]` |
+| `a - b` <br />`a -= b` | `number` |Subtraction|`5 - 2 == 3`|
 | `-a`  | `number` | Negation |`-(4) == -4`|
-| `a * b` | `number` |Multiplication|`5 * 2 == 10`|
-| `a / b` | `number` |Division|`10 / 5 == 2`|
-| `a % b` | `number` |Remainder Division|`10 % 4 == 2`|
+| `a * b` <br />`a *= b` | `number` |Multiplication|`5 * 2 == 10`|
+| `a / b `<br />`a /= b` | `number` |Division|`10 / 5 == 2`|
+| `a % b` <br />`a %= b` | `number` |Remainder Division|`10 % 4 == 2`|
 | `a and b` | `boolean` |Boolean AND|`true and false == false`|
 | `a or b` | `boolean` |Boolean OR|`true or false == true`|
 | `not a` | `boolean` |Boolean NOT|`not false == true`|
@@ -332,14 +332,6 @@ function SayHelloTo(name)
 
 As you can see, the order of declaration is not relevant in LoLa. Functions may be called from top-level before or after declaration.
 
-
-
-
-
-
-
-
-
 ## Examples
 
 The following section will contain small examples on how to use the language.
@@ -350,7 +342,7 @@ The following section will contain small examples on how to use the language.
 var a = [ 1, 2, 3 ];
 var sum = 0;
 for(v in a) {
-	sum = sum + a;
+	sum += a;
 }
 Print("Sum = ", sum);
 ```
@@ -373,9 +365,9 @@ function BubbleSort(arr)
 				arr[i+1] = tmp;
       }
 
-			i = i + 1;
+			i += 1;
     }
-		n = n - 1;
+		n -= 1;
   }
 
 	return arr;
@@ -383,8 +375,6 @@ function BubbleSort(arr)
 
 Print(BubbleSort([ 7, 8, 9, 3, 2, 1 ]));
 ```
-
-
 
 ### Reversing an array
 
@@ -398,7 +388,7 @@ function RevertArray(arr)
 		var tmp = arr[i];
 		arr[i] = arr[l - i - 1];
     arr[l - i - 1] = tmp;
-    i = i + 1;
+    i += 1;
 	}
 	return arr;
 }
