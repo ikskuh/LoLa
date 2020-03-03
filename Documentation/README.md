@@ -19,6 +19,8 @@ Print("Hello, World!");
 
 As you can see, the *Hello World*-Program is quite short and expressive. The language itself uses a C-like syntax with semicolons at the end of a statement.
 
+More [Examples](#Examples) can be found at the end of the document.
+
 ## Additional Documents
 
 These documents contain additional information about implementation details of the current runtime generation.
@@ -229,6 +231,20 @@ else {
 
 The `else` part is optional.
 
+`if` also provides a short-hand version if only a single statement is conditional:
+
+```lola
+if(condition)
+	Statement(); // Function call, control flow or assignment
+ 
+if(condition)
+	Statement();
+else
+	Statement();
+```
+
+
+
 ### `while`-Loop
 
 If a piece of code should repeat itself, a loop structure is helpful:
@@ -302,9 +318,8 @@ while(true)
 {
 	i += 1;
 	Print("i = ", i);
-	if(i > 5) {
+	if(i > 5)
 		break; // this will stop the while-loop
-	}
 	j += 1;
 }
 Print(i, j); // Will print 6, 5
@@ -340,13 +355,11 @@ function Compare(a, b) {
 	if(a > b) {
 		return "larger";
 	}
-	else {
-		if(a < b) {
-			return "smaller";
-		} else {
-			return "equal";
-		}
-	}
+	else if(a < b) {
+  	return "smaller";
+  } else {
+  	return "equal";
+  }
 }
 ```
 
@@ -384,6 +397,34 @@ As you can see, the order of declaration is not relevant in LoLa. Functions may 
 - `return`
 - `var`
 - `while`
+
+## Wording
+
+The following chapter explains some of the words used in this document with concrete focus on the meaning inside LoLa.
+
+### Statement
+
+A statement is something that can be written as a line of code or execution unit.
+
+The following constructs count as statements:
+
+- Conditionals (`if`)
+- Loops (`while`, `for`)
+- Everything with a semicolon at the end (`a = …;`, `a[i] = …;`, `Print("Hi!");`)
+
+### Expression
+
+An expression is something that yields a value that can be used in another expression or can be assigned to a value.
+
+Examples for expressions are:
+
+- `1`
+- `"Hello"`
+- `expr + expr`
+- `SumOf(10, 20)`
+- …
+
+LoLa does not allow lone statements except for function and method calls. These are special in a way that they may discard their value. The resulting value of all other expressions may not be discarded.
 
 ## Examples
 

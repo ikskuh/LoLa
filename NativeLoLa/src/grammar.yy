@@ -148,18 +148,18 @@ ass         : lvalue IS expr_0 TERMINATOR               { $$ = Assignment(move($
             | lvalue MOD_IS   expr_0 TERMINATOR          { auto dup = $1->clone(); $$ = Assignment(move($1), BinaryOperator(Operator::Modulus, move(dup), move($3))); }
             ;
 
-for			: FOR ROUND_O IDENT IN expr_0 ROUND_C body	{ $$ = ForLoop($3,move($5),move($7)); }
+for			: FOR ROUND_O IDENT IN expr_0 ROUND_C body  { $$ = ForLoop($3,move($5),move($7)); }
             ;
 
-while		: WHILE ROUND_O expr_0 ROUND_C body			{ $$ = WhileLoop(move($3), move($5)); }
+while		: WHILE ROUND_O expr_0 ROUND_C body         { $$ = WhileLoop(move($3), move($5)); }
             ;
 
 return		: RETURN expr_0 TERMINATOR					{ $$ = Return(move($2)); }
             | RETURN TERMINATOR							{ $$ = Return(); }
             ;
 
-conditional : IF ROUND_O expr_0 ROUND_C body ELSE body  { $$ = IfElse(move($3), move($5), move($7)); }
-            | IF ROUND_O expr_0 ROUND_C body			{ $$ = IfElse(move($3), move($5)); }
+conditional : IF ROUND_O expr_0 ROUND_C statement ELSE statement  { $$ = IfElse(move($3), move($5), move($7)); }
+            | IF ROUND_O expr_0 ROUND_C statement			{ $$ = IfElse(move($3), move($5)); }
             ;
 
 expression	: call TERMINATOR							{ $$ = DiscardResult(move($1)); }

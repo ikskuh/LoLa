@@ -1,13 +1,14 @@
-var i = 0;
-var j = 0;
-while(true)
-{
-	i += 1;
-	Print("i = ", i);
-	if(i > 5) {
-		break; // this will stop the while-loop
+
+
+function Compare(a, b) {
+	if(a > b) {
+		return "larger";
 	}
-	j += 1;
+	else if(a < b) {
+  	return "smaller";
+  } else {
+  	return "equal";
+  }
 }
 
-Print(i, j);
+Print(Compare(3, 2));

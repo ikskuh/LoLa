@@ -107,6 +107,27 @@ _ = "x";
 _ = "\n";
 _ = "\r";
 _ = "\t";
-_ = "\n";
-_ = "\n";
-_ = "\n";
+_ = "\a";
+_ = "\b";
+_ = "\e";
+
+// syntax variants:
+
+if(false)
+	Print("true");
+else
+	Print("false");
+
+if(true) 
+	Print("single");
+	
+if(false) {
+	Print("true");
+}
+else {
+	Print("false");
+}
+
+if(true) {
+	Print("single");
+}
