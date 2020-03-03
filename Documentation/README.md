@@ -13,7 +13,7 @@ The design goals of the language were:
 
 ## Hello World
 
-```lola
+```js
 Print("Hello, World!");
 ```
 
@@ -34,7 +34,7 @@ These documents contain additional information about implementation details of t
 
 LoLa provides only single-line comments:
 
-```lola
+```js
 // This is a comment
 
 Print("Hello"); // this is a statement, followed by a comment
@@ -93,7 +93,7 @@ The predefined escape codes provide often-required whitespace and control charac
 
 Variables provide a way to store something beyond the context of a single computation.
 
-```lola
+```js
 var x;      // Uninitialized, global variable
 var y = 10; // Initialized global variable
 
@@ -170,7 +170,7 @@ LoLa provides a small set of control flow structures that are simple to use and 
 
 ### Blocks
 
-```lola
+```js
 { // Blocks are always introduced by a curly bracket
   var x; // local to this block
   // here is the block content
@@ -185,13 +185,13 @@ Blocks are a convenient way of introducing structure into the code. Each block h
 
 Assignments in LoLa are statements that return no value. This is different from other programming languages like C that allow nesting assignments into expressions (~~`a + (b = c)`~~).
 
-```lola
+```js
 a = b; // simple assignment, copy the value from b into a.
 ```
 
 An assignment will always copy the value that is assigned. It will not create equality of the two names:
 
-```lola
+```js
 a = 1;
 b = a;
 a = 2;
@@ -200,7 +200,7 @@ Print(a, b); // Will print "2, 1" as b has not been changed
 
 You can always assign an item of array:
 
-```lola
+```js
 a[i] = c; // indexed assignment: copy the value of c into the i'th index of the array a.
 ```
 
@@ -210,7 +210,7 @@ This allows mutating the contents of the array. The same rules as for a normal v
 
 The conditional `if` statement provides a simple way to do things depending on a condition:
 
-```lola
+```js
 if(a > 5) {
   // This code is executed only when a > 5.
 }
@@ -220,7 +220,7 @@ The code in the curly brackets is only executed when the condition in the round 
 
 If the code should do an *either-or* semantic, you can add an else block:
 
-```lola
+```js
 if(a > 5) {
   // This code is executed only when a > 5.
 }
@@ -233,7 +233,7 @@ The `else` part is optional.
 
 `if` also provides a short-hand version if only a single statement is conditional:
 
-```lola
+```js
 if(condition)
   Statement(); // Function call, control flow or assignment
  
@@ -249,7 +249,7 @@ else
 
 If a piece of code should repeat itself, a loop structure is helpful:
 
-```lola
+```js
 while(a > 5) {
   // this code repeats as long as a > 5.
 }
@@ -261,7 +261,7 @@ The `while` loop will check the condition in the round brackets. If the conditio
 
 Iterating over an array is such a common task that LoLa provides a built-in loop for that:
 
-```lola
+```js
 for(x in data) {
   // For each loop iteration, x will contain a value from data
 }
@@ -273,7 +273,7 @@ The loop will execute one time for each item in `data`, filling `var` with the c
 
 ### Function Calls
 
-```lola
+```js
 Print("Hello, World!"); // Calls the function Print with one arg.
 x = GetSomething(); // stores the return value of GetSomething()
 ```
@@ -284,7 +284,7 @@ Function calls will execute a sub-program that may return a value to their calle
 
 Methods calls are similar to function calls, but require an `object` value to be executed:
 
-```lola
+```js
 var obj = …; // We require a variable of type object
 
 obj.Print("Hello, World!"); // Call the method Print on obj.
@@ -300,7 +300,7 @@ Objects can also represent resources like [sockets](https://en.wikipedia.org/wik
 
 `return` will stop the execution of the current sub-program and will return control to the caller.
 
-```lola
+```js
 return; // Stop execution now, return void
 return true; // Stop execution now and return true
 ```
@@ -311,7 +311,7 @@ return true; // Stop execution now and return true
 
 `break` will stop the current loop. This means that it will stop the execution of the code in the loop block and will return to the end of the loop just like if the condition was `false` or the end of the array was reached.
 
-```lola
+```js
 var i = 0;
 var j = 0;
 while(true)
@@ -329,7 +329,7 @@ Print(i, j); // Will print 6, 5
 
 `continue` is the counterpart to `break`: It will continue with the next loop iteration instead of completing the current one. This can be used to skip a whole bunch of code:
 
-```lola
+```js
 var a = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ];
 var skipped = 0;
 for(x in a) {
@@ -346,7 +346,7 @@ Print("Skipped ", skipped, " elements!");
 
 Functions allows the user to declare custom sub-programs in the script:
 
-```lola
+```js
 function AddFive(a) {
   return a + 5;
 }
@@ -449,7 +449,7 @@ The following section will contain small examples on how to use the language.
 
 ### Sum the values of an array
 
-```lola
+```js
 var a = [ 1, 2, 3 ];
 var sum = 0;
 for(v in a) {
@@ -460,7 +460,7 @@ Print("Sum = ", sum);
 
 ### Bubble Sort
 
-```lola
+```js
 function BubbleSort(arr)
 {
   var len = Length(arr);
@@ -489,7 +489,7 @@ Print(BubbleSort([ 7, 8, 9, 3, 2, 1 ]));
 
 ### Reversing an array
 
-```lola
+```js
 // Reverse an array
 function RevertArray(arr)
 {
@@ -507,7 +507,7 @@ function RevertArray(arr)
 
 ### Using an object
 
-```lola
+```js
 var stack = CreateStack();
 
 stack.Push(10);
