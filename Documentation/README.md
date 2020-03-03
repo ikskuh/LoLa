@@ -309,7 +309,7 @@ return true; // Stop execution now and return true
 
 ### `break`
 
-`break` will stop the current loop. This means that it will stop the execution of the code in the loop block and will return to the end of the loop just like if the condition was `false` or the end of the array was reached.
+`break` will cancel the current loop execution. This means that it will continue execution after the loop-block:
 
 ```js
 var i = 0;
@@ -319,10 +319,22 @@ while(true)
   i += 1;
   Print("i = ", i);
   if(i > 5)
-    break; // this will stop the while-loop
+    break; // this will jump to after the while-loop 
   j += 1;
 }
+// <= break will continue execution here
 Print(i, j); // Will print 6, 5
+```
+
+The same goes for `for` loops:
+
+```js
+for(x in [ 1, 2, 3, 4 ])
+{
+  if(x > 2)
+    break; // this will jump to after the for-loop 
+}
+// <= break will continue execution here
 ```
 
 ### `continue`
@@ -332,15 +344,33 @@ Print(i, j); // Will print 6, 5
 ```js
 var a = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ];
 var skipped = 0;
-for(x in a) {
+for(x in a)
+{
+  // continue will continue from here
   if(x < 3) {
     skipped += 1;
-    continue;
+    continue; // jumps to the start of the loop with the next var
   }
   Print(x);
 }
 Print("Skipped ", skipped, " elements!");
 ```
+
+The same goes for `while` loops as well:
+
+```js
+var i = 0;
+while(i < 10)
+{
+  // continue will continue from here
+  i += 1;
+  if(i < 4)
+    continue; // jumps to the start of the loop
+  Print(i);
+}
+```
+
+
 
 ## Functions
 
@@ -369,7 +399,7 @@ Functions have their own scope, and may `return` a value to their caller.
 
 Similar to other scripting languages, LoLa allows not only top-level declarations, but also top-level code. This means there is no `main` function that is called when starting execution, but the top-level code will be run instead.
 
-```
+```js
 // This is not a snippet, but a valid file!
 SayHelloTo("me");
 
