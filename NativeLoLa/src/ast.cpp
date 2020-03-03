@@ -370,9 +370,10 @@ Statement LoLa::AST::WhileLoop(Expression condition, Statement body)
         Foo(Expression cond, Statement body) : cond(move(cond)), body(move(body)) { }
 
         void emit(CodeWriter & code, Scope & scope) override {
-
             auto const loop_start = code.createAndDefineLabel();
             auto const loop_end = code.createLabel();
+
+            code.pushLoop(loop_end, loop_start);
 
             cond->emit(code, scope);
             code.emit(Instruction::jif);
@@ -384,6 +385,8 @@ Statement LoLa::AST::WhileLoop(Expression condition, Statement body)
             code.emit(loop_start);
 
             code.defineLabel(loop_end);
+
+            code.popLoop();
         }
     };
     return std::make_unique<Foo>(move(condition), move(body));
@@ -410,6 +413,8 @@ Statement LoLa::AST::ForLoop(String var, Expression source, Statement body)
             auto const loop_start = code.createAndDefineLabel();
             auto const loop_end = code.createLabel();
 
+            code.pushLoop(loop_end, loop_start);
+
             code.emit(Instruction::iter_next);
 
             code.emit(Instruction::jif);
@@ -427,6 +432,8 @@ Statement LoLa::AST::ForLoop(String var, Expression source, Statement body)
             code.emit(loop_start);
 
             code.defineLabel(loop_end);
+
+            code.popLoop();
 
             // erase the iterator from the stack
             code.emit(Instruction::pop);
@@ -567,6 +574,26 @@ Statement LoLa::AST::SubScope(List<Statement> body)
         }
     };
     return std::make_unique<Foo>(move(body));
+}
+
+Statement LoLa::AST::BreakStatement()
+{
+    struct Foo : StatementBase {
+        void emit(CodeWriter & code, Scope & scope) override {
+            code.emitBreak();
+        }
+    };
+    return std::make_unique<Foo>();
+}
+
+Statement LoLa::AST::ContinueStatement()
+{
+    struct Foo : StatementBase {
+        void emit(CodeWriter & code, Scope & scope) override {
+            code.emitContinue();
+        }
+    };
+    return std::make_unique<Foo>();
 }
 
 std::optional<LoLa::AST::Program> LoLa::AST::parse(std::string_view src)

@@ -90,7 +90,36 @@ void LoLa::Compiler::CodeWriter::defineLabel(LoLa::Compiler::Label lbl)
             it++;
         }
     }
+}
 
+
+//! Pushes a new loop construct.
+void LoLa::Compiler::CodeWriter::pushLoop(Label breakLabel, Label continueLabel)
+{
+    this->loops.push_back({ breakLabel, continueLabel });
+}
+
+//! Removes a loop construct from the loop stack.
+void LoLa::Compiler::CodeWriter::popLoop()
+{
+    assert(this->loops.size() > 0);
+    this->loops.pop_back();
+}
+
+void LoLa::Compiler::CodeWriter::emitBreak()
+{
+    if(this->loops.size() == 0)
+        throw Error::NotInLoop;
+    emit(IL::Instruction::jmp);
+    emit(this->loops.back().first);
+}
+
+void LoLa::Compiler::CodeWriter::emitContinue()
+{
+    if(this->loops.size() == 0)
+        throw Error::NotInLoop;
+    emit(IL::Instruction::jmp);
+    emit(this->loops.back().second);
 }
 
 void LoLa::Compiler::CodeWriter::emit(LoLa::Compiler::Label label)
@@ -142,8 +171,14 @@ LoLa::Compiler::Scope::Scope()
 LoLa::Compiler::Scope::~Scope()
 {
     leave();
-    assert(return_point.size() == 0);
-    assert(local_variables.size() == 0);
+#ifdef DEBUG
+    if(return_point.size() != 0) {
+        fprintf(stderr, "error: not all scopes were popped properly!\n");
+    }
+    if(local_variables.size() != 0) {
+        fprintf(stderr, "error: not all local variables were cleaned up properly!\n");
+    }
+#endif
 }
 
 void LoLa::Compiler::Scope::enter()

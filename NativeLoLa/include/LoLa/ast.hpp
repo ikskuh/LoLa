@@ -88,6 +88,10 @@ namespace LoLa::AST
 
     Statement SubScope(List<Statement> body);
 
+    Statement BreakStatement();
+
+    Statement ContinueStatement();
+
     struct Function
     {
         std::string name;

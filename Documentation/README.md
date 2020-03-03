@@ -291,6 +291,42 @@ return true; // Stop execution now and return true
 
 `return` may take an optional value that will be returned as a result of the sub-program.
 
+### `break`
+
+`break` will stop the current loop. This means that it will stop the execution of the code in the loop block and will return to the end of the loop just like if the condition was `false` or the end of the array was reached.
+
+```lola
+var i = 0;
+var j = 0;
+while(true)
+{
+	i += 1;
+	Print("i = ", i);
+	if(i > 5) {
+		break; // this will stop the while-loop
+	}
+	j += 1;
+}
+Print(i, j); // Will print 6, 5
+```
+
+### `continue`
+
+`continue` is the counterpart to `break`: It will continue with the next loop iteration instead of completing the current one. This can be used to skip a whole bunch of code:
+
+```lola
+var a = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ];
+var skipped = 0;
+for(x in a) {
+	if(x < 3) {
+		skipped += 1;
+		continue;
+	}
+	Print(x);
+}
+Print("Skipped ", skipped, " elements!");
+```
+
 ## Functions
 
 Functions allows the user to declare custom sub-programs in the script:
@@ -331,6 +367,23 @@ function SayHelloTo(name)
 ```
 
 As you can see, the order of declaration is not relevant in LoLa. Functions may be called from top-level before or after declaration.
+
+## List of Keywords
+
+- `and`
+- `break`
+- `continue`
+- `else`
+- `extern`
+- `for`
+- `function`
+- `if`
+- `in`
+- `not`
+- `or`
+- `return`
+- `var`
+- `while`
 
 ## Examples
 

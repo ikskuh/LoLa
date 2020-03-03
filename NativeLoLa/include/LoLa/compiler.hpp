@@ -63,6 +63,8 @@ namespace LoLa::Compiler
         CompilationUnit * target;
         std::vector<std::pair<Label, uint32_t>> patches;
 
+        std::vector<std::pair<Label, Label>> loops;
+
         explicit CodeWriter(CompilationUnit * target);
 
         //! create a new label identifier
@@ -73,6 +75,12 @@ namespace LoLa::Compiler
 
         //! create and implicitly define the label identifier
         Label createAndDefineLabel();
+
+        //! Pushes a new loop construct.
+        void pushLoop(Label breakLabel, Label continueLabel);
+
+        //! Removes a loop construct from the loop stack.
+        void popLoop();
 
         //! emits a label and marks a patch position if necessary
         void emit(Label label);
@@ -86,6 +94,9 @@ namespace LoLa::Compiler
         void emit(uint8_t val);
         void emit(uint16_t val);
         void emit(uint32_t val);
+
+        void emitBreak();
+        void emitContinue();
     };
 
     struct CodeReader

@@ -147,9 +147,16 @@ static int compile(int argc, char ** argv)
 
     Compiler::Compiler compiler;
 
-    auto compile_unit = compiler.compile(*program);
-    if(not compile_unit) {
-        fprintf(stderr, "Semantic error!\n");
+    std::shared_ptr<LoLa::Compiler::CompilationUnit> compile_unit;
+    try {
+        compile_unit = compiler.compile(*program);
+        if(not compile_unit) {
+            fprintf(stderr, "Semantic error!\n");
+            return 1;
+        }
+    }
+    catch(LoLa::Error err) {
+        fprintf(stderr, "Semantic error: %s!\n", LoLa::to_string(err));
         return 1;
     }
 

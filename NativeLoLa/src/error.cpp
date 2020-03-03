@@ -14,6 +14,9 @@ const char *LoLa::to_string(LoLa::Error err)
     case Error::InvalidTopLevelReturn: return "invalid top level return";
     case Error::ObjectDisposed:        return "object disposed";
     case Error::ReadOnlyVariable:      return "read only variable";
+    case Error::InvalidStore:          return "invalid store";
+    case Error::VariableNotFound:      return "variable not found";
+    case Error::NotInLoop:             return "break/continue outside of loop";
     }
     return "<unknown error>";
 }

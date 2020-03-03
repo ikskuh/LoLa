@@ -7,9 +7,8 @@
 
 ## Missing features
 - String literal escaping
-- Add `break` and `continue` to the language?
-- Add `+=` and stuff operators
 - Add `string` index operators?
+- Make loops and conditions take statements instead of blocks.
 
 ## More tasks
 - Tests for the ObjectPool struct

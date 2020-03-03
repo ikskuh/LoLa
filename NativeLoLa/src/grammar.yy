@@ -123,14 +123,16 @@ stmtlist    : /* empty */
             }
             ;
 
-statement   : decl          { $$ = move($1); }
-            | ass           { $$ = move($1); }
-            | for           { $$ = move($1); }
-            | while         { $$ = move($1); }
-            | conditional   { $$ = move($1); }
-            | expression    { $$ = move($1); }
-            | return        { $$ = move($1); }
-            | body          { $$ = move($1); }
+statement   : decl                { $$ = move($1); }
+            | ass                 { $$ = move($1); }
+            | for                 { $$ = move($1); }
+            | while               { $$ = move($1); }
+            | conditional         { $$ = move($1); }
+            | expression          { $$ = move($1); }
+            | return              { $$ = move($1); }
+            | body                { $$ = move($1); }
+            | BREAK TERMINATOR    { $$ = BreakStatement(); }
+            | CONTINUE TERMINATOR { $$ = ContinueStatement(); }
             ;
 
 decl        : VAR IDENT IS expr_0 TERMINATOR			{ $$ = Declaration(move($2), move($4)); }

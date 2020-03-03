@@ -1,24 +1,13 @@
-function BubbleSort(arr)
+var i = 0;
+var j = 0;
+while(true)
 {
-	var len = Length(arr);
-
-	var n = len;
-	while(n > 1) {
-
-		var i = 0;
-		while(i < n - 1) {
-      if (arr[i] > arr[i+1]) {
-        var tmp = arr[i];
-				arr[i] = arr[i+1];
-				arr[i+1] = tmp;
-      }
-
-			i += 1;
-    }
-		n -= 1;
-  }
-
-	return arr;
+	i += 1;
+	Print("i = ", i);
+	if(i > 5) {
+		break; // this will stop the while-loop
+	}
+	j += 1;
 }
 
-Print(BubbleSort([ 7, 8, 9, 3, 2, 1 ]));
+Print(i, j);

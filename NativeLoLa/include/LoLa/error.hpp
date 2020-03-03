@@ -17,6 +17,7 @@ namespace LoLa
         ReadOnlyVariable,
         InvalidStore,
         VariableNotFound,
+        NotInLoop,
     };
 
     char const * to_string(Error err);

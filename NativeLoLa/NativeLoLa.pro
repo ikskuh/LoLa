@@ -8,6 +8,8 @@ CONFIG += static
 INCLUDEPATH += $$PWD/include/LoLa
 DEPENDPATH  += $$PWD/include/LoLa
 
+debug:DEFINES += DEBUG
+
 YACCSOURCES += \
   src/grammar.yy
 
