@@ -41,6 +41,9 @@ int main(int argc, char ** argv)
     }
 }
 
+// Planned modules:
+// run [-no-stdlib] [-no-runtime] module/sourceFile
+
 char const usage_msg[] =
 R"usage(Usage: lola [command] [options]
 

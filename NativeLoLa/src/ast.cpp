@@ -18,6 +18,14 @@ static List<Expression> clone(List<Expression> const & list) {
     return result;
 }
 
+static bool isReservedName(std::string const & name)
+{
+    return (name == "true")
+        or (name == "false")
+        or (name == "void")
+        ;
+}
+
 LoLa::AST::StatementBase::~StatementBase()
 {
 
@@ -78,7 +86,7 @@ LValueExpression LoLa::AST::VariableRef(String var)
 
         void emitStore(CodeWriter & code, Scope & scope) override {
 
-            if((name == "true") or (name == "false") or (name == "void")) {
+            if(isReservedName(name)) {
                 throw Error::InvalidStore;
             }
             else if(auto local = scope.get(name); local)
@@ -516,6 +524,8 @@ Statement LoLa::AST::Declaration(String name)
         Foo(String name) :name(move(name)){ }
 
         void emit(CodeWriter &, Scope & scope) override {
+            if(isReservedName(name))
+                throw Error::InvalidVariable;
             scope.declare(name);
         }
     };
@@ -529,6 +539,8 @@ Statement LoLa::AST::ExternDeclaration(String name)
         Foo(String name) :name(move(name)){ }
 
         void emit(CodeWriter &, Scope & scope) override {
+            if(isReservedName(name))
+                throw Error::InvalidVariable;
             scope.declareExtern(name);
         }
     };
@@ -543,6 +555,9 @@ Statement LoLa::AST::Declaration(String name, Expression value)
         Foo(String name, Expression v) :name(move(name)), value(move(v)) { }
 
         void emit(CodeWriter & code, Scope & scope) override {
+            if(isReservedName(name))
+                throw Error::InvalidVariable;
+
             scope.declare(name);
             value->emit(code, scope);
 
