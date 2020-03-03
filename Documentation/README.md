@@ -98,8 +98,8 @@ var x;      // Uninitialized, global variable
 var y = 10; // Initialized global variable
 
 {
-	var z;     // Unitialized local variable
-	var w = 0; // Initialized local variable
+  var z;     // Unitialized local variable
+  var w = 0; // Initialized local variable
 }
 
 extern foo; // External variable
@@ -172,8 +172,8 @@ LoLa provides a small set of control flow structures that are simple to use and 
 
 ```lola
 { // Blocks are always introduced by a curly bracket
-	var x; // local to this block
-	// here is the block content
+  var x; // local to this block
+  // here is the block content
 } // and are closed by a curly bracket
 
 // x is not valid here anymore!
@@ -212,7 +212,7 @@ The conditional `if` statement provides a simple way to do things depending on a
 
 ```lola
 if(a > 5) {
-	// This code is executed only when a > 5.
+  // This code is executed only when a > 5.
 }
 ```
 
@@ -222,10 +222,10 @@ If the code should do an *either-or* semantic, you can add an else block:
 
 ```lola
 if(a > 5) {
-	// This code is executed only when a > 5.
+  // This code is executed only when a > 5.
 }
 else {
-	// This code is executed when a <= 5. 
+  // This code is executed when a <= 5. 
 }
 ```
 
@@ -235,12 +235,12 @@ The `else` part is optional.
 
 ```lola
 if(condition)
-	Statement(); // Function call, control flow or assignment
+  Statement(); // Function call, control flow or assignment
  
 if(condition)
-	Statement();
+  Statement();
 else
-	Statement();
+  Statement();
 ```
 
 
@@ -251,7 +251,7 @@ If a piece of code should repeat itself, a loop structure is helpful:
 
 ```lola
 while(a > 5) {
-	// this code repeats as long as a > 5.
+  // this code repeats as long as a > 5.
 }
 ```
 
@@ -263,7 +263,7 @@ Iterating over an array is such a common task that LoLa provides a built-in loop
 
 ```lola
 for(x in data) {
-	// For each loop iteration, x will contain a value from data
+  // For each loop iteration, x will contain a value from data
 }
 ```
 
@@ -316,11 +316,11 @@ var i = 0;
 var j = 0;
 while(true)
 {
-	i += 1;
-	Print("i = ", i);
-	if(i > 5)
-		break; // this will stop the while-loop
-	j += 1;
+  i += 1;
+  Print("i = ", i);
+  if(i > 5)
+    break; // this will stop the while-loop
+  j += 1;
 }
 Print(i, j); // Will print 6, 5
 ```
@@ -333,11 +333,11 @@ Print(i, j); // Will print 6, 5
 var a = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ];
 var skipped = 0;
 for(x in a) {
-	if(x < 3) {
-		skipped += 1;
-		continue;
-	}
-	Print(x);
+  if(x < 3) {
+    skipped += 1;
+    continue;
+  }
+  Print(x);
 }
 Print("Skipped ", skipped, " elements!");
 ```
@@ -348,17 +348,17 @@ Functions allows the user to declare custom sub-programs in the script:
 
 ```lola
 function AddFive(a) {
-	return a + 5;
+  return a + 5;
 }
 
 function Compare(a, b) {
-	if(a > b) {
-		return "larger";
-	}
-	else if(a < b) {
-  	return "smaller";
+  if(a > b) {
+    return "larger";
+  }
+  else if(a < b) {
+    return "smaller";
   } else {
-  	return "equal";
+    return "equal";
   }
 }
 ```
@@ -375,11 +375,24 @@ SayHelloTo("me");
 
 function SayHelloTo(name)
 {
-	Print("Hello, " + name + "!");
+  Print("Hello, " + name + "!");
 }
 ```
 
 As you can see, the order of declaration is not relevant in LoLa. Functions may be called from top-level before or after declaration.
+
+## Error Handling
+
+The LoLa language has not a very sophisticated error handling concept. If something goes wrong, the runtime will just panic and return execution to the host system with the position where the panic happened as well as some basic info about what failed.
+
+Possible panics are:
+
+- `OutOfMemory` (the host ran out of memory while executing the code)
+- `TypeMismatch` (an operation or function expected one type, but got another)
+- `IndexOutOfBounds` (an array was indexed outside the boundaries of the array)
+- `InvalidArgs` (a wrong number of arguments was passed to a function)
+
+A panic may be caused by the LoLa virtual machine or any library functions.
 
 ## List of Keywords
 
@@ -426,6 +439,10 @@ Examples for expressions are:
 
 LoLa does not allow lone statements except for function and method calls. These are special in a way that they may discard their value. The resulting value of all other expressions may not be discarded.
 
+### Block
+
+Any piece of code between `{` and `}`. The block con
+
 ## Examples
 
 The following section will contain small examples on how to use the language.
@@ -436,7 +453,7 @@ The following section will contain small examples on how to use the language.
 var a = [ 1, 2, 3 ];
 var sum = 0;
 for(v in a) {
-	sum += a;
+  sum += a;
 }
 Print("Sum = ", sum);
 ```
@@ -446,25 +463,25 @@ Print("Sum = ", sum);
 ```lola
 function BubbleSort(arr)
 {
-	var len = Length(arr);
+  var len = Length(arr);
 
-	var n = len;
-	while(n > 1) {
+  var n = len;
+  while(n > 1) {
 
-		var i = 0;
-		while(i < n - 1) {
+    var i = 0;
+    while(i < n - 1) {
       if (arr[i] > arr[i+1]) {
         var tmp = arr[i];
-				arr[i] = arr[i+1];
-				arr[i+1] = tmp;
+        arr[i] = arr[i+1];
+        arr[i+1] = tmp;
       }
 
-			i += 1;
+      i += 1;
     }
-		n -= 1;
+    n -= 1;
   }
 
-	return arr;
+  return arr;
 }
 
 Print(BubbleSort([ 7, 8, 9, 3, 2, 1 ]));
@@ -476,15 +493,15 @@ Print(BubbleSort([ 7, 8, 9, 3, 2, 1 ]));
 // Reverse an array
 function RevertArray(arr)
 {
-	var i = 0;
-	var l = Length(arr);
-	while(i < l/2) {
-		var tmp = arr[i];
-		arr[i] = arr[l - i - 1];
+  var i = 0;
+  var l = Length(arr);
+  while(i < l/2) {
+    var tmp = arr[i];
+    arr[i] = arr[l - i - 1];
     arr[l - i - 1] = tmp;
     i += 1;
-	}
-	return arr;
+  }
+  return arr;
 }
 ```
 
@@ -499,19 +516,19 @@ stack.Push(30);
 
 function Operation(op)
 {
-	if(op == "print") {
-		Print(stack.Pop());
-	}
-	if(op == "add") {
-		var lhs = stack.Pop();
-		var rhs = stack.Pop();
-		stack.Push(lhs + rhs);
-	}
-	if(op == "mul") {
-		var lhs = stack.Pop();
-		var rhs = stack.Pop();
-		stack.Push(lhs * rhs);
-	}
+  if(op == "print") {
+    Print(stack.Pop());
+  }
+  if(op == "add") {
+    var lhs = stack.Pop();
+    var rhs = stack.Pop();
+    stack.Push(lhs + rhs);
+  }
+  if(op == "mul") {
+    var lhs = stack.Pop();
+    var rhs = stack.Pop();
+    stack.Push(lhs * rhs);
+  }
 }
 
 Operation("mul");

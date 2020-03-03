@@ -329,11 +329,17 @@ pub fn main() anyerror!void {
         }
     }
 
+    var timer = try std.time.Timer.start();
+
     while (true) {
-        var result = vm.execute(1000) catch |err| {
+        const instructionLimit = 100000.0;
+
+        var result = vm.execute(instructionLimit) catch |err| {
             std.debug.warn("Failed to execute code: {}\n", .{err});
             return err;
         };
+
+        const lap = timer.lap();
 
         const previous = env.objectPool.objects.size;
 
@@ -346,7 +352,12 @@ pub fn main() anyerror!void {
 
         const now = env.objectPool.objects.size;
 
-        std.debug.warn("result: {}\tcollected {} objects\n", .{ result, previous - now });
+        std.debug.warn("result: {}\tcollected {} objects\ttook {d:0<10.3} µs time → {d:0<10.3} µs/instr\n", .{
+            result,
+            previous - now,
+            @intToFloat(f64, lap) / 1000.0,
+            @intToFloat(f64, lap) / (1000.0 * instructionLimit),
+        });
         if (result == .completed)
             break;
     }

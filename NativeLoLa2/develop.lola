@@ -1,14 +1,36 @@
 
 
-function Compare(a, b) {
-	if(a > b) {
-		return "larger";
-	}
-	else if(a < b) {
-  	return "smaller";
-  } else {
-  	return "equal";
-  }
+
+while(true) {
+	Benchmark();
 }
 
-Print(Compare(3, 2));
+function BubbleSort(arr)
+{
+	var len = Length(arr);
+
+	var n = len;
+	while(n > 1) {
+
+		var i = 0;
+		while(i < n - 1) {
+      if (arr[i] > arr[i+1]) {
+        var tmp = arr[i];
+				arr[i] = arr[i+1];
+				arr[i+1] = tmp;
+      }
+
+			i += 1;
+    }
+		n -= 1;
+  }
+
+	return arr;
+}
+
+function Benchmark()
+{
+	var sorted = BubbleSort([ 7, 8, 9, 3, 2, 1 ]);
+	if(sorted != [ 1, 2, 3, 7, 8, 9 ])
+		Print("Benchmark failed!");
+}
