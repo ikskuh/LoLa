@@ -94,3 +94,13 @@ function StoreGlobal(x)
 }
 
 StoreGlobal(10);
+
+// Exercise parser:
+_ = "";
+_ = "x";
+_ = "\n";
+_ = "\r";
+_ = "\t";
+_ = "\n";
+_ = "\n";
+_ = "\n";

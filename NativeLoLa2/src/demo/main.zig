@@ -87,6 +87,24 @@ pub fn main() anyerror!void {
         },
     });
 
+    try env.functions.putNoClobber("Length", lola.Function{
+        .syncUser = lola.UserFunction{
+            .context = undefined,
+            .destructor = null,
+            .call = struct {
+                fn call(context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+                    if (args.len != 1)
+                        return error.InvalidArgs;
+                    return switch (args[0]) {
+                        .string => |str| lola.Value.initNumber(@intToFloat(f64, str.contents.len)),
+                        .array => |arr| lola.Value.initNumber(@intToFloat(f64, arr.contents.len)),
+                        else => error.TypeMismatch,
+                    };
+                }
+            }.call,
+        },
+    });
+
     try env.functions.putNoClobber("Sleep", lola.Function{
         .asyncUser = lola.AsyncUserFunction{
             .context = undefined,

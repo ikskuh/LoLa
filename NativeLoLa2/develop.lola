@@ -1,53 +1,28 @@
-extern objGlobal1;
-extern objGlobal2;
 
-// TODO: 28.02.20
-// Object Interface Rework
 
-// Goal:
-var cnt = 0;
-while(cnt < 100)
+
+
+function BubbleSort(arr)
 {
-  var stack = CreateStack();
+	var len = Length(arr);
 
-  var x = 0;
-  while(x < 10) {
-    stack.Push(x);
-    x = x + 1;
+	var n = len;
+	while(n > 1) {
+
+		var i = 0;
+		while(i < n - 1) {
+      if (arr[i] > arr[i+1]) {
+        var tmp = arr[i];
+				arr[i] = arr[i+1];
+				arr[i+1] = tmp;
+      }
+
+			i = i + 1;
+    }
+		n = n - 1;
   }
 
-  cnt = cnt + 1;
+	return arr;
 }
 
-// How do i prevent those from beeing collected?!
-Print("objGlobal1.call() = ", objGlobal1.call("hey"));
-Print("objGlobal2.call() = ", objGlobal2.call("hey"));
-
-var stack = CreateStack();
-
-stack.Push(10);
-stack.Push(20);
-stack.Push(30);
-
-function Operation(op)
-{
-	if(op == "print") {
-		Print(stack.Pop());
-	}
-	if(op == "add") {
-		var lhs = stack.Pop();
-		var rhs = stack.Pop();
-		stack.Push(lhs + rhs);
-	}
-	if(op == "mul") {
-		var lhs = stack.Pop();
-		var rhs = stack.Pop();
-		stack.Push(lhs * rhs);
-	}
-}
-
-Operation("mul");
-Operation("add");
-Operation("print");
-
-Print("Stack Length: ", stack.GetSize());
+Print(BubbleSort([ 7, 8, 9, 3, 2, 1 ]));

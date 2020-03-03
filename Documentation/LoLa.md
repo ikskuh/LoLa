@@ -1,4 +1,4 @@
-# The LoLa Programming Language
+# LoLa – Quick Reference
 
 ## Example
 
