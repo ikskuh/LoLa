@@ -2,7 +2,7 @@
 
 ## Introduction
 
-LoLa is a small programming language developed to be embedded in games. It's not meant as a scripting language to create games with but as language to be programmed *in the game* by the player.
+LoLa is a small programming language developed to be embedded in games. It's not meant as a scripting language to create games with but as language to be **programmed in the game by the player**.
 
 The design goals of the language are:
 

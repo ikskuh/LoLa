@@ -9,6 +9,14 @@ pub fn build(b: *Builder) void {
     };
 
     const mode = b.standardReleaseOptions();
+    const target = b.standardTargetOptions(.{
+        .default_target = std.zig.CrossTarget{
+            .glibc_version = .{
+                .major = 2,
+                .minor = 30,
+            },
+        },
+    });
 
     const precompileGrammar = b.addSystemCommand(&[_][]const u8{
         "bison",
@@ -30,13 +38,7 @@ pub fn build(b: *Builder) void {
     precompileLexer.cwd = "src/compiler/";
     precompileLexer.step.dependOn(&precompileGrammar.step);
 
-    // clang++ -std=c++17 -c -fno-use-cxa-atexit -o hello.o hello.cpp
-    // zig build-exe -target x86_64-linux-gnu --bundle-compiler-rt --object hello.o --name hello -L /usr/lib -lc -lstdc++
-    const buildCppPart = b.addSystemCommand(&[_][]const u8{
-        "clang++",
-        "-c",
-        "-std=c++17",
-        "-fno-use-cxa-atexit",
+    const cppSources = [_][]const u8{
         "src/compiler/ast.cpp",
         "src/compiler/compiler.cpp",
         "src/compiler/error.cpp",
@@ -45,12 +47,33 @@ pub fn build(b: *Builder) void {
         "src/compiler/yy_lex.cpp",
         "src/compiler/common.cpp",
         "src/compiler/driver.cpp",
-    });
-    buildCppPart.step.dependOn(&precompileLexer.step);
-    buildCppPart.step.dependOn(&precompileGrammar.step);
+        "src/compiler/runtime.cpp",
+        "src/compiler/grammar.tab.cpp",
+    };
 
-    const exe = b.addExecutable("lola", "src/demo/main.zig");
+    // clang++ -std=c++17 -c -fno-use-cxa-atexit -o hello.o hello.cpp
+    // zig build-exe -target x86_64-linux-gnu --bundle-compiler-rt --object hello.o --name hello -L /usr/lib -lc -lstdc++
+    // const buildCppPart = b.addSystemCommand(&[_][]const u8{
+    //     "clang++",
+    //     "-c",
+    //     "-std=c++17",
+    //     "-fno-use-cxa-atexit",
+    //     "src/compiler/ast.cpp",
+    //     "src/compiler/compiler.cpp",
+    //     "src/compiler/error.cpp",
+    //     "src/compiler/il.cpp",
+    //     "src/compiler/tombstone.cpp",
+    //     "src/compiler/yy_lex.cpp",
+    //     "src/compiler/common.cpp",
+    //     "src/compiler/driver.cpp",
+    // });
+    // buildCppPart.step.dependOn(&precompileLexer.step);
+    // buildCppPart.step.dependOn(&precompileGrammar.step);
+
+    // const exe = b.addExecutable("lola", "src/demo/main.zig");
+    const exe = b.addExecutable("lola", null);
     exe.setBuildMode(mode);
+    exe.setTarget(target);
     exe.addPackage(interfacePkg);
     exe.addPackage(std.build.Pkg{
         .name = "lola",
@@ -59,8 +82,29 @@ pub fn build(b: *Builder) void {
             interfacePkg,
         },
     });
-    exe.step.dependOn(&buildCppPart.step);
-    // exe.addObjectFile("compiler.o");
+
+    exe.addCSourceFile("src/frontend/main.cpp", &[_][]const u8{
+        "-std=c++17",
+        "-fno-use-cxa-atexit",
+    });
+
+    for (cppSources) |cppSource| {
+        exe.addCSourceFile(cppSource, &[_][]const u8{
+            "-std=c++17",
+            "-fno-use-cxa-atexit",
+            "-Wall",
+            "-Wextra",
+        });
+    }
+
+    // exe.step.dependOn(&buildCppPart.step);
+    exe.step.dependOn(&precompileLexer.step);
+    exe.step.dependOn(&precompileGrammar.step);
+    exe.addIncludeDir("/usr/include/c++/v1");
+    exe.addIncludeDir("/usr/include");
+    exe.addLibPath("/usr/lib/");
+    exe.linkSystemLibrary("c");
+    exe.linkSystemLibrary("c++");
     exe.install();
 
     var main_tests = b.addTest("src/runtime/main.zig");

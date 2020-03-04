@@ -17,7 +17,7 @@ class LoLaDriver
 public:
    LoLaDriver() = default;
 
-   virtual ~LoLaDriver();
+   virtual ~LoLaDriver(){};
 
    /**
     * parse - parse from a file

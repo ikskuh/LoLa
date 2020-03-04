@@ -5,62 +5,58 @@
 #include <sstream>
 
 using namespace LoLa::AST;
-using std::move;
 using LoLa::Compiler::CodeWriter;
 using LoLa::Compiler::Scope;
 using LoLa::IL::Instruction;
+using std::move;
 
-static List<Expression> clone(List<Expression> const & list) {
+static List<Expression> clone(List<Expression> const &list)
+{
     List<Expression> result(list.size());
-    for(size_t i = 0; i < result.size(); i++) {
+    for (size_t i = 0; i < result.size(); i++)
+    {
         result[i] = list[i]->clone();
     }
     return result;
 }
 
-static bool isReservedName(std::string const & name)
+static bool isReservedName(std::string const &name)
 {
-    return (name == "true")
-        or (name == "false")
-        or (name == "void")
-        ;
+    return (name == "true") or (name == "false") or (name == "void");
 }
 
 LoLa::AST::StatementBase::~StatementBase()
 {
-
 }
 
 ExpressionBase::~ExpressionBase()
 {
-
-}
-
-LValueExpressionBase::~LValueExpressionBase()
-{
-
 }
 
 LValueExpression LoLa::AST::VariableRef(String var)
 {
-    struct Foo : LValueExpressionBase {
+    struct Foo : LValueExpressionBase
+    {
         std::string name;
-        Foo(std::string str) : name(str) { }
+        Foo(std::string str) : name(str) {}
 
-        void emit(CodeWriter & code, Scope & scope) override
+        void emit(CodeWriter &code, Scope &scope) override
         {
-            if(name == "true") {
+            if (name == "true")
+            {
                 code.emit(Instruction::push_true);
             }
-            else if(name == "false") {
+            else if (name == "false")
+            {
                 code.emit(Instruction::push_false);
             }
-            else if(name == "void") {
+            else if (name == "void")
+            {
                 code.emit(Instruction::push_void);
             }
-            else if(auto local = scope.get(name); local)
+            else if (auto local = scope.get(name); local)
             {
-                switch(local->second)
+                switch (local->second)
                 {
                 case Scope::Extern:
                     code.emit(Instruction::load_global_name);
@@ -84,14 +80,17 @@ LValueExpression LoLa::AST::VariableRef(String var)
             }
         }
 
-        void emitStore(CodeWriter & code, Scope & scope) override {
+        void emitStore(CodeWriter &code, Scope &scope) override
+        {
 
-            if(isReservedName(name)) {
+            if (isReservedName(name))
+            {
                 throw Error::InvalidStore;
             }
-            else if(auto local = scope.get(name); local)
+            else if (auto local = scope.get(name); local)
             {
-                switch(local->second) {
+                switch (local->second)
+                {
                 case Scope::Extern:
                     code.emit(Instruction::store_global_name);
                     code.emit(name);
@@ -112,7 +111,8 @@ LValueExpression LoLa::AST::VariableRef(String var)
             }
         }
 
-        std::unique_ptr<ExpressionBase> clone() const override {
+        std::unique_ptr<ExpressionBase> clone() const override
+        {
             return std::make_unique<Foo>(*this);
         }
     };
@@ -121,16 +121,19 @@ LValueExpression LoLa::AST::VariableRef(String var)
 
 Expression LoLa::AST::NumberLiteral(String literal)
 {
-    struct Foo : ExpressionBase {
+    struct Foo : ExpressionBase
+    {
         double value;
-        Foo(double v) : value(v) { }
+        Foo(double v) : value(v) {}
 
-        void emit(CodeWriter & code, Scope &) override {
+        void emit(CodeWriter &code, Scope &) override
+        {
             code.emit(Instruction::push_num);
             code.emit(value);
         }
 
-        std::unique_ptr<ExpressionBase> clone() const override {
+        std::unique_ptr<ExpressionBase> clone() const override
+        {
             return std::make_unique<Foo>(*this);
         }
     };
@@ -139,16 +142,19 @@ Expression LoLa::AST::NumberLiteral(String literal)
 
 Expression LoLa::AST::StringLiteral(String literal)
 {
-    struct Foo : ExpressionBase {
+    struct Foo : ExpressionBase
+    {
         std::string text;
-        Foo(std::string str) : text(str) { }
+        Foo(std::string str) : text(str) {}
 
-        void emit(CodeWriter & code, Scope &) override {
+        void emit(CodeWriter &code, Scope &) override
+        {
             code.emit(Instruction::push_str);
             code.emit(text);
         }
 
-        std::unique_ptr<ExpressionBase> clone() const override {
+        std::unique_ptr<ExpressionBase> clone() const override
+        {
             return std::make_unique<Foo>(*this);
         }
     };
@@ -158,23 +164,24 @@ Expression LoLa::AST::StringLiteral(String literal)
 
 LValueExpression LoLa::AST::ArrayIndexer(Expression value, Expression index)
 {
-    struct Foo : LValueExpressionBase {
+    struct Foo : LValueExpressionBase
+    {
         Expression value, index;
-        Foo(Expression l, Expression r) : value(move(l)), index(move(r)) { }
+        Foo(Expression l, Expression r) : value(move(l)), index(move(r)) {}
 
-        void emit(CodeWriter & code, Scope & scope) override
+        void emit(CodeWriter &code, Scope &scope) override
         {
             index->emit(code, scope);
             value->emit(code, scope);
             code.emit(Instruction::array_load);
         }
 
-        void emitStore(CodeWriter & code, Scope & scope) override
+        void emitStore(CodeWriter &code, Scope &scope) override
         {
-            if(auto * lvalue = dynamic_cast<LValueExpressionBase*>(value.get()); lvalue != nullptr)
+            if (auto *lvalue = dynamic_cast<LValueExpressionBase *>(value.get()); lvalue != nullptr)
             {
                 // read-modify-write the lvalue expression
-                index->emit(code, scope); // load the index on the stack
+                index->emit(code, scope);  // load the index on the stack
                 lvalue->emit(code, scope); // load the array on the stack
                 code.emit(Instruction::array_store);
                 lvalue->emitStore(code, scope); // now store back the value on the stack
@@ -185,7 +192,8 @@ LValueExpression LoLa::AST::ArrayIndexer(Expression value, Expression index)
             }
         }
 
-        std::unique_ptr<ExpressionBase> clone() const override {
+        std::unique_ptr<ExpressionBase> clone() const override
+        {
             return std::make_unique<Foo>(value->clone(), index->clone());
         }
     };
@@ -194,21 +202,24 @@ LValueExpression LoLa::AST::ArrayIndexer(Expression value, Expression index)
 
 Expression LoLa::AST::ArrayLiteral(List<Expression> initializer)
 {
-    struct Foo : ExpressionBase {
+    struct Foo : ExpressionBase
+    {
         List<Expression> values;
-        Foo(List<Expression> v) : values(move(v)) { }
+        Foo(List<Expression> v) : values(move(v)) {}
 
-        void emit(CodeWriter & code, Scope & scope) override {
+        void emit(CodeWriter &code, Scope &scope) override
+        {
             assert(values.size() < 65536);
 
-            for(auto it = values.rbegin(); it != values.rend(); it++)
+            for (auto it = values.rbegin(); it != values.rend(); it++)
                 (*it)->emit(code, scope);
 
             code.emit(Instruction::array_pack);
             code.emit(uint16_t(values.size()));
         }
 
-        std::unique_ptr<ExpressionBase> clone() const override {
+        std::unique_ptr<ExpressionBase> clone() const override
+        {
             return std::make_unique<Foo>(::clone(values));
         }
     };
@@ -217,16 +228,18 @@ Expression LoLa::AST::ArrayLiteral(List<Expression> initializer)
 
 Expression LoLa::AST::FunctionCall(String name, List<Expression> args)
 {
-    struct Foo : ExpressionBase {
+    struct Foo : ExpressionBase
+    {
         String function;
         List<Expression> args;
-        Foo(String f, List<Expression> a) : function(f), args(move(a)) { }
+        Foo(String f, List<Expression> a) : function(f), args(move(a)) {}
 
-        void emit(CodeWriter & code, Scope & scope) override {
+        void emit(CodeWriter &code, Scope &scope) override
+        {
 
             assert(args.size() < 256);
 
-            for(auto it = args.rbegin(); it != args.rend(); it++)
+            for (auto it = args.rbegin(); it != args.rend(); it++)
                 (*it)->emit(code, scope);
 
             code.emit(Instruction::call_fn);
@@ -234,7 +247,8 @@ Expression LoLa::AST::FunctionCall(String name, List<Expression> args)
             code.emit(uint8_t(args.size()));
         }
 
-        std::unique_ptr<ExpressionBase> clone() const override {
+        std::unique_ptr<ExpressionBase> clone() const override
+        {
             return std::make_unique<Foo>(function, ::clone(args));
         }
     };
@@ -243,17 +257,19 @@ Expression LoLa::AST::FunctionCall(String name, List<Expression> args)
 
 Expression LoLa::AST::MethodCall(Expression object, String name, List<Expression> args)
 {
-    struct Foo : ExpressionBase {
+    struct Foo : ExpressionBase
+    {
         Expression object;
         String function;
         List<Expression> args;
-        Foo(Expression object, String f, List<Expression> a) : object(move(object)), function(f), args(move(a)) { }
+        Foo(Expression object, String f, List<Expression> a) : object(move(object)), function(f), args(move(a)) {}
 
-        void emit(CodeWriter & code, Scope & scope) override {
+        void emit(CodeWriter &code, Scope &scope) override
+        {
 
             assert(args.size() < 256);
 
-            for(auto it = args.rbegin(); it != args.rend(); it++)
+            for (auto it = args.rbegin(); it != args.rend(); it++)
                 (*it)->emit(code, scope);
 
             object->emit(code, scope);
@@ -263,7 +279,8 @@ Expression LoLa::AST::MethodCall(Expression object, String name, List<Expression
             code.emit(uint8_t(args.size()));
         }
 
-        std::unique_ptr<ExpressionBase> clone() const override {
+        std::unique_ptr<ExpressionBase> clone() const override
+        {
             return std::make_unique<Foo>(this->object->clone(), this->function, ::clone(this->args));
         }
     };
@@ -272,14 +289,17 @@ Expression LoLa::AST::MethodCall(Expression object, String name, List<Expression
 
 Expression LoLa::AST::UnaryOperator(Operator op, Expression value)
 {
-    struct Foo : ExpressionBase {
+    struct Foo : ExpressionBase
+    {
         Operator op;
         Expression value;
-        Foo(Operator o, Expression v) : op(o), value(move(v)) { }
+        Foo(Operator o, Expression v) : op(o), value(move(v)) {}
 
-        void emit(CodeWriter & code, Scope & scope) override {
+        void emit(CodeWriter &code, Scope &scope) override
+        {
             value->emit(code, scope);
-            switch(op) {
+            switch (op)
+            {
             case Operator::Minus:
                 code.emit(Instruction::negate);
                 break;
@@ -291,7 +311,8 @@ Expression LoLa::AST::UnaryOperator(Operator op, Expression value)
             }
         }
 
-        std::unique_ptr<ExpressionBase> clone() const override {
+        std::unique_ptr<ExpressionBase> clone() const override
+        {
             return std::make_unique<Foo>(this->op, this->value->clone());
         }
     };
@@ -299,34 +320,64 @@ Expression LoLa::AST::UnaryOperator(Operator op, Expression value)
 }
 Expression LoLa::AST::BinaryOperator(Operator op, Expression lhs, Expression rhs)
 {
-    struct Foo : ExpressionBase {
+    struct Foo : ExpressionBase
+    {
         Expression lhs, rhs;
         Operator op;
-        Foo(Operator o, Expression l, Expression r) : lhs(move(l)), rhs(move(r)), op(o) { }
+        Foo(Operator o, Expression l, Expression r) : lhs(move(l)), rhs(move(r)), op(o) {}
 
-        void emit(CodeWriter & code, Scope & scope) override {
+        void emit(CodeWriter &code, Scope &scope) override
+        {
             lhs->emit(code, scope);
             rhs->emit(code, scope);
-            switch(op) {
-            case Operator::Plus:  code.emit(Instruction::add); break;
-            case Operator::Minus: code.emit(Instruction::sub); break;
-            case Operator::Multiply: code.emit(Instruction::mul); break;
-            case Operator::Divide: code.emit(Instruction::div); break;
-            case Operator::Modulus: code.emit(Instruction::mod); break;
-            case Operator::Less: code.emit(Instruction::less); break;
-            case Operator::LessOrEqual: code.emit(Instruction::less_eq); break;
-            case Operator::More: code.emit(Instruction::greater); break;
-            case Operator::MoreOrEqual: code.emit(Instruction::greater_eq); break;
-            case Operator::Equals: code.emit(Instruction::eq); break;
-            case Operator::Differs:   code.emit(Instruction::neq); break;
-            case Operator::And:   code.emit(Instruction::bool_and); break;
-            case Operator::Or:   code.emit(Instruction::bool_or); break;
+            switch (op)
+            {
+            case Operator::Plus:
+                code.emit(Instruction::add);
+                break;
+            case Operator::Minus:
+                code.emit(Instruction::sub);
+                break;
+            case Operator::Multiply:
+                code.emit(Instruction::mul);
+                break;
+            case Operator::Divide:
+                code.emit(Instruction::div);
+                break;
+            case Operator::Modulus:
+                code.emit(Instruction::mod);
+                break;
+            case Operator::Less:
+                code.emit(Instruction::less);
+                break;
+            case Operator::LessOrEqual:
+                code.emit(Instruction::less_eq);
+                break;
+            case Operator::More:
+                code.emit(Instruction::greater);
+                break;
+            case Operator::MoreOrEqual:
+                code.emit(Instruction::greater_eq);
+                break;
+            case Operator::Equals:
+                code.emit(Instruction::eq);
+                break;
+            case Operator::Differs:
+                code.emit(Instruction::neq);
+                break;
+            case Operator::And:
+                code.emit(Instruction::bool_and);
+                break;
+            case Operator::Or:
+                code.emit(Instruction::bool_or);
+                break;
             default:
                 throw "invalid operator!";
             }
         }
 
-        std::unique_ptr<ExpressionBase> clone() const override {
+        std::unique_ptr<ExpressionBase> clone() const override
+        {
             return std::make_unique<Foo>(this->op, this->lhs->clone(), this->rhs->clone());
         }
     };
@@ -335,12 +386,14 @@ Expression LoLa::AST::BinaryOperator(Operator op, Expression lhs, Expression rhs
 
 Statement LoLa::AST::Assignment(LValueExpression target, Expression value)
 {
-    struct Foo : StatementBase {
+    struct Foo : StatementBase
+    {
         LValueExpression lhs;
         Expression rhs;
-        Foo(LValueExpression l, Expression r) : lhs(move(l)), rhs(move(r)) { }
+        Foo(LValueExpression l, Expression r) : lhs(move(l)), rhs(move(r)) {}
 
-        void emit(CodeWriter & code, Scope & scope) override {
+        void emit(CodeWriter &code, Scope &scope) override
+        {
             rhs->emit(code, scope);
             lhs->emitStore(code, scope);
         }
@@ -350,8 +403,10 @@ Statement LoLa::AST::Assignment(LValueExpression target, Expression value)
 
 Statement LoLa::AST::Return()
 {
-    struct Foo : StatementBase {
-        void emit(CodeWriter & code, Scope &) override {
+    struct Foo : StatementBase
+    {
+        void emit(CodeWriter &code, Scope &) override
+        {
             code.emit(Instruction::ret);
         }
     };
@@ -359,11 +414,13 @@ Statement LoLa::AST::Return()
 }
 Statement LoLa::AST::Return(Expression value)
 {
-    struct Foo : StatementBase {
+    struct Foo : StatementBase
+    {
         Expression value;
-        Foo(Expression v) :value(move(v)) { }
+        Foo(Expression v) : value(move(v)) {}
 
-        void emit(CodeWriter & code, Scope & scope) override {
+        void emit(CodeWriter &code, Scope &scope) override
+        {
             value->emit(code, scope);
             code.emit(Instruction::retval);
         }
@@ -372,12 +429,14 @@ Statement LoLa::AST::Return(Expression value)
 }
 Statement LoLa::AST::WhileLoop(Expression condition, Statement body)
 {
-    struct Foo : StatementBase {
+    struct Foo : StatementBase
+    {
         Expression cond;
         Statement body;
-        Foo(Expression cond, Statement body) : cond(move(cond)), body(move(body)) { }
+        Foo(Expression cond, Statement body) : cond(move(cond)), body(move(body)) {}
 
-        void emit(CodeWriter & code, Scope & scope) override {
+        void emit(CodeWriter &code, Scope &scope) override
+        {
             auto const loop_start = code.createAndDefineLabel();
             auto const loop_end = code.createLabel();
 
@@ -401,13 +460,15 @@ Statement LoLa::AST::WhileLoop(Expression condition, Statement body)
 }
 Statement LoLa::AST::ForLoop(String var, Expression source, Statement body)
 {
-    struct Foo : StatementBase {
+    struct Foo : StatementBase
+    {
         String var;
         Expression list;
         Statement body;
-        Foo(String var, Expression list, Statement body) : var(var), list(move(list)), body(move(body)) { }
+        Foo(String var, Expression list, Statement body) : var(var), list(move(list)), body(move(body)) {}
 
-        void emit(CodeWriter & code, Scope & scope) override {
+        void emit(CodeWriter &code, Scope &scope) override
+        {
             scope.enter();
 
             list->emit(code, scope);
@@ -428,7 +489,7 @@ Statement LoLa::AST::ForLoop(String var, Expression source, Statement body)
             code.emit(Instruction::jif);
             code.emit(loop_end);
 
-            if(loopvar->second == Scope::Global)
+            if (loopvar->second == Scope::Global)
                 code.emit(Instruction::store_global_idx);
             else
                 code.emit(Instruction::store_local);
@@ -453,12 +514,14 @@ Statement LoLa::AST::ForLoop(String var, Expression source, Statement body)
 }
 Statement LoLa::AST::IfElse(Expression condition, Statement true_body)
 {
-    struct Foo : StatementBase {
+    struct Foo : StatementBase
+    {
         Expression cond;
         Statement body;
-        Foo(Expression cond, Statement body) : cond(move(cond)), body(move(body)) { }
+        Foo(Expression cond, Statement body) : cond(move(cond)), body(move(body)) {}
 
-        void emit(CodeWriter & code, Scope & scope) override {
+        void emit(CodeWriter &code, Scope &scope) override
+        {
             cond->emit(code, scope);
 
             auto lbl = code.createLabel();
@@ -475,13 +538,15 @@ Statement LoLa::AST::IfElse(Expression condition, Statement true_body)
 
 Statement LoLa::AST::IfElse(Expression condition, Statement true_body, Statement false_body)
 {
-    struct Foo : StatementBase {
+    struct Foo : StatementBase
+    {
         Expression cond;
         Statement true_body;
         Statement false_body;
-        Foo(Expression cond, Statement tbody, Statement fbody) : cond(move(cond)), true_body(move(tbody)), false_body(move(fbody)) { }
+        Foo(Expression cond, Statement tbody, Statement fbody) : cond(move(cond)), true_body(move(tbody)), false_body(move(fbody)) {}
 
-        void emit(CodeWriter & code, Scope & scope) override {
+        void emit(CodeWriter &code, Scope &scope) override
+        {
             cond->emit(code, scope);
 
             auto lbl_false = code.createLabel();
@@ -505,11 +570,13 @@ Statement LoLa::AST::IfElse(Expression condition, Statement true_body, Statement
 
 Statement LoLa::AST::DiscardResult(Expression value)
 {
-    struct Foo : StatementBase {
+    struct Foo : StatementBase
+    {
         Expression value;
-        Foo(Expression v) :value(move(v)) { }
+        Foo(Expression v) : value(move(v)) {}
 
-        void emit(CodeWriter & code, Scope & scope) override {
+        void emit(CodeWriter &code, Scope &scope) override
+        {
             value->emit(code, scope);
             code.emit(Instruction::pop);
         }
@@ -519,12 +586,14 @@ Statement LoLa::AST::DiscardResult(Expression value)
 
 Statement LoLa::AST::Declaration(String name)
 {
-    struct Foo : StatementBase {
+    struct Foo : StatementBase
+    {
         String name;
-        Foo(String name) :name(move(name)){ }
+        Foo(String name) : name(move(name)) {}
 
-        void emit(CodeWriter &, Scope & scope) override {
-            if(isReservedName(name))
+        void emit(CodeWriter &, Scope &scope) override
+        {
+            if (isReservedName(name))
                 throw Error::InvalidVariable;
             scope.declare(name);
         }
@@ -534,12 +603,14 @@ Statement LoLa::AST::Declaration(String name)
 
 Statement LoLa::AST::ExternDeclaration(String name)
 {
-    struct Foo : StatementBase {
+    struct Foo : StatementBase
+    {
         String name;
-        Foo(String name) :name(move(name)){ }
+        Foo(String name) : name(move(name)) {}
 
-        void emit(CodeWriter &, Scope & scope) override {
-            if(isReservedName(name))
+        void emit(CodeWriter &, Scope &scope) override
+        {
+            if (isReservedName(name))
                 throw Error::InvalidVariable;
             scope.declareExtern(name);
         }
@@ -549,13 +620,15 @@ Statement LoLa::AST::ExternDeclaration(String name)
 
 Statement LoLa::AST::Declaration(String name, Expression value)
 {
-    struct Foo : StatementBase {
+    struct Foo : StatementBase
+    {
         String name;
         Expression value;
-        Foo(String name, Expression v) :name(move(name)), value(move(v)) { }
+        Foo(String name, Expression v) : name(move(name)), value(move(v)) {}
 
-        void emit(CodeWriter & code, Scope & scope) override {
-            if(isReservedName(name))
+        void emit(CodeWriter &code, Scope &scope) override
+        {
+            if (isReservedName(name))
                 throw Error::InvalidVariable;
 
             scope.declare(name);
@@ -564,7 +637,7 @@ Statement LoLa::AST::Declaration(String name, Expression value)
             auto const pos = scope.get(name);
             assert(pos != std::nullopt);
 
-            if(pos->second == Scope::Global)
+            if (pos->second == Scope::Global)
                 code.emit(Instruction::store_global_idx);
             else
                 code.emit(Instruction::store_local);
@@ -576,16 +649,17 @@ Statement LoLa::AST::Declaration(String name, Expression value)
 
 Statement LoLa::AST::SubScope(List<Statement> body)
 {
-    struct Foo : StatementBase {
+    struct Foo : StatementBase
+    {
         List<Statement> content;
-        Foo(List<Statement> v) : content(move(v)) { }
+        Foo(List<Statement> v) : content(move(v)) {}
 
-        void emit(CodeWriter & code, Scope & scope) override {
+        void emit(CodeWriter &code, Scope &scope) override
+        {
             scope.enter();
-            for(auto const & stmt : content)
+            for (auto const &stmt : content)
                 stmt->emit(code, scope);
             scope.leave();
-
         }
     };
     return std::make_unique<Foo>(move(body));
@@ -593,8 +667,10 @@ Statement LoLa::AST::SubScope(List<Statement> body)
 
 Statement LoLa::AST::BreakStatement()
 {
-    struct Foo : StatementBase {
-        void emit(CodeWriter & code, Scope & scope) override {
+    struct Foo : StatementBase
+    {
+        void emit(CodeWriter &code, Scope &scope) override
+        {
             code.emitBreak();
         }
     };
@@ -603,8 +679,10 @@ Statement LoLa::AST::BreakStatement()
 
 Statement LoLa::AST::ContinueStatement()
 {
-    struct Foo : StatementBase {
-        void emit(CodeWriter & code, Scope & scope) override {
+    struct Foo : StatementBase
+    {
+        void emit(CodeWriter &code, Scope &) override
+        {
             code.emitContinue();
         }
     };
@@ -621,7 +699,7 @@ std::optional<LoLa::AST::Program> LoLa::AST::parse(std::string_view src)
 std::optional<LoLa::AST::Program> LoLa::AST::parse(std::istream &src)
 {
     LoLa::LoLaDriver driver;
-    if(driver.parse(src))
+    if (driver.parse(src))
         return std::move(driver.program);
     else
         return std::nullopt;
