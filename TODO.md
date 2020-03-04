@@ -6,7 +6,6 @@
 - Add better error message handling and error messages.
 
 ## Missing features
-- String literal escaping
 - Add `string` index operators?
 
 ## More tasks

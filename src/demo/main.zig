@@ -26,42 +26,15 @@ pub fn main() !u8 {
     defer argsAllocator.free(module);
 
     if (std.mem.eql(u8, module, "compile")) {
-        const options = try argsParser.parse(struct {
-            output: ?[]const u8 = null,
-        }, &args, argsAllocator);
+        const options = try argsParser.parse(CompileCLI, &args, argsAllocator);
         defer options.deinit();
 
-        std.debug.warn("parsed result:\noptions: {}\npositionals:\n", .{options.options});
-        for (options.args) |arg| {
-            std.debug.warn("\t{}\n", .{arg});
-        }
-
-        // call compiler here
-        return 1;
-    } else if (std.mem.eql(u8, module, "disasm")) {
-        const options = try argsParser.parse(struct {
-            output: ?[]const u8 = null,
-            @"with-offset": bool = false,
-            @"with-hexdump": bool = false,
-            @"intermix-source": bool = false,
-            numberOfBytes: ?i32 = null,
-
-            pub const shorthands = .{
-                .S = "intermix-source",
-                .b = "with-hexdump",
-                .O = "with-offset",
-                .o = "output",
-            };
-        }, &args, argsAllocator);
+        return try compile(options.options, options.args);
+    } else if (std.mem.eql(u8, module, "dump")) {
+        const options = try argsParser.parse(DisassemblerCLI, &args, argsAllocator);
         defer options.deinit();
 
-        std.debug.warn("parsed result:\noptions: {}\npositionals:\n", .{options.options});
-        for (options.args) |arg| {
-            std.debug.warn("\t{}\n", .{arg});
-        }
-
-        // Call disassembler here
-        return 1;
+        return try disassemble(options.options, options.args);
     } else if (std.mem.eql(u8, module, "help")) {
         try print_usage();
         return 0;
@@ -84,7 +57,7 @@ pub fn print_usage() !void {
         \\
         \\Commands:
         \\  compile [source]        Compiles the given source file into a module.
-        \\  disasm [module]         Disassembles the given module.
+        \\  dump [module]           Disassembles the given module.
         \\
         \\General Options:
         \\  -o [output file]        Defines the output file for the action.
@@ -98,7 +71,127 @@ pub fn print_usage() !void {
     try std.io.getStdErr().outStream().stream.write(usage_msg);
 }
 
-pub fn new_main() anyerror!void {
+const DisassemblerCLI = struct {
+    @"output": ?[]const u8 = null,
+    @"metadata": bool = false,
+    @"with-offset": bool = false,
+    @"with-hexdump": bool = false,
+    // @"intermix-source": bool = false,
+
+    pub const shorthands = .{
+        // .S = "intermix-source",
+        .b = "with-hexdump",
+        .O = "with-offset",
+        .o = "output",
+        .m = "metadata",
+    };
+};
+
+fn disassemble(options: DisassemblerCLI, files: []const []const u8) !u8 {
+    var stream = &std.io.getStdOut().outStream().stream;
+
+    if (files.len == 0) {
+        try print_usage();
+        return 1;
+    }
+
+    var logfile: ?std.fs.File = null;
+    defer if (logfile) |f|
+        f.close();
+
+    if (options.output) |outfile| {
+        logfile = try std.fs.cwd().createFile(outfile, .{
+            .read = false,
+            .truncate = true,
+            .exclusive = false,
+        });
+        stream = &logfile.?.outStream().stream;
+    }
+
+    for (files) |arg| {
+        if (files.len != 1) {
+            try stream.print("Disassembly for {}:\n", .{arg});
+        }
+
+        var arena = std.heap.ArenaAllocator.init(std.heap.direct_allocator);
+        defer arena.deinit();
+
+        const allocator = &arena.allocator;
+
+        var cu = blk: {
+            var file = try std.fs.cwd().openFile(arg, .{ .read = true, .write = false });
+            defer file.close();
+
+            var instream = file.inStream();
+            break :blk try lola.CompileUnit.loadFromStream(allocator, std.fs.File.InStream.Error, &instream.stream);
+        };
+        defer cu.deinit();
+
+        if (options.metadata) {
+            try stream.write("metadata:\n");
+            try stream.print("\tcomment:         {}\n", .{cu.comment});
+            try stream.print("\tcode size:       {} bytes\n", .{cu.code.len});
+            try stream.print("\tnum globals:     {}\n", .{cu.globalCount});
+            try stream.print("\tnum temporaries: {}\n", .{cu.temporaryCount});
+            try stream.print("\tnum functions:   {}\n", .{cu.functions.len});
+            try stream.print("\tnum debug syms:  {}\n", .{cu.debugSymbols.len});
+
+            try stream.write("disassembly:\n");
+        }
+
+        try lola.disassemble(std.fs.File.OutStream.Error, stream, cu, lola.DisassemblerOptions{
+            .addressPrefix = options.@"with-offset",
+            .hexwidth = if (options.@"with-hexdump") 8 else null,
+            .labelOutput = true,
+            .instructionOutput = true,
+        });
+    }
+
+    return 0;
+}
+
+const CompileCLI = struct {
+    @"output": ?[]const u8 = null,
+
+    pub const shorthands = .{
+        .o = "output",
+    };
+};
+
+extern fn compile_lola_source(source: [*]const u8, sourceLength: usize, outFileName: [*]const u8, outFileNameLen: usize) u8;
+
+fn compile(options: CompileCLI, files: []const []const u8) !u8 {
+    if (files.len != 1) {
+        try print_usage();
+        return 1;
+    }
+
+    const inname = files[0];
+
+    const outname = if (options.output) |name|
+        name
+    else blk: {
+        var name = try std.heap.c_allocator.alloc(u8, inname.len + 3);
+        std.mem.copy(u8, name[0..inname.len], inname);
+        std.mem.copy(u8, name[inname.len..], ".lm");
+        break :blk name;
+    };
+    defer if (options.output == null)
+        std.heap.c_allocator.free(outname);
+
+    const maxLength = 1 << 20; // 1 MB
+    var source = blk: {
+        var file = try std.fs.cwd().openFile(inname, .{ .read = true, .write = false });
+        defer file.close();
+
+        break :blk try file.inStream().stream.readAllAlloc(std.heap.direct_allocator, maxLength);
+    };
+    defer std.heap.direct_allocator.free(source);
+
+    return compile_lola_source(source.ptr, source.len, outname.ptr, outname.len);
+}
+
+fn new_main() anyerror!void {
     var arena = std.heap.ArenaAllocator.init(std.heap.direct_allocator);
     defer arena.deinit();
 

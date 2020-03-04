@@ -59,7 +59,7 @@ pub fn build(b: *Builder) void {
         "src/compiler/grammar.tab.cpp",
     };
 
-    const lib = b.addStaticLibrary("lola", "src/runtime/main.zig");
+    const lib = b.addStaticLibrary("liblola", "src/runtime/main.zig");
     lib.step.dependOn(&precompileLexer.step);
     lib.step.dependOn(&precompileGrammar.step);
     lib.setBuildMode(mode);

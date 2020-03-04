@@ -9,13 +9,27 @@ fn charToInt(c: u8) !u4 {
     };
 }
 
-pub export fn resolveEscapeSequencesZero(str: [*:0]u8) callconv(.C) bool {
+comptime {
+    // FIXME: Workaround for linker bug
+    if (@import("root") == @import("main.zig")) {
+        @export(resolveEscapeSequencesZero, .{
+            .linkage = .Strong,
+            .name = "resolveEscapeSequencesZero",
+        });
+        @export(resolveEscapeSequences, .{
+            .linkage = .Strong,
+            .name = "resolveEscapeSequences",
+        });
+    }
+}
+
+fn resolveEscapeSequencesZero(str: [*:0]u8) callconv(.C) bool {
     var len = std.mem.len(str);
 
     return resolveEscapeSequences(str, &len);
 }
 
-pub export fn resolveEscapeSequences(str: [*]u8, length: *usize) callconv(.C) bool {
+fn resolveEscapeSequences(str: [*]u8, length: *usize) callconv(.C) bool {
     const State = union(enum) {
         default: void,
         escaped: void,
