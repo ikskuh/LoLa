@@ -12,10 +12,20 @@ using namespace LoLa;
 
 extern "C" uint8_t compile_lola_source(uint8_t const *source, size_t sourceLength, uint8_t const *outFileName, size_t outFileNameLen)
 {
-    auto program = AST::parse(std::string_view{
-        reinterpret_cast<char const *>(source),
-        sourceLength,
-    });
+    std::optional<LoLa::AST::Program> program;
+    try
+    {
+        program = AST::parse(std::string_view{
+            reinterpret_cast<char const *>(source),
+            sourceLength,
+        });
+    }
+    catch (LoLa::Error err)
+    {
+        fprintf(stderr, "Syntax error: %s!\n", LoLa::to_string(err));
+        return 1;
+    }
+
     if (not program)
     {
         // fprintf(stderr, "Syntax error!\n");

@@ -35,6 +35,11 @@ pub fn main() !u8 {
         defer options.deinit();
 
         return try disassemble(options.options, options.args);
+    } else if (std.mem.eql(u8, module, "run")) {
+        const options = try argsParser.parse(RunCLI, &args, argsAllocator);
+        defer options.deinit();
+
+        return try run(options.options, options.args);
     } else if (std.mem.eql(u8, module, "help")) {
         try print_usage();
         return 0;
@@ -58,16 +63,21 @@ pub fn print_usage() !void {
         \\Commands:
         \\  compile [source]        Compiles the given source file into a module.
         \\  dump [module]           Disassembles the given module.
+        \\  run [module]            Runs the compiled module
+        \\  run [source]            Compiles the source file and executes it without generating a module file.
         \\
         \\General Options:
         \\  -o [output file]        Defines the output file for the action.
         \\
         \\Disassemble Options:
-        \\  -O                      Adds offsets to the disassembly.
-        \\  -b                      Adds the hex dump in the disassembly.
-        \\  -S                      Intermixes the disassembly with the original source code if possible.
+        \\  --with-offset, -O       Adds offsets to the disassembly.
+        \\  --with-hexdump, -b      Adds the hex dump in the disassembly.
+        \\
+        \\Run Options:
+        \\  --limit [n]             Limits execution to [n] instructions, then halts.
         \\
     ;
+    // \\  -S                      Intermixes the disassembly with the original source code if possible.
     try std.io.getStdErr().outStream().stream.write(usage_msg);
 }
 
@@ -189,6 +199,102 @@ fn compile(options: CompileCLI, files: []const []const u8) !u8 {
     defer std.heap.direct_allocator.free(source);
 
     return compile_lola_source(source.ptr, source.len, outname.ptr, outname.len);
+}
+
+const RunCLI = struct {
+    @"limit": ?u32 = null,
+};
+
+fn run(options: RunCLI, files: []const []const u8) !u8 {
+    if (files.len != 1) {
+        try print_usage();
+        return 1;
+    }
+
+    const allocator = std.heap.c_allocator;
+
+    var cu = blk: {
+        var file = try std.fs.cwd().openFile(files[0], .{ .read = true, .write = false });
+        defer file.close();
+
+        var stream = file.inStream();
+        break :blk try lola.CompileUnit.loadFromStream(allocator, std.fs.File.InStream.Error, &stream.stream);
+    };
+    defer cu.deinit();
+
+    var env = try lola.Environment.init(allocator, &cu);
+    defer env.deinit();
+
+    try env.functions.putNoClobber("Print", lola.Function{
+        .syncUser = lola.UserFunction{
+            .context = undefined,
+            .destructor = null,
+            .call = struct {
+                fn call(context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+                    var stdout = &std.io.getStdOut().outStream().stream;
+                    for (args) |value, i| {
+                        switch (value) {
+                            .string => |str| try stdout.write(str.contents),
+                            else => try stdout.print("{}", .{value}),
+                        }
+                    }
+                    try stdout.write("\n");
+                    return lola.Value.initVoid();
+                }
+            }.call,
+        },
+    });
+
+    try env.functions.putNoClobber("Length", lola.Function{
+        .syncUser = lola.UserFunction{
+            .context = undefined,
+            .destructor = null,
+            .call = struct {
+                fn call(context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+                    if (args.len != 1)
+                        return error.InvalidArgs;
+                    return switch (args[0]) {
+                        .string => |str| lola.Value.initNumber(@intToFloat(f64, str.contents.len)),
+                        .array => |arr| lola.Value.initNumber(@intToFloat(f64, arr.contents.len)),
+                        else => error.TypeMismatch,
+                    };
+                }
+            }.call,
+        },
+    });
+
+    var vm = try lola.VM.init(allocator, &env);
+    defer vm.deinit();
+
+    while (true) {
+        var result = vm.execute(options.limit) catch |err| {
+            try std.io.getStdErr().outStream().stream.print("Panic during execution: {}\n", .{@errorName(err)});
+            return err;
+        };
+
+        env.objectPool.clearUsageCounters();
+
+        try env.objectPool.walkEnvironment(env);
+        try env.objectPool.walkVM(vm);
+
+        env.objectPool.collectGarbage();
+
+        switch (result) {
+            .completed => return 0,
+            .exhausted => {
+                try std.io.getStdErr().outStream().stream.print("Execution exhausted after {} instructions!\n", .{
+                    options.limit,
+                });
+                return 1;
+            },
+            .paused => {
+                // continue execution here
+                std.time.sleep(100); // sleep at least 100 ns and return control to scheduler
+            },
+        }
+    }
+
+    return 0;
 }
 
 fn new_main() anyerror!void {

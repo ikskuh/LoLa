@@ -3,4 +3,7 @@ function SetName(n)
 {
     name = n;
 }
+
+SetName("xq");
+
 Print(name);

@@ -1,7 +1,7 @@
 # NativeLola'2 TODO
 
 ## Compiler TODO
-- Integrate v2 disassembler
+- Add auto-detection if `lola run` has source or module file and compile if necessary
 - When new runtime done: Remove runtime features from compiler
 - Add better error message handling and error messages.
 
