@@ -38,7 +38,8 @@ pub fn parse(comptime Spec: type, args: *std.process.ArgIterator, allocator: *st
                         if (fld.name[0] == char) {
                             const real_fld = std.meta.fieldInfo(Spec, @field(Spec.shorthands, fld.name));
 
-                            if (requiresArg(real_fld.field_type) and index != item.len - 1) {
+                            // -2 because we stripped of the "-" at the beginning
+                            if (requiresArg(real_fld.field_type) and index != item.len - 2) {
                                 try std.io.getStdErr().outStream().stream.write("An option with argument must be the last option for short command line options.\n");
                                 return error.EncounteredUnexpectedArgument;
                             }
