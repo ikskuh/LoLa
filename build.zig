@@ -1,6 +1,9 @@
 const std = @import("std");
 const Builder = std.build.Builder;
 
+// clang++ -std=c++17 -c -fno-use-cxa-atexit -o hello.o hello.cpp
+// zig build-exe -target x86_64-linux-gnu --bundle-compiler-rt --object hello.o --name hello -L /usr/lib -lc -lstdc++
+
 pub fn build(b: *Builder) void {
     const interfacePkg = std.build.Pkg{
         .name = "interface",
@@ -50,25 +53,6 @@ pub fn build(b: *Builder) void {
         "src/compiler/runtime.cpp",
         "src/compiler/grammar.tab.cpp",
     };
-
-    // clang++ -std=c++17 -c -fno-use-cxa-atexit -o hello.o hello.cpp
-    // zig build-exe -target x86_64-linux-gnu --bundle-compiler-rt --object hello.o --name hello -L /usr/lib -lc -lstdc++
-    // const buildCppPart = b.addSystemCommand(&[_][]const u8{
-    //     "clang++",
-    //     "-c",
-    //     "-std=c++17",
-    //     "-fno-use-cxa-atexit",
-    //     "src/compiler/ast.cpp",
-    //     "src/compiler/compiler.cpp",
-    //     "src/compiler/error.cpp",
-    //     "src/compiler/il.cpp",
-    //     "src/compiler/tombstone.cpp",
-    //     "src/compiler/yy_lex.cpp",
-    //     "src/compiler/common.cpp",
-    //     "src/compiler/driver.cpp",
-    // });
-    // buildCppPart.step.dependOn(&precompileLexer.step);
-    // buildCppPart.step.dependOn(&precompileGrammar.step);
 
     // const exe = b.addExecutable("lola", "src/demo/main.zig");
     const exe = b.addExecutable("lola", null);
