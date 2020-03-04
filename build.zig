@@ -11,7 +11,7 @@ const interfacePkg = std.build.Pkg{
 };
 const argsPkg = std.build.Pkg{
     .name = "args",
-    .path = "libs/args.zig",
+    .path = "libs/args/args.zig",
     .dependencies = &[0]std.build.Pkg{},
 };
 
