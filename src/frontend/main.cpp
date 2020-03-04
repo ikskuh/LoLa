@@ -10,73 +10,8 @@
 
 using namespace LoLa;
 
-static void usage();
-
 static int compile(int argc, char **argv);
 static int disasm(int argc, char **argv);
-
-// lola compile foo.lola -o foo.lm
-// int main(int argc, char **argv)
-
-extern "C" uint8_t old_main()
-{
-    int argc = 1;
-    char *argv[] = {
-        "lola",
-    };
-
-    if (argc <= 1)
-    {
-        usage();
-        return 1;
-    }
-
-    char const *const module = argv[1];
-
-    if (strcmp("compile", module) == 0)
-    {
-        return compile(argc - 1, argv + 1);
-    }
-    else if (strcmp("disasm", module) == 0)
-    {
-        return disasm(argc - 1, argv + 1);
-    }
-    else if (strcmp("help", module) == 0)
-    {
-        usage();
-        return 0; // calling help explicitly is successful!
-    }
-    else
-    {
-        fprintf(stderr, "Unrecognized command: %s\nSee `lola help` for detailed usage information.\n", module);
-        return 1;
-    }
-}
-
-// Planned modules:
-// run [-no-stdlib] [-no-runtime] module/sourceFile
-
-char const usage_msg[] =
-    R"usage(Usage: lola [command] [options]
-
-Commands:
-  compile [source]        Compiles the given source file into a module.
-  disasm [module]         Disassembles the given module.
-
-General Options:
-  -o [output file]        Defines the output file for the action.
-
-Disassemble Options:
-  -O                      Adds offsets to the disassembly.
-  -b                      Adds the hex dump in the disassembly.
-  -S                      Intermixes the disassembly with the original source code if possible.
-)usage";
-
-void usage()
-{
-    fwrite(usage_msg, sizeof(usage_msg) - 1, 1, stderr);
-    fflush(stderr);
-}
 
 static int compile(int argc, char **argv)
 {

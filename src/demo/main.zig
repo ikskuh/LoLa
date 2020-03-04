@@ -1,12 +1,101 @@
 const std = @import("std");
 const lola = @import("lola");
+const argsParser = @import("args");
 
 extern fn old_main() callconv(.C) u8;
 
-// pub fn main() anyerror!void {
+// Planned modules:
+// run [-no-stdlib] [-no-runtime] module/sourceFile
 
-pub fn main() u8 {
-    return old_main();
+// lola compile foo.lola -o foo.lm
+pub fn main() !u8 {
+    var args = std.process.args();
+
+    var argsAllocator = std.heap.c_allocator;
+
+    const exeName = try (args.next(argsAllocator) orelse {
+        try std.io.getStdErr().outStream().stream.write("Failed to get executable name from the argument list!\n");
+        return 1;
+    });
+    defer argsAllocator.free(exeName);
+
+    const module = try (args.next(argsAllocator) orelse {
+        try print_usage();
+        return 1;
+    });
+    defer argsAllocator.free(module);
+
+    if (std.mem.eql(u8, module, "compile")) {
+        const options = try argsParser.parse(struct {
+            output: ?[]const u8 = null,
+        }, &args, argsAllocator);
+        defer options.deinit();
+
+        std.debug.warn("parsed result:\noptions: {}\npositionals:\n", .{options.options});
+        for (options.args) |arg| {
+            std.debug.warn("\t{}\n", .{arg});
+        }
+
+        // call compiler here
+        return 1;
+    } else if (std.mem.eql(u8, module, "disasm")) {
+        const options = try argsParser.parse(struct {
+            output: ?[]const u8 = null,
+            @"with-offset": bool = false,
+            @"with-hexdump": bool = false,
+            @"intermix-source": bool = false,
+            numberOfBytes: ?i32 = null,
+
+            pub const shorthands = .{
+                .S = "intermix-source",
+                .b = "with-hexdump",
+                .O = "with-offset",
+                .o = "output",
+            };
+        }, &args, argsAllocator);
+        defer options.deinit();
+
+        std.debug.warn("parsed result:\noptions: {}\npositionals:\n", .{options.options});
+        for (options.args) |arg| {
+            std.debug.warn("\t{}\n", .{arg});
+        }
+
+        // Call disassembler here
+        return 1;
+    } else if (std.mem.eql(u8, module, "help")) {
+        try print_usage();
+        return 0;
+    } else {
+        try std.io.getStdErr().outStream().stream.print(
+            "Unrecognized command: {}\nSee `lola help` for detailed usage information.\n",
+            .{
+                module,
+            },
+        );
+        return 1;
+    }
+
+    return 0;
+}
+
+pub fn print_usage() !void {
+    const usage_msg =
+        \\Usage: lola [command] [options]
+        \\
+        \\Commands:
+        \\  compile [source]        Compiles the given source file into a module.
+        \\  disasm [module]         Disassembles the given module.
+        \\
+        \\General Options:
+        \\  -o [output file]        Defines the output file for the action.
+        \\
+        \\Disassemble Options:
+        \\  -O                      Adds offsets to the disassembly.
+        \\  -b                      Adds the hex dump in the disassembly.
+        \\  -S                      Intermixes the disassembly with the original source code if possible.
+        \\
+    ;
+    try std.io.getStdErr().outStream().stream.write(usage_msg);
 }
 
 pub fn new_main() anyerror!void {

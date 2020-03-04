@@ -4,13 +4,18 @@ const Builder = std.build.Builder;
 // clang++ -std=c++17 -c -fno-use-cxa-atexit -o hello.o hello.cpp
 // zig build-exe -target x86_64-linux-gnu --bundle-compiler-rt --object hello.o --name hello -L /usr/lib -lc -lstdc++
 
-pub fn build(b: *Builder) void {
-    const interfacePkg = std.build.Pkg{
-        .name = "interface",
-        .path = "libs/interface.zig",
-        .dependencies = &[0]std.build.Pkg{},
-    };
+const interfacePkg = std.build.Pkg{
+    .name = "interface",
+    .path = "libs/interface.zig",
+    .dependencies = &[0]std.build.Pkg{},
+};
+const argsPkg = std.build.Pkg{
+    .name = "args",
+    .path = "libs/args.zig",
+    .dependencies = &[0]std.build.Pkg{},
+};
 
+pub fn build(b: *Builder) void {
     const mode = b.standardReleaseOptions();
     const target = b.standardTargetOptions(.{
         .default_target = std.zig.CrossTarget{
@@ -75,6 +80,7 @@ pub fn build(b: *Builder) void {
     const exe = b.addExecutable("lola", "src/demo/main.zig");
     exe.setBuildMode(mode);
     exe.setTarget(target);
+    exe.addPackage(argsPkg);
     exe.addPackage(interfacePkg);
     exe.addPackage(std.build.Pkg{
         .name = "lola",
