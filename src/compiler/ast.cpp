@@ -4,6 +4,9 @@
 #include <cassert>
 #include <sstream>
 
+// Imported from Zig code
+extern "C" bool resolveEscapeSequences(uint8_t *str, size_t *length);
+
 using namespace LoLa::AST;
 using LoLa::Compiler::CodeWriter;
 using LoLa::Compiler::Scope;
@@ -150,6 +153,18 @@ Expression LoLa::AST::StringLiteral(String literal)
         void emit(CodeWriter &code, Scope &) override
         {
             code.emit(Instruction::push_str);
+
+            std::string escaped = text;
+
+            size_t length = escaped.size();
+            auto const success = resolveEscapeSequences(
+                reinterpret_cast<uint8_t *>(escaped.data()),
+                &length);
+            if (!success)
+                throw Error::InvalidString;
+
+            escaped.resize(length);
+
             code.emit(text);
         }
 

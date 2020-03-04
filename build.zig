@@ -54,8 +54,25 @@ pub fn build(b: *Builder) void {
         "src/compiler/grammar.tab.cpp",
     };
 
-    // const exe = b.addExecutable("lola", "src/demo/main.zig");
-    const exe = b.addExecutable("lola", null);
+    const lib = b.addStaticLibrary("lola", "src/runtime/main.zig");
+    lib.step.dependOn(&precompileLexer.step);
+    lib.step.dependOn(&precompileGrammar.step);
+    lib.setBuildMode(mode);
+    lib.setTarget(target);
+    lib.addPackage(interfacePkg);
+    lib.addIncludeDir("/usr/include/c++/v1");
+    lib.addIncludeDir("/usr/include");
+    for (cppSources) |cppSource| {
+        lib.addCSourceFile(cppSource, &[_][]const u8{
+            "-std=c++17",
+            "-fno-use-cxa-atexit",
+            "-Wall",
+            "-Wextra",
+        });
+    }
+    lib.install();
+
+    const exe = b.addExecutable("lola", "src/demo/main.zig");
     exe.setBuildMode(mode);
     exe.setTarget(target);
     exe.addPackage(interfacePkg);
@@ -72,23 +89,13 @@ pub fn build(b: *Builder) void {
         "-fno-use-cxa-atexit",
     });
 
-    for (cppSources) |cppSource| {
-        exe.addCSourceFile(cppSource, &[_][]const u8{
-            "-std=c++17",
-            "-fno-use-cxa-atexit",
-            "-Wall",
-            "-Wextra",
-        });
-    }
-
     // exe.step.dependOn(&buildCppPart.step);
-    exe.step.dependOn(&precompileLexer.step);
-    exe.step.dependOn(&precompileGrammar.step);
     exe.addIncludeDir("/usr/include/c++/v1");
     exe.addIncludeDir("/usr/include");
     exe.addLibPath("/usr/lib/");
     exe.linkSystemLibrary("c");
     exe.linkSystemLibrary("c++");
+    exe.linkLibrary(lib);
     exe.install();
 
     var main_tests = b.addTest("src/runtime/main.zig");

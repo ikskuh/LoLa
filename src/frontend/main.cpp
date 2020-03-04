@@ -16,8 +16,15 @@ static int compile(int argc, char **argv);
 static int disasm(int argc, char **argv);
 
 // lola compile foo.lola -o foo.lm
-int main(int argc, char **argv)
+// int main(int argc, char **argv)
+
+extern "C" uint8_t old_main()
 {
+    int argc = 1;
+    char *argv[] = {
+        "lola",
+    };
+
     if (argc <= 1)
     {
         usage();

@@ -53,7 +53,7 @@
 #  endif
 # endif
 
-#line 6 "grammar.yy"
+#line 5 "grammar.yy"
 namespace LoLa {
 #line 59 "location.hh"
 
@@ -327,7 +327,7 @@ namespace LoLa {
     return ostr;
   }
 
-#line 6 "grammar.yy"
+#line 5 "grammar.yy"
 } // LoLa
 #line 333 "location.hh"
 

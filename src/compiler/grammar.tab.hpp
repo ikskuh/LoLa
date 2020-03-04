@@ -44,7 +44,7 @@
 #ifndef YY_GRAMMAR_GRAMMAR_TAB_HPP_INCLUDED
 # define YY_GRAMMAR_GRAMMAR_TAB_HPP_INCLUDED
 // "%code requires" blocks.
-#line 9 "grammar.yy"
+#line 8 "grammar.yy"
 
 #include "ast.hpp"
 #include <vector>
@@ -200,7 +200,7 @@ namespace LoLa {
 # define YYDEBUG 1
 #endif
 
-#line 6 "grammar.yy"
+#line 5 "grammar.yy"
 namespace LoLa {
 #line 206 "grammar.tab.hpp"
 
@@ -1968,7 +1968,7 @@ switch (yytype)
   };
 
 
-#line 6 "grammar.yy"
+#line 5 "grammar.yy"
 } // LoLa
 #line 1974 "grammar.tab.hpp"
 

@@ -1,7 +1,15 @@
 const std = @import("std");
 const lola = @import("lola");
 
-pub fn main() anyerror!void {
+extern fn old_main() callconv(.C) u8;
+
+// pub fn main() anyerror!void {
+
+pub fn main() u8 {
+    return old_main();
+}
+
+pub fn new_main() anyerror!void {
     var arena = std.heap.ArenaAllocator.init(std.heap.direct_allocator);
     defer arena.deinit();
 

@@ -1,8 +1,8 @@
 # LoLa-native
-Reimplementation of the LoLa language in C++
+Reimplementation of the LoLa language in Zig and C++.
 
 ## Short Example
-```
+```js
 var list = [ "Hello", "World" ];
 for(text in list) {
 	Print(text);
