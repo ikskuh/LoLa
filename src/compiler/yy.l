@@ -3,7 +3,7 @@
 #include <string>
 
 /* Implementation of yyFlexScanner */
-#include "src/scanner.hpp"
+#include "scanner.hpp"
 #undef  YY_DECL
 #define YY_DECL int LoLa::LoLaScanner::yylex( LoLa::LoLaParser::semantic_type * const lval, LoLa::LoLaParser::location_type *loc )
 

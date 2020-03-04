@@ -66,3 +66,8 @@
 ## Documentation
 - Move examples to own folder / document
 - Document how *custom objects* are explicitly not a thing
+
+## Improvements
+- implement copy-on-write arrays for improved performance?
+  - probably too much implementation overhead
+

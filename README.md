@@ -12,8 +12,6 @@ for(text in list) {
 ## Starting Points
 
 - [Documentation](Documentation/README.md)
-- [Example Project](Example/main.cpp)
-- [Library Headers](NativeLoLa/include/LoLa)
 - [Bison Grammar](NativeLoLa/src/grammar.yy)
 - [Flex Tokenizer](NativeLoLa/src/yy.ll)
 
@@ -25,6 +23,7 @@ for(text in list) {
 - Flex 2.6 or newer
 - QMake
 - C++17 compiler
+- The [Zig Compiler](https://ziglang.org/) (Version 0.5.0+330e30aec or newer)
 
 **Building:**
 

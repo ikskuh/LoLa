@@ -1,9 +1,10 @@
 %skeleton "lalr1.cc"
-%require  "3.0"
+// %require  "3.0"
+%require "3.2"
 %debug
 %defines
 %define api.namespace {LoLa}
-%define parser_class_name {LoLaParser}
+%define api.parser.class {LoLaParser}
 
 %code requires{
 #include "ast.hpp"
@@ -37,7 +38,7 @@ namespace LoLa {
 #include <fstream>
 
 /* include for all driver functions */
-#include "src/driver.hpp"
+#include "driver.hpp"
 
 #undef yylex
 #define yylex scanner.grammarlex
@@ -51,20 +52,20 @@ namespace LoLa {
 %token END 0
 
 // Brackets
-%token CURLY_O, CURLY_C, ROUND_O, ROUND_C, SQUARE_O, SQUARE_C
+%token CURLY_O CURLY_C ROUND_O ROUND_C SQUARE_O SQUARE_C
 
 // Keywords
-%token VAR, EXTERN, FOR, WHILE, IF, ELSE, FUNCTION
-%token BREAK, CONTINUE, RETURN, IN
+%token VAR EXTERN FOR WHILE IF ELSE FUNCTION
+%token BREAK CONTINUE RETURN IN
 
 // Operators
-%left  <Operator> LEQUAL, GEQUAL, EQUALS, DIFFERS, LESS, MORE
-%left  IS, DOT, COMMA, TERMINATOR, PLUS_IS, MINUS_IS, MULT_IS, DIV_IS, MOD_IS
-%left  <Operator> PLUS, MINUS, MULT, DIV, MOD, AND, OR, INVERT
+%left  <Operator> LEQUAL GEQUAL EQUALS DIFFERS LESS MORE
+%left  IS DOT COMMA TERMINATOR PLUS_IS MINUS_IS MULT_IS DIV_IS MOD_IS
+%left  <Operator> PLUS MINUS MULT DIV MOD AND OR INVERT
 %token <std::string> IDENT
 
 // Literals
-%token <std::string> NUMBER, STRING
+%token <std::string> NUMBER STRING
 
 %type <Program>     program
 %type <Statement>   statement body decl ass for while conditional expression return
@@ -80,7 +81,7 @@ namespace LoLa {
 %%
 compile_unit : program { driver.program = move($1); }
 
-program     : /* empty */
+program     : { } /* empty */
             | program function {
                 $$ = move($1);
                 $$.functions.emplace_back(move($2));
@@ -116,7 +117,7 @@ plist       : IDENT
 body		: CURLY_O stmtlist CURLY_C  { $$ = SubScope(move($2)); }
             ;
 
-stmtlist    : /* empty */
+stmtlist    : { } /* empty */
             | stmtlist statement {
                 $$ = move($1);
                 $$.emplace_back(move($2));

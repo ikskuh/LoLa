@@ -4,7 +4,7 @@
 
 LoLa is a small programming language developed to be embedded in games. It's not meant as a scripting language to create games with but as language to be programmed *in the game* by the player.
 
-The design goals of the language were:
+The design goals of the language are:
 
 - Easy to learn
 - Small set of language features
@@ -111,7 +111,7 @@ There are three kind of variables in LoLa:
 - Local Variables
 - External Variables
 
-Global variables are accessible from any scope and are stored in the execution environment. If a global variable has no initializer, it's value is preserved over multiple calls of the script.
+Global variables are accessible from any scope and are stored in the execution environment. **If a global variable has no initializer, it's value is preserved over multiple calls of the script.**
 
 Local variables could also be called temporary variables as they are only alive for a short time. A local variables is any variable declared in brackets, so explicit declared locals, loop variables and function parameters.
 
