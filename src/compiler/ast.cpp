@@ -684,7 +684,7 @@ Statement LoLa::AST::BreakStatement()
 {
     struct Foo : StatementBase
     {
-        void emit(CodeWriter &code, Scope &scope) override
+        void emit(CodeWriter &code, Scope &) override
         {
             code.emitBreak();
         }

@@ -15,15 +15,13 @@ namespace LoLa::Compiler
 {
 struct CompilationUnit;
 
-struct ScriptFunction : LoLa::Runtime::Function
+struct ScriptFunction
 {
     std::weak_ptr<const CompilationUnit> code;
     uint32_t entry_point;
     uint16_t local_count;
 
     ScriptFunction(std::weak_ptr<const CompilationUnit> code);
-
-    CallOrImmediate call(LoLa::Runtime::Value const *args, size_t argc) const override;
 };
 
 //! piece of compiled LoLa code
@@ -154,13 +152,6 @@ struct Scope
 struct Compiler
 {
     std::shared_ptr<CompilationUnit> compile(AST::Program const &program) const;
-};
-
-struct Disassembler
-{
-    void disassemble(CompilationUnit const &cu, std::ostream &stream) const;
-
-    void disassemble_instruction(CodeReader &reader, std::ostream &stream) const;
 };
 } // namespace LoLa::Compiler
 

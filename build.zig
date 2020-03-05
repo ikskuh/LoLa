@@ -50,12 +50,8 @@ pub fn build(b: *Builder) void {
         "src/compiler/ast.cpp",
         "src/compiler/compiler.cpp",
         "src/compiler/error.cpp",
-        "src/compiler/il.cpp",
-        "src/compiler/tombstone.cpp",
         "src/compiler/yy_lex.cpp",
-        "src/compiler/common.cpp",
         "src/compiler/driver.cpp",
-        "src/compiler/runtime.cpp",
         "src/compiler/grammar.tab.cpp",
     };
 

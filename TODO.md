@@ -1,8 +1,6 @@
 # NativeLola'2 TODO
 
 ## Compiler TODO
-- Add auto-detection if `lola run` has source or module file and compile if necessary
-- When new runtime done: Remove runtime features from compiler
 - Add better error message handling and error messages.
 
 ## Missing features
