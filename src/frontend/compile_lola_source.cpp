@@ -7,11 +7,20 @@
 #include <sstream>
 #include <cstring>
 #include <fstream>
+#include <sstream>
 
 using namespace LoLa;
 
-extern "C" uint8_t compile_lola_source(uint8_t const *source, size_t sourceLength, uint8_t const *outFileName, size_t outFileNameLen)
+struct ModuleBuffer
 {
+    uint8_t *data;
+    size_t length;
+};
+
+extern "C" bool compile_lola_source(uint8_t const *source, size_t sourceLength, ModuleBuffer *outbuffer)
+{
+    *outbuffer = ModuleBuffer{nullptr, 0};
+
     std::optional<LoLa::AST::Program> program;
     try
     {
@@ -23,13 +32,13 @@ extern "C" uint8_t compile_lola_source(uint8_t const *source, size_t sourceLengt
     catch (LoLa::Error err)
     {
         fprintf(stderr, "Syntax error: %s!\n", LoLa::to_string(err));
-        return 1;
+        return false;
     }
 
     if (not program)
     {
         // fprintf(stderr, "Syntax error!\n");
-        return 1;
+        return false;
     }
 
     Compiler::Compiler compiler;
@@ -41,17 +50,29 @@ extern "C" uint8_t compile_lola_source(uint8_t const *source, size_t sourceLengt
         if (not compile_unit)
         {
             fprintf(stderr, "Failed to compile source!\n");
-            return 1;
+            return false;
         }
     }
     catch (LoLa::Error err)
     {
         fprintf(stderr, "Semantic error: %s!\n", LoLa::to_string(err));
-        return 1;
+        return false;
     }
 
-    std::ofstream out(std::string(reinterpret_cast<char const *>(outFileName), outFileNameLen));
+    // std::ofstream out(std::string(reinterpret_cast<char const *>(outFileName), outFileNameLen));
+    std::stringstream out;
     compile_unit->save(out);
 
-    return 0;
+    auto const output = out.str();
+
+    *outbuffer = ModuleBuffer{
+        reinterpret_cast<uint8_t *>(malloc(output.size())),
+        output.size(),
+    };
+    if (outbuffer->data == nullptr)
+        return false;
+
+    memcpy(outbuffer->data, output.data(), output.size());
+
+    return true;
 }

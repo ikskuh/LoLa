@@ -29,17 +29,17 @@ pub fn main() !u8 {
         const options = try argsParser.parse(CompileCLI, &args, argsAllocator);
         defer options.deinit();
 
-        return try compile(options.options, options.args);
+        return try compile(options.options, options.positionals);
     } else if (std.mem.eql(u8, module, "dump")) {
         const options = try argsParser.parse(DisassemblerCLI, &args, argsAllocator);
         defer options.deinit();
 
-        return try disassemble(options.options, options.args);
+        return try disassemble(options.options, options.positionals);
     } else if (std.mem.eql(u8, module, "run")) {
         const options = try argsParser.parse(RunCLI, &args, argsAllocator);
         defer options.deinit();
 
-        return try run(options.options, options.args);
+        return try run(options.options, options.positionals);
     } else if (std.mem.eql(u8, module, "help")) {
         try print_usage();
         return 0;
@@ -168,7 +168,12 @@ const CompileCLI = struct {
     };
 };
 
-extern fn compile_lola_source(source: [*]const u8, sourceLength: usize, outFileName: [*]const u8, outFileNameLen: usize) u8;
+const ModuleBuffer = extern struct {
+    data: [*]u8,
+    length: usize,
+};
+
+extern fn compile_lola_source(source: [*]const u8, sourceLength: usize, module: *ModuleBuffer) bool;
 
 fn compile(options: CompileCLI, files: []const []const u8) !u8 {
     if (files.len != 1) {
@@ -176,29 +181,32 @@ fn compile(options: CompileCLI, files: []const []const u8) !u8 {
         return 1;
     }
 
+    const allocator = std.heap.c_allocator;
+
     const inname = files[0];
 
     const outname = if (options.output) |name|
         name
     else blk: {
-        var name = try std.heap.c_allocator.alloc(u8, inname.len + 3);
+        var name = try allocator.alloc(u8, inname.len + 3);
         std.mem.copy(u8, name[0..inname.len], inname);
         std.mem.copy(u8, name[inname.len..], ".lm");
         break :blk name;
     };
     defer if (options.output == null)
-        std.heap.c_allocator.free(outname);
+        allocator.free(outname);
 
-    const maxLength = 1 << 20; // 1 MB
-    var source = blk: {
-        var file = try std.fs.cwd().openFile(inname, .{ .read = true, .write = false });
+    const cu = try compileFileToUnit(allocator, inname);
+    defer cu.deinit();
+
+    {
+        var file = try std.fs.cwd().createFile(outname, .{ .truncate = true, .read = false, .exclusive = false });
         defer file.close();
 
-        break :blk try file.inStream().stream.readAllAlloc(std.heap.direct_allocator, maxLength);
-    };
-    defer std.heap.direct_allocator.free(source);
+        try cu.saveToStream(std.fs.File.OutStream.Error, &file.outStream().stream);
+    }
 
-    return compile_lola_source(source.ptr, source.len, outname.ptr, outname.len);
+    return 0;
 }
 
 const RunCLI = struct {
@@ -218,7 +226,12 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
         defer file.close();
 
         var stream = file.inStream();
-        break :blk try lola.CompileUnit.loadFromStream(allocator, std.fs.File.InStream.Error, &stream.stream);
+        break :blk lola.CompileUnit.loadFromStream(allocator, std.fs.File.InStream.Error, &stream.stream) catch |err| {
+            if (err == error.InvalidFormat) {
+                break :blk try compileFileToUnit(allocator, files[0]);
+            }
+            return err;
+        };
     };
     defer cu.deinit();
 
@@ -295,6 +308,27 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
     }
 
     return 0;
+}
+
+fn compileFileToUnit(allocator: *std.mem.Allocator, fileName: []const u8) !lola.CompileUnit {
+    const maxLength = 1 << 20; // 1 MB
+    var source = blk: {
+        var file = try std.fs.cwd().openFile(fileName, .{ .read = true, .write = false });
+        defer file.close();
+
+        break :blk try file.inStream().stream.readAllAlloc(std.heap.direct_allocator, maxLength);
+    };
+    defer std.heap.direct_allocator.free(source);
+
+    var module: ModuleBuffer = undefined;
+
+    if (!compile_lola_source(source.ptr, source.len, &module))
+        return error.FailedToCompileModule;
+    defer std.c.free(module.data);
+
+    var moduleStream = std.io.SliceSeekableInStream.init(module.data[0..module.length]);
+
+    return try lola.CompileUnit.loadFromStream(allocator, std.io.SliceSeekableInStream.Error, &moduleStream.stream);
 }
 
 fn new_main() anyerror!void {

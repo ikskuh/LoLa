@@ -77,7 +77,7 @@ pub fn build(b: *Builder) void {
     }
     lib.install();
 
-    const exe = b.addExecutable("lola", "src/demo/main.zig");
+    const exe = b.addExecutable("lola", "src/frontend/main.zig");
     exe.setBuildMode(mode);
     exe.setTarget(target);
     exe.addPackage(argsPkg);
@@ -90,7 +90,7 @@ pub fn build(b: *Builder) void {
         },
     });
 
-    exe.addCSourceFile("src/frontend/main.cpp", &[_][]const u8{
+    exe.addCSourceFile("src/frontend/compile_lola_source.cpp", &[_][]const u8{
         "-std=c++17",
         "-fno-use-cxa-atexit",
     });
