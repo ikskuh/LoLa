@@ -424,6 +424,17 @@ Possible panics are:
 
 A panic may be caused by the LoLa virtual machine or any library functions.
 
+## LoLa File Types
+
+The following list contains LoLa-related file types 
+
+- LoLa Code (`*.lola`)
+  These files contain actual LoLa source code and can be compiled into modules.
+- [LoLa Modules](Modules.md) (`*.lola.lm`)
+  These files contain compiled LoLa byte code and can be executed by a [LoLa VM](IR.md).
+
+
+
 ## List of Keywords
 
 - `and`
