@@ -1,0 +1,16 @@
+// Reverse an array
+function ReverseArray(arr)
+{
+  var i = 0;
+  var l = Length(arr);
+    
+  while(i < l/2) {
+    var tmp = arr[i];
+    arr[i] = arr[(l - i) - 1];
+    arr[(l - i) - 1] = tmp;
+    i += 1;
+  }
+  return arr;
+}
+
+Print(ReverseArray([ 4, 3, 2, 1 ]));

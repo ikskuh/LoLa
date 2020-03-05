@@ -1,0 +1,8 @@
+var arr = [ 1, 2, 3 ];
+var sum = 0;
+
+for(v in arr) {
+  sum += v;
+}
+
+Print("Sum = ", sum);

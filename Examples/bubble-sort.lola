@@ -1,0 +1,24 @@
+function BubbleSort(arr)
+{
+  var len = Length(arr);
+
+  var n = len;
+  while(n > 1) {
+
+    var i = 0;
+    while(i < n - 1) {
+      if (arr[i] > arr[i+1]) {
+        var tmp = arr[i];
+        arr[i] = arr[i+1];
+        arr[i+1] = tmp;
+      }
+
+      i += 1;
+    }
+    n -= 1;
+  }
+
+  return arr;
+}
+
+Print(BubbleSort([ 7, 8, 9, 3, 2, 1 ]));

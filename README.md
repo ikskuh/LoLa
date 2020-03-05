@@ -12,9 +12,10 @@ for(text in list) {
 ## Starting Points
 
 - [Documentation](Documentation/README.md)
-- [Examples](tree/master/Examples)
+- [Examples](Examples/README.md)
 - [Bison Grammar](NativeLoLa/src/grammar.yy)
 - [Flex Tokenizer](NativeLoLa/src/yy.ll)
+- [TODO List](TODO.md)
 
 ## Building
 

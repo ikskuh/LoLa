@@ -7,6 +7,7 @@
 
 ## Missing features
 - Add `string` index operators?
+- Fix operator associativity (3 - 2 - 1 => 0)
 
 ## More tasks
 - Tests for the ObjectPool struct
