@@ -61,20 +61,21 @@ pub fn print_usage() !void {
         \\Usage: lola [command] [options]
         \\
         \\Commands:
-        \\  compile [source]        Compiles the given source file into a module.
-        \\  dump [module]           Disassembles the given module.
-        \\  run [module]            Runs the compiled module
-        \\  run [source]            Compiles the source file and executes it without generating a module file.
+        \\  compile [source]                   Compiles the given source file into a module.
+        \\  dump [module]                      Disassembles the given module.
+        \\  run [file]                         Runs the given file. Both modules and source files are allowed.
         \\
         \\General Options:
-        \\  -o [output file]        Defines the output file for the action.
+        \\  -o [output file]                   Defines the output file for the action.
         \\
         \\Disassemble Options:
-        \\  --with-offset, -O       Adds offsets to the disassembly.
-        \\  --with-hexdump, -b      Adds the hex dump in the disassembly.
+        \\  --with-offset, -O                  Adds offsets to the disassembly.
+        \\  --with-hexdump, -b                 Adds the hex dump in the disassembly.
         \\
         \\Run Options:
-        \\  --limit [n]             Limits execution to [n] instructions, then halts.
+        \\  --limit [n]                        Limits execution to [n] instructions, then halts.
+        \\  --mode [autodetect|source|module]  Determines if run should interpret the file as a source file,
+        \\                                     a precompiled module or if it should autodetect the file type.
         \\
     ;
     // \\  -S                      Intermixes the disassembly with the original source code if possible.
@@ -211,6 +212,7 @@ fn compile(options: CompileCLI, files: []const []const u8) !u8 {
 
 const RunCLI = struct {
     @"limit": ?u32 = null,
+    @"mode": enum { autodetect, source, module } = .autodetect,
 };
 
 fn run(options: RunCLI, files: []const []const u8) !u8 {
@@ -221,17 +223,13 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
 
     const allocator = std.heap.c_allocator;
 
-    var cu = blk: {
-        var file = try std.fs.cwd().openFile(files[0], .{ .read = true, .write = false });
-        defer file.close();
-
-        var stream = file.inStream();
-        break :blk lola.CompileUnit.loadFromStream(allocator, std.fs.File.InStream.Error, &stream.stream) catch |err| {
-            if (err == error.InvalidFormat) {
-                break :blk try compileFileToUnit(allocator, files[0]);
-            }
-            return err;
-        };
+    var cu = switch (options.mode) {
+        .autodetect => loadModuleFromFile(allocator, files[0]) catch |err| if (err == error.InvalidFormat)
+            try compileFileToUnit(allocator, files[0])
+        else
+            return err,
+        .module => try loadModuleFromFile(allocator, files[0]),
+        .source => try compileFileToUnit(allocator, files[0]),
     };
     defer cu.deinit();
 
@@ -329,6 +327,14 @@ fn compileFileToUnit(allocator: *std.mem.Allocator, fileName: []const u8) !lola.
     var moduleStream = std.io.SliceSeekableInStream.init(module.data[0..module.length]);
 
     return try lola.CompileUnit.loadFromStream(allocator, std.io.SliceSeekableInStream.Error, &moduleStream.stream);
+}
+
+fn loadModuleFromFile(allocator: *std.mem.Allocator, fileName: []const u8) !lola.CompileUnit {
+    var file = try std.fs.cwd().openFile(fileName, .{ .read = true, .write = false });
+    defer file.close();
+
+    var stream = file.inStream();
+    return try lola.CompileUnit.loadFromStream(allocator, std.fs.File.InStream.Error, &stream.stream);
 }
 
 fn new_main() anyerror!void {
