@@ -322,7 +322,7 @@ Expression LoLa::AST::UnaryOperator(Operator op, Expression value)
                 code.emit(Instruction::bool_not);
                 break;
             default:
-                throw "invalid operator!";
+                throw LoLa::Error::InvalidOperator;
             }
         }
 
@@ -387,7 +387,7 @@ Expression LoLa::AST::BinaryOperator(Operator op, Expression lhs, Expression rhs
                 code.emit(Instruction::bool_or);
                 break;
             default:
-                throw "invalid operator!";
+                throw LoLa::Error::InvalidOperator;
             }
         }
 

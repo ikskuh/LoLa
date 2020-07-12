@@ -3,8 +3,6 @@ const lola = @import("lola");
 const lolastd = @import("lola");
 const argsParser = @import("args");
 
-extern fn old_main() callconv(.C) u8;
-
 // Planned modules:
 // run [-no-stdlib] [-no-runtime] module/sourceFile
 

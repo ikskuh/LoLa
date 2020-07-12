@@ -68,7 +68,7 @@ LoLa::Compiler::Label LoLa::Compiler::CodeWriter::createAndDefineLabel()
 void LoLa::Compiler::CodeWriter::defineLabel(LoLa::Compiler::Label lbl)
 {
     if (auto it = labels.find(lbl); it != labels.end())
-        throw "label was already defined!";
+        throw LoLa::Error::LabelAlreadyDefined;
 
     uint32_t const position = target->code.size();
 

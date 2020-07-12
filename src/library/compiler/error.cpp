@@ -32,6 +32,8 @@ const char *LoLa::to_string(LoLa::Error err)
         return "break/continue outside of loop";
     case Error::InvalidString:
         return "invalid escape sequence in string.";
+    case Error::LabelAlreadyDefined:
+        return "label was already defined.";
     }
     return "<unknown error>";
 }

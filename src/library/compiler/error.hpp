@@ -3,25 +3,26 @@
 
 namespace LoLa
 {
-enum class Error
-{
-    InvalidPointer,
-    InvalidInstruction,
-    InvalidVariable,
-    StackEmpty,
-    TypeMismatch,
-    InvalidOperator,
-    UnsupportedFunction,
-    InvalidTopLevelReturn,
-    ObjectDisposed,
-    ReadOnlyVariable,
-    InvalidStore,
-    VariableNotFound,
-    NotInLoop,
-    InvalidString
-};
+    enum class Error
+    {
+        InvalidPointer,
+        InvalidInstruction,
+        InvalidVariable,
+        StackEmpty,
+        TypeMismatch,
+        InvalidOperator,
+        UnsupportedFunction,
+        InvalidTopLevelReturn,
+        ObjectDisposed,
+        ReadOnlyVariable,
+        InvalidStore,
+        VariableNotFound,
+        NotInLoop,
+        InvalidString,
+        LabelAlreadyDefined,
+    };
 
-char const *to_string(Error err);
+    char const *to_string(Error err);
 } // namespace LoLa
 
 #endif // ERROR_HPP
