@@ -43,7 +43,7 @@ LValueExpression LoLa::AST::VariableRef(String var)
         std::string name;
         Foo(std::string str) : name(str) {}
 
-        void emit(CodeWriter &code, Scope &scope) override
+        void emit(CodeWriter &code, Scope &scope, Compiler::ErrorCollection &errors) override
         {
             if (name == "true")
             {
@@ -79,16 +79,15 @@ LValueExpression LoLa::AST::VariableRef(String var)
             }
             else
             {
-                throw Error::VariableNotFound;
+                errors.variableNotFound(name);
             }
         }
 
-        void emitStore(CodeWriter &code, Scope &scope) override
+        void emitStore(CodeWriter &code, Scope &scope, Compiler::ErrorCollection &errors) override
         {
-
             if (isReservedName(name))
             {
-                throw Error::InvalidStore;
+                errors.invalidStore(name);
             }
             else if (auto local = scope.get(name); local)
             {
@@ -110,7 +109,7 @@ LValueExpression LoLa::AST::VariableRef(String var)
             }
             else
             {
-                throw Error::VariableNotFound;
+                errors.variableNotFound(name);
             }
         }
 
@@ -129,8 +128,9 @@ Expression LoLa::AST::NumberLiteral(String literal)
         double value;
         Foo(double v) : value(v) {}
 
-        void emit(CodeWriter &code, Scope &) override
+        void emit(CodeWriter &code, Scope &, Compiler::ErrorCollection &) override
         {
+
             code.emit(Instruction::push_num);
             code.emit(value);
         }
@@ -150,7 +150,7 @@ Expression LoLa::AST::StringLiteral(String literal)
         std::string text;
         Foo(std::string str) : text(str) {}
 
-        void emit(CodeWriter &code, Scope &) override
+        void emit(CodeWriter &code, Scope &, Compiler::ErrorCollection &errors) override
         {
             code.emit(Instruction::push_str);
 
@@ -160,12 +160,17 @@ Expression LoLa::AST::StringLiteral(String literal)
             auto const success = resolveEscapeSequences(
                 reinterpret_cast<uint8_t *>(escaped.data()),
                 &length);
-            if (!success)
-                throw Error::InvalidString;
+            if (success)
+            {
 
-            escaped.resize(length);
+                escaped.resize(length);
 
-            code.emit(text);
+                code.emit(text);
+            }
+            else
+            {
+                errors.invalidString(text);
+            }
         }
 
         std::unique_ptr<ExpressionBase> clone() const override
@@ -184,22 +189,22 @@ LValueExpression LoLa::AST::ArrayIndexer(Expression value, Expression index)
         Expression value, index;
         Foo(Expression l, Expression r) : value(move(l)), index(move(r)) {}
 
-        void emit(CodeWriter &code, Scope &scope) override
+        void emit(CodeWriter &code, Scope &scope, Compiler::ErrorCollection &errors) override
         {
-            index->emit(code, scope);
-            value->emit(code, scope);
+            index->emit(code, scope, errors);
+            value->emit(code, scope, errors);
             code.emit(Instruction::array_load);
         }
 
-        void emitStore(CodeWriter &code, Scope &scope) override
+        void emitStore(CodeWriter &code, Scope &scope, Compiler::ErrorCollection &errors) override
         {
             if (auto *lvalue = dynamic_cast<LValueExpressionBase *>(value.get()); lvalue != nullptr)
             {
                 // read-modify-write the lvalue expression
-                index->emit(code, scope);  // load the index on the stack
-                lvalue->emit(code, scope); // load the array on the stack
+                index->emit(code, scope, errors);  // load the index on the stack
+                lvalue->emit(code, scope, errors); // load the array on the stack
                 code.emit(Instruction::array_store);
-                lvalue->emitStore(code, scope); // now store back the value on the stack
+                lvalue->emitStore(code, scope, errors); // now store back the value on the stack
             }
             else
             {
@@ -222,12 +227,12 @@ Expression LoLa::AST::ArrayLiteral(List<Expression> initializer)
         List<Expression> values;
         Foo(List<Expression> v) : values(move(v)) {}
 
-        void emit(CodeWriter &code, Scope &scope) override
+        void emit(CodeWriter &code, Scope &scope, Compiler::ErrorCollection &errors) override
         {
             assert(values.size() < 65536);
 
             for (auto it = values.rbegin(); it != values.rend(); it++)
-                (*it)->emit(code, scope);
+                (*it)->emit(code, scope, errors);
 
             code.emit(Instruction::array_pack);
             code.emit(uint16_t(values.size()));
@@ -249,13 +254,13 @@ Expression LoLa::AST::FunctionCall(String name, List<Expression> args)
         List<Expression> args;
         Foo(String f, List<Expression> a) : function(f), args(move(a)) {}
 
-        void emit(CodeWriter &code, Scope &scope) override
+        void emit(CodeWriter &code, Scope &scope, Compiler::ErrorCollection &errors) override
         {
 
             assert(args.size() < 256);
 
             for (auto it = args.rbegin(); it != args.rend(); it++)
-                (*it)->emit(code, scope);
+                (*it)->emit(code, scope, errors);
 
             code.emit(Instruction::call_fn);
             code.emit(function);
@@ -279,15 +284,15 @@ Expression LoLa::AST::MethodCall(Expression object, String name, List<Expression
         List<Expression> args;
         Foo(Expression object, String f, List<Expression> a) : object(move(object)), function(f), args(move(a)) {}
 
-        void emit(CodeWriter &code, Scope &scope) override
+        void emit(CodeWriter &code, Scope &scope, Compiler::ErrorCollection &errors) override
         {
 
             assert(args.size() < 256);
 
             for (auto it = args.rbegin(); it != args.rend(); it++)
-                (*it)->emit(code, scope);
+                (*it)->emit(code, scope, errors);
 
-            object->emit(code, scope);
+            object->emit(code, scope, errors);
 
             code.emit(Instruction::call_obj);
             code.emit(function);
@@ -310,9 +315,9 @@ Expression LoLa::AST::UnaryOperator(Operator op, Expression value)
         Expression value;
         Foo(Operator o, Expression v) : op(o), value(move(v)) {}
 
-        void emit(CodeWriter &code, Scope &scope) override
+        void emit(CodeWriter &code, Scope &scope, Compiler::ErrorCollection &errors) override
         {
-            value->emit(code, scope);
+            value->emit(code, scope, errors);
             switch (op)
             {
             case Operator::Minus:
@@ -322,7 +327,8 @@ Expression LoLa::AST::UnaryOperator(Operator op, Expression value)
                 code.emit(Instruction::bool_not);
                 break;
             default:
-                throw LoLa::Error::InvalidOperator;
+                errors.invalidOperator(op);
+                break;
             }
         }
 
@@ -341,10 +347,10 @@ Expression LoLa::AST::BinaryOperator(Operator op, Expression lhs, Expression rhs
         Operator op;
         Foo(Operator o, Expression l, Expression r) : lhs(move(l)), rhs(move(r)), op(o) {}
 
-        void emit(CodeWriter &code, Scope &scope) override
+        void emit(CodeWriter &code, Scope &scope, Compiler::ErrorCollection &errors) override
         {
-            lhs->emit(code, scope);
-            rhs->emit(code, scope);
+            lhs->emit(code, scope, errors);
+            rhs->emit(code, scope, errors);
             switch (op)
             {
             case Operator::Plus:
@@ -387,7 +393,8 @@ Expression LoLa::AST::BinaryOperator(Operator op, Expression lhs, Expression rhs
                 code.emit(Instruction::bool_or);
                 break;
             default:
-                throw LoLa::Error::InvalidOperator;
+                errors.invalidOperator(op);
+                break;
             }
         }
 
@@ -407,10 +414,10 @@ Statement LoLa::AST::Assignment(LValueExpression target, Expression value)
         Expression rhs;
         Foo(LValueExpression l, Expression r) : lhs(move(l)), rhs(move(r)) {}
 
-        void emit(CodeWriter &code, Scope &scope) override
+        void emit(CodeWriter &code, Scope &scope, Compiler::ErrorCollection &errors) override
         {
-            rhs->emit(code, scope);
-            lhs->emitStore(code, scope);
+            rhs->emit(code, scope, errors);
+            lhs->emitStore(code, scope, errors);
         }
     };
     return std::make_unique<Foo>(move(target), move(value));
@@ -420,7 +427,7 @@ Statement LoLa::AST::Return()
 {
     struct Foo : StatementBase
     {
-        void emit(CodeWriter &code, Scope &) override
+        void emit(CodeWriter &code, Scope &, Compiler::ErrorCollection &) override
         {
             code.emit(Instruction::ret);
         }
@@ -434,9 +441,9 @@ Statement LoLa::AST::Return(Expression value)
         Expression value;
         Foo(Expression v) : value(move(v)) {}
 
-        void emit(CodeWriter &code, Scope &scope) override
+        void emit(CodeWriter &code, Scope &scope, Compiler::ErrorCollection &errors) override
         {
-            value->emit(code, scope);
+            value->emit(code, scope, errors);
             code.emit(Instruction::retval);
         }
     };
@@ -450,18 +457,18 @@ Statement LoLa::AST::WhileLoop(Expression condition, Statement body)
         Statement body;
         Foo(Expression cond, Statement body) : cond(move(cond)), body(move(body)) {}
 
-        void emit(CodeWriter &code, Scope &scope) override
+        void emit(CodeWriter &code, Scope &scope, Compiler::ErrorCollection &errors) override
         {
             auto const loop_start = code.createAndDefineLabel();
             auto const loop_end = code.createLabel();
 
             code.pushLoop(loop_end, loop_start);
 
-            cond->emit(code, scope);
+            cond->emit(code, scope, errors);
             code.emit(Instruction::jif);
             code.emit(loop_end);
 
-            body->emit(code, scope);
+            body->emit(code, scope, errors);
 
             code.emit(Instruction::jmp);
             code.emit(loop_start);
@@ -482,11 +489,11 @@ Statement LoLa::AST::ForLoop(String var, Expression source, Statement body)
         Statement body;
         Foo(String var, Expression list, Statement body) : var(var), list(move(list)), body(move(body)) {}
 
-        void emit(CodeWriter &code, Scope &scope) override
+        void emit(CodeWriter &code, Scope &scope, Compiler::ErrorCollection &errors) override
         {
             scope.enter();
 
-            list->emit(code, scope);
+            list->emit(code, scope, errors);
             code.emit(Instruction::iter_make);
 
             scope.declare(var);
@@ -510,7 +517,7 @@ Statement LoLa::AST::ForLoop(String var, Expression source, Statement body)
                 code.emit(Instruction::store_local);
             code.emit(loopvar->first);
 
-            body->emit(code, scope);
+            body->emit(code, scope, errors);
 
             code.emit(Instruction::jmp);
             code.emit(loop_start);
@@ -535,15 +542,15 @@ Statement LoLa::AST::IfElse(Expression condition, Statement true_body)
         Statement body;
         Foo(Expression cond, Statement body) : cond(move(cond)), body(move(body)) {}
 
-        void emit(CodeWriter &code, Scope &scope) override
+        void emit(CodeWriter &code, Scope &scope, Compiler::ErrorCollection &errors) override
         {
-            cond->emit(code, scope);
+            cond->emit(code, scope, errors);
 
             auto lbl = code.createLabel();
             code.emit(Instruction::jif);
             code.emit(lbl);
 
-            body->emit(code, scope);
+            body->emit(code, scope, errors);
 
             code.defineLabel(lbl);
         }
@@ -560,22 +567,22 @@ Statement LoLa::AST::IfElse(Expression condition, Statement true_body, Statement
         Statement false_body;
         Foo(Expression cond, Statement tbody, Statement fbody) : cond(move(cond)), true_body(move(tbody)), false_body(move(fbody)) {}
 
-        void emit(CodeWriter &code, Scope &scope) override
+        void emit(CodeWriter &code, Scope &scope, Compiler::ErrorCollection &errors) override
         {
-            cond->emit(code, scope);
+            cond->emit(code, scope, errors);
 
             auto lbl_false = code.createLabel();
             auto lbl_end = code.createLabel();
             code.emit(Instruction::jif);
             code.emit(lbl_false);
 
-            true_body->emit(code, scope);
+            true_body->emit(code, scope, errors);
 
             code.emit(Instruction::jmp);
             code.emit(lbl_end);
 
             code.defineLabel(lbl_false);
-            false_body->emit(code, scope);
+            false_body->emit(code, scope, errors);
 
             code.defineLabel(lbl_end);
         }
@@ -590,9 +597,9 @@ Statement LoLa::AST::DiscardResult(Expression value)
         Expression value;
         Foo(Expression v) : value(move(v)) {}
 
-        void emit(CodeWriter &code, Scope &scope) override
+        void emit(CodeWriter &code, Scope &scope, Compiler::ErrorCollection &errors) override
         {
-            value->emit(code, scope);
+            value->emit(code, scope, errors);
             code.emit(Instruction::pop);
         }
     };
@@ -606,11 +613,12 @@ Statement LoLa::AST::Declaration(String name)
         String name;
         Foo(String name) : name(move(name)) {}
 
-        void emit(CodeWriter &, Scope &scope) override
+        void emit(CodeWriter &, Scope &scope, Compiler::ErrorCollection &errors) override
         {
             if (isReservedName(name))
-                throw Error::InvalidVariable;
-            scope.declare(name);
+                errors.invalidVariable(name);
+            else
+                scope.declare(name);
         }
     };
     return std::make_unique<Foo>(name);
@@ -623,11 +631,12 @@ Statement LoLa::AST::ExternDeclaration(String name)
         String name;
         Foo(String name) : name(move(name)) {}
 
-        void emit(CodeWriter &, Scope &scope) override
+        void emit(CodeWriter &, Scope &scope, Compiler::ErrorCollection &errors) override
         {
             if (isReservedName(name))
-                throw Error::InvalidVariable;
-            scope.declareExtern(name);
+                errors.invalidVariable(name);
+            else
+                scope.declareExtern(name);
         }
     };
     return std::make_unique<Foo>(name);
@@ -641,22 +650,27 @@ Statement LoLa::AST::Declaration(String name, Expression value)
         Expression value;
         Foo(String name, Expression v) : name(move(name)), value(move(v)) {}
 
-        void emit(CodeWriter &code, Scope &scope) override
+        void emit(CodeWriter &code, Scope &scope, Compiler::ErrorCollection &errors) override
         {
             if (isReservedName(name))
-                throw Error::InvalidVariable;
-
-            scope.declare(name);
-            value->emit(code, scope);
-
-            auto const pos = scope.get(name);
-            assert(pos != std::nullopt);
-
-            if (pos->second == Scope::Global)
-                code.emit(Instruction::store_global_idx);
+            {
+                errors.invalidVariable(name);
+            }
             else
-                code.emit(Instruction::store_local);
-            code.emit(pos->first);
+            {
+
+                scope.declare(name);
+                value->emit(code, scope, errors);
+
+                auto const pos = scope.get(name);
+                assert(pos != std::nullopt);
+
+                if (pos->second == Scope::Global)
+                    code.emit(Instruction::store_global_idx);
+                else
+                    code.emit(Instruction::store_local);
+                code.emit(pos->first);
+            }
         }
     };
     return std::make_unique<Foo>(name, move(value));
@@ -669,11 +683,11 @@ Statement LoLa::AST::SubScope(List<Statement> body)
         List<Statement> content;
         Foo(List<Statement> v) : content(move(v)) {}
 
-        void emit(CodeWriter &code, Scope &scope) override
+        void emit(CodeWriter &code, Scope &scope, Compiler::ErrorCollection &errors) override
         {
             scope.enter();
             for (auto const &stmt : content)
-                stmt->emit(code, scope);
+                stmt->emit(code, scope, errors);
             scope.leave();
         }
     };
@@ -684,9 +698,9 @@ Statement LoLa::AST::BreakStatement()
 {
     struct Foo : StatementBase
     {
-        void emit(CodeWriter &code, Scope &) override
+        void emit(CodeWriter &code, Scope &, Compiler::ErrorCollection &errors) override
         {
-            code.emitBreak();
+            code.emitBreak(errors);
         }
     };
     return std::make_unique<Foo>();
@@ -696,9 +710,9 @@ Statement LoLa::AST::ContinueStatement()
 {
     struct Foo : StatementBase
     {
-        void emit(CodeWriter &code, Scope &) override
+        void emit(CodeWriter &code, Scope &, Compiler::ErrorCollection &errors) override
         {
-            code.emitContinue();
+            code.emitContinue(errors);
         }
     };
     return std::make_unique<Foo>();

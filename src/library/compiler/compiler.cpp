@@ -4,7 +4,7 @@
 #include <iostream>
 #include <iomanip>
 
-std::shared_ptr<LoLa::Compiler::CompilationUnit> LoLa::Compiler::Compiler::compile(const LoLa::AST::Program &program) const
+std::shared_ptr<LoLa::Compiler::CompilationUnit> LoLa::Compiler::Compiler::compile(const LoLa::AST::Program &program)
 {
     auto cu = std::make_shared<CompilationUnit>();
 
@@ -13,7 +13,7 @@ std::shared_ptr<LoLa::Compiler::CompilationUnit> LoLa::Compiler::Compiler::compi
     Scope global_scope;
     global_scope.is_global = true;
     for (auto const &stmt : program.statements)
-        stmt->emit(writer, global_scope);
+        stmt->emit(writer, global_scope, this->errors);
     writer.emit(IL::Instruction::ret); // implicit return at the end of the block
 
     assert(global_scope.return_point.size() == 1);
@@ -35,7 +35,7 @@ std::shared_ptr<LoLa::Compiler::CompilationUnit> LoLa::Compiler::Compiler::compi
         for (auto const &param : fn.params)
             scope.declare(param);
 
-        fn.body->emit(writer, scope);
+        fn.body->emit(writer, scope, errors);
         writer.emit(IL::Instruction::ret); // implicit return at the end of the function
 
         fun->second->local_count = scope.max_locals;
@@ -103,20 +103,30 @@ void LoLa::Compiler::CodeWriter::popLoop()
     this->loops.pop_back();
 }
 
-void LoLa::Compiler::CodeWriter::emitBreak()
+void LoLa::Compiler::CodeWriter::emitBreak(ErrorCollection &errors)
 {
     if (this->loops.size() == 0)
-        throw Error::NotInLoop;
-    emit(IL::Instruction::jmp);
-    emit(this->loops.back().first);
+    {
+        errors.notInLoop();
+    }
+    else
+    {
+        emit(IL::Instruction::jmp);
+        emit(this->loops.back().first);
+    }
 }
 
-void LoLa::Compiler::CodeWriter::emitContinue()
+void LoLa::Compiler::CodeWriter::emitContinue(ErrorCollection &errors)
 {
     if (this->loops.size() == 0)
-        throw Error::NotInLoop;
-    emit(IL::Instruction::jmp);
-    emit(this->loops.back().second);
+    {
+        errors.notInLoop();
+    }
+    else
+    {
+        emit(IL::Instruction::jmp);
+        emit(this->loops.back().second);
+    }
 }
 
 void LoLa::Compiler::CodeWriter::emit(LoLa::Compiler::Label label)
@@ -361,4 +371,75 @@ void LoLa::Compiler::CompilationUnit::save(std::ostream &stream)
     }
 
     stream.write(reinterpret_cast<char const *>(this->code.data()), this->code.size());
+}
+
+void LoLa::Compiler::ErrorCollection::add(CompileError &&error)
+{
+    this->errors.emplace_back(std::move(error));
+}
+
+void LoLa::Compiler::ErrorCollection::invalidStore(std::string const &str)
+{
+    add(CompileError{
+        "<not implemented yet>",
+        1,
+        1,
+        "Changing the value of predefined symbol " + str + " is not allowed.",
+        false,
+    });
+}
+
+void LoLa::Compiler::ErrorCollection::invalidVariable(std::string const &str)
+{
+    add(CompileError{
+        "<not implemented yet>",
+        1,
+        1,
+        "The variable name " + str + " is not valid.",
+        false,
+    });
+}
+
+void LoLa::Compiler::ErrorCollection::variableNotFound(std::string const &str)
+{
+    add(CompileError{
+        "<not implemented yet>",
+        1,
+        1,
+        "The variable " + str + " does not exist.",
+        false,
+    });
+}
+
+void LoLa::Compiler::ErrorCollection::invalidString(std::string const &str)
+{
+    add(CompileError{
+        "<not implemented yet>",
+        1,
+        1,
+        "The string \"" + str + "\" contains invalid escape sequences.",
+        false,
+    });
+}
+
+void LoLa::Compiler::ErrorCollection::invalidOperator(AST::Operator op)
+{
+    add(CompileError{
+        "<not implemented yet>",
+        1,
+        1,
+        "The operator is not valid.",
+        false,
+    });
+}
+
+void LoLa::Compiler::ErrorCollection::notInLoop()
+{
+    add(CompileError{
+        "<not implemented yet>",
+        1,
+        1,
+        "Use of break/continue outside of a loop structure.",
+        false,
+    });
 }

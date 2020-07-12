@@ -7,18 +7,11 @@ namespace LoLa
     {
         InvalidPointer,
         InvalidInstruction,
-        InvalidVariable,
         StackEmpty,
         TypeMismatch,
-        InvalidOperator,
         UnsupportedFunction,
         InvalidTopLevelReturn,
         ObjectDisposed,
-        ReadOnlyVariable,
-        InvalidStore,
-        VariableNotFound,
-        NotInLoop,
-        InvalidString,
         LabelAlreadyDefined,
     };
 

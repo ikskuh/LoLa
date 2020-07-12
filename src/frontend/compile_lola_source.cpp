@@ -60,6 +60,16 @@ extern "C" bool compile_lola_source(uint8_t const *source, size_t sourceLength, 
             return false;
         }
 
+        if (compiler.errors.errors.size() > 0)
+        {
+            for (auto const &err : compiler.errors.errors)
+            {
+                fprintf(stderr, "%s:%d:%d: error: %s\n", err.file_name.c_str(), err.row, err.column, err.message.c_str());
+            }
+            fflush(stderr);
+            return false;
+        }
+
         // std::ofstream out(std::string(reinterpret_cast<char const *>(outFileName), outFileNameLen));
         std::stringstream out;
         compile_unit->save(out);

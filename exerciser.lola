@@ -86,6 +86,9 @@ Print("a"); // call_fn (script function)
 
 Sleep(1); // call_fn (async script function)
 
+extern refGlobal;
+extern valGlobal;
+
 Print(valGlobal); // load_global_name
 
 Print(refGlobal); // load_global_name
