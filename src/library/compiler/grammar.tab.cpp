@@ -1,4 +1,4 @@
-// A Bison parser, made by GNU Bison 3.5.2.
+// A Bison parser, made by GNU Bison 3.6.4.
 
 // Skeleton implementation for Bison LALR(1) parsers in C++
 
@@ -30,8 +30,9 @@
 // This special exception was added by the Free Software Foundation in
 // version 2.2 of Bison.
 
-// Undocumented macros, especially those whose name start with YY_,
-// are private implementation details.  Do not rely on them.
+// DO NOT RELY ON FEATURES THAT ARE NOT DOCUMENTED in the manual,
+// especially those whose name start with YY_ or yy_.  They are
+// private implementation details that can be changed or removed.
 
 
 // Take the name prefix into account.
@@ -55,7 +56,7 @@
 #undef yylex
 #define yylex scanner.grammarlex
 
-#line 59 "grammar.tab.cpp"
+#line 60 "grammar.tab.cpp"
 
 
 #ifndef YY_
@@ -69,6 +70,7 @@
 #  define YY_(msgid) msgid
 # endif
 #endif
+
 
 // Whether we are compiled with exception support.
 #ifndef YY_EXCEPTIONS
@@ -125,7 +127,7 @@
 # define YY_STACK_PRINT()               \
   do {                                  \
     if (yydebug_)                       \
-      yystack_print_ ();                \
+      yy_stack_print_ ();                \
   } while (false)
 
 #else // !YYDEBUG
@@ -147,8 +149,7 @@
 
 #line 5 "grammar.yy"
 namespace LoLa {
-#line 151 "grammar.tab.cpp"
-
+#line 153 "grammar.tab.cpp"
 
   /// Build a parser object.
   LoLaParser::LoLaParser (LoLaScanner  &scanner_yyarg, LoLaDriver  &driver_yyarg)
@@ -169,109 +170,17 @@ namespace LoLa {
   {}
 
   /*---------------.
-  | Symbol types.  |
+  | symbol kinds.  |
   `---------------*/
 
   // basic_symbol.
-#if 201103L <= YY_CPLUSPLUS
-  template <typename Base>
-  LoLaParser::basic_symbol<Base>::basic_symbol (basic_symbol&& that)
-    : Base (std::move (that))
-    , value ()
-    , location (std::move (that.location))
-  {
-    switch (this->type_get ())
-    {
-      case 62: // expr_0
-      case 64: // expr_02
-      case 66: // expr_1
-      case 68: // expr_2
-      case 70: // expr_3
-      case 71: // expr_4
-      case 72: // rvalue
-      case 73: // call
-      case 74: // array
-        value.move< Expression > (std::move (that.value));
-        break;
-
-      case 49: // function
-        value.move< Function > (std::move (that.value));
-        break;
-
-      case 76: // lvalue
-        value.move< LValueExpression > (std::move (that.value));
-        break;
-
-      case 75: // arglist
-        value.move< List<Expression> > (std::move (that.value));
-        break;
-
-      case 52: // stmtlist
-        value.move< List<Statement> > (std::move (that.value));
-        break;
-
-      case 50: // plist
-        value.move< List<std::string> > (std::move (that.value));
-        break;
-
-      case 20: // LEQUAL
-      case 21: // GEQUAL
-      case 22: // EQUALS
-      case 23: // DIFFERS
-      case 24: // LESS
-      case 25: // MORE
-      case 35: // PLUS
-      case 36: // MINUS
-      case 37: // MULT
-      case 38: // DIV
-      case 39: // MOD
-      case 40: // AND
-      case 41: // OR
-      case 42: // INVERT
-      case 61: // expr_0_op
-      case 63: // expr_02_op
-      case 65: // expr_1_op
-      case 67: // expr_2_op
-      case 69: // expr_3_op
-        value.move< Operator > (std::move (that.value));
-        break;
-
-      case 48: // program
-        value.move< Program > (std::move (that.value));
-        break;
-
-      case 51: // body
-      case 53: // statement
-      case 54: // decl
-      case 55: // ass
-      case 56: // for
-      case 57: // while
-      case 58: // return
-      case 59: // conditional
-      case 60: // expression
-        value.move< Statement > (std::move (that.value));
-        break;
-
-      case 43: // IDENT
-      case 44: // NUMBER
-      case 45: // STRING
-        value.move< std::string > (std::move (that.value));
-        break;
-
-      default:
-        break;
-    }
-
-  }
-#endif
-
   template <typename Base>
   LoLaParser::basic_symbol<Base>::basic_symbol (const basic_symbol& that)
     : Base (that)
     , value ()
     , location (that.location)
   {
-    switch (this->type_get ())
+    switch (this->kind ())
     {
       case 62: // expr_0
       case 64: // expr_02
@@ -358,10 +267,17 @@ namespace LoLa {
 
 
   template <typename Base>
+  LoLaParser::symbol_kind_type
+  LoLaParser::basic_symbol<Base>::type_get () const YY_NOEXCEPT
+  {
+    return this->kind ();
+  }
+
+  template <typename Base>
   bool
   LoLaParser::basic_symbol<Base>::empty () const YY_NOEXCEPT
   {
-    return Base::type_get () == empty_symbol;
+    return this->kind () == symbol_kind::S_YYEMPTY;
   }
 
   template <typename Base>
@@ -369,7 +285,7 @@ namespace LoLa {
   LoLaParser::basic_symbol<Base>::move (basic_symbol& s)
   {
     super_type::move (s);
-    switch (this->type_get ())
+    switch (this->kind ())
     {
       case 62: // expr_0
       case 64: // expr_02
@@ -454,44 +370,50 @@ namespace LoLa {
     location = YY_MOVE (s.location);
   }
 
-  // by_type.
-  LoLaParser::by_type::by_type ()
-    : type (empty_symbol)
+  // by_kind.
+  LoLaParser::by_kind::by_kind ()
+    : kind_ (symbol_kind::S_YYEMPTY)
   {}
 
 #if 201103L <= YY_CPLUSPLUS
-  LoLaParser::by_type::by_type (by_type&& that)
-    : type (that.type)
+  LoLaParser::by_kind::by_kind (by_kind&& that)
+    : kind_ (that.kind_)
   {
     that.clear ();
   }
 #endif
 
-  LoLaParser::by_type::by_type (const by_type& that)
-    : type (that.type)
+  LoLaParser::by_kind::by_kind (const by_kind& that)
+    : kind_ (that.kind_)
   {}
 
-  LoLaParser::by_type::by_type (token_type t)
-    : type (yytranslate_ (t))
+  LoLaParser::by_kind::by_kind (token_kind_type t)
+    : kind_ (yytranslate_ (t))
   {}
 
   void
-  LoLaParser::by_type::clear ()
+  LoLaParser::by_kind::clear ()
   {
-    type = empty_symbol;
+    kind_ = symbol_kind::S_YYEMPTY;
   }
 
   void
-  LoLaParser::by_type::move (by_type& that)
+  LoLaParser::by_kind::move (by_kind& that)
   {
-    type = that.type;
+    kind_ = that.kind_;
     that.clear ();
   }
 
-  int
-  LoLaParser::by_type::type_get () const YY_NOEXCEPT
+  LoLaParser::symbol_kind_type
+  LoLaParser::by_kind::kind () const YY_NOEXCEPT
   {
-    return type;
+    return kind_;
+  }
+
+  LoLaParser::symbol_kind_type
+  LoLaParser::by_kind::type_get () const YY_NOEXCEPT
+  {
+    return this->kind ();
   }
 
 
@@ -521,13 +443,13 @@ namespace LoLa {
     : state (s)
   {}
 
-  LoLaParser::symbol_number_type
-  LoLaParser::by_state::type_get () const YY_NOEXCEPT
+  LoLaParser::symbol_kind_type
+  LoLaParser::by_state::kind () const YY_NOEXCEPT
   {
     if (state == empty_state)
-      return empty_symbol;
+      return symbol_kind::S_YYEMPTY;
     else
-      return yystos_[+state];
+      return YY_CAST (symbol_kind_type, yystos_[+state]);
   }
 
   LoLaParser::stack_symbol_type::stack_symbol_type ()
@@ -536,7 +458,7 @@ namespace LoLa {
   LoLaParser::stack_symbol_type::stack_symbol_type (YY_RVREF (stack_symbol_type) that)
     : super_type (YY_MOVE (that.state), YY_MOVE (that.location))
   {
-    switch (that.type_get ())
+    switch (that.kind ())
     {
       case 62: // expr_0
       case 64: // expr_02
@@ -627,7 +549,7 @@ namespace LoLa {
   LoLaParser::stack_symbol_type::stack_symbol_type (state_type s, YY_MOVE_REF (symbol_type) that)
     : super_type (s, YY_MOVE (that.location))
   {
-    switch (that.type_get ())
+    switch (that.kind ())
     {
       case 62: // expr_0
       case 64: // expr_02
@@ -710,7 +632,7 @@ namespace LoLa {
     }
 
     // that is emptied.
-    that.type = empty_symbol;
+    that.kind_ = symbol_kind::S_YYEMPTY;
   }
 
 #if YY_CPLUSPLUS < 201103L
@@ -718,7 +640,7 @@ namespace LoLa {
   LoLaParser::stack_symbol_type::operator= (const stack_symbol_type& that)
   {
     state = that.state;
-    switch (that.type_get ())
+    switch (that.kind ())
     {
       case 62: // expr_0
       case 64: // expr_02
@@ -808,7 +730,7 @@ namespace LoLa {
   LoLaParser::stack_symbol_type::operator= (stack_symbol_type& that)
   {
     state = that.state;
-    switch (that.type_get ())
+    switch (that.kind ())
     {
       case 62: // expr_0
       case 64: // expr_02
@@ -908,23 +830,21 @@ namespace LoLa {
 #if YYDEBUG
   template <typename Base>
   void
-  LoLaParser::yy_print_ (std::ostream& yyo,
-                                     const basic_symbol<Base>& yysym) const
+  LoLaParser::yy_print_ (std::ostream& yyo, const basic_symbol<Base>& yysym) const
   {
     std::ostream& yyoutput = yyo;
     YYUSE (yyoutput);
-    symbol_number_type yytype = yysym.type_get ();
-#if defined __GNUC__ && ! defined __clang__ && ! defined __ICC && __GNUC__ * 100 + __GNUC_MINOR__ <= 408
-    // Avoid a (spurious) G++ 4.8 warning about "array subscript is
-    // below array bounds".
     if (yysym.empty ())
-      std::abort ();
-#endif
-    yyo << (yytype < yyntokens_ ? "token" : "nterm")
-        << ' ' << yytname_[yytype] << " ("
-        << yysym.location << ": ";
-    YYUSE (yytype);
-    yyo << ')';
+      yyo << "empty symbol";
+    else
+      {
+        symbol_kind_type yykind = yysym.kind ();
+        yyo << (yykind < YYNTOKENS ? "token" : "nterm")
+            << ' ' << yysym.name () << " ("
+            << yysym.location << ": ";
+        YYUSE (yykind);
+        yyo << ')';
+      }
   }
 #endif
 
@@ -983,11 +903,11 @@ namespace LoLa {
   LoLaParser::state_type
   LoLaParser::yy_lr_goto_state_ (state_type yystate, int yysym)
   {
-    int yyr = yypgoto_[yysym - yyntokens_] + yystate;
+    int yyr = yypgoto_[yysym - YYNTOKENS] + yystate;
     if (0 <= yyr && yyr <= yylast_ && yycheck_[yyr] == yystate)
       return yytable_[yyr];
     else
-      return yydefgoto_[yysym - yyntokens_];
+      return yydefgoto_[yysym - YYNTOKENS];
   }
 
   bool
@@ -1047,6 +967,7 @@ namespace LoLa {
   `-----------------------------------------------*/
   yynewstate:
     YYCDEBUG << "Entering state " << int (yystack_[0].state) << '\n';
+    YY_STACK_PRINT ();
 
     // Accept?
     if (yystack_[0].state == yyfinal_)
@@ -1067,12 +988,12 @@ namespace LoLa {
     // Read a lookahead token.
     if (yyla.empty ())
       {
-        YYCDEBUG << "Reading a token: ";
+        YYCDEBUG << "Reading a token\n";
 #if YY_EXCEPTIONS
         try
 #endif // YY_EXCEPTIONS
           {
-            yyla.type = yytranslate_ (yylex (&yyla.value, &yyla.location));
+            yyla.kind_ = yytranslate_ (yylex (&yyla.value, &yyla.location));
           }
 #if YY_EXCEPTIONS
         catch (const syntax_error& yyexc)
@@ -1085,10 +1006,20 @@ namespace LoLa {
       }
     YY_SYMBOL_PRINT ("Next token is", yyla);
 
+    if (yyla.kind () == symbol_kind::S_YYerror)
+    {
+      // The scanner already issued an error message, process directly
+      // to error recovery.  But do not keep the error token as
+      // lookahead, it is too special and may lead us to an endless
+      // loop in error recovery. */
+      yyla.kind_ = symbol_kind::S_YYUNDEF;
+      goto yyerrlab1;
+    }
+
     /* If the proper action on seeing token YYLA.TYPE is to reduce or
        to detect an error, take that action.  */
-    yyn += yyla.type_get ();
-    if (yyn < 0 || yylast_ < yyn || yycheck_[yyn] != yyla.type_get ())
+    yyn += yyla.kind ();
+    if (yyn < 0 || yylast_ < yyn || yycheck_[yyn] != yyla.kind ())
       {
         goto yydefault;
       }
@@ -1234,13 +1165,13 @@ namespace LoLa {
   case 2:
 #line 82 "grammar.yy"
                        { driver.program = move(yystack_[0].value.as < Program > ()); }
-#line 1238 "grammar.tab.cpp"
+#line 1169 "grammar.tab.cpp"
     break;
 
   case 3:
 #line 84 "grammar.yy"
               { }
-#line 1244 "grammar.tab.cpp"
+#line 1175 "grammar.tab.cpp"
     break;
 
   case 4:
@@ -1249,7 +1180,7 @@ namespace LoLa {
                 yylhs.value.as < Program > () = move(yystack_[1].value.as < Program > ());
                 yylhs.value.as < Program > ().functions.emplace_back(move(yystack_[0].value.as < Function > ()));
             }
-#line 1253 "grammar.tab.cpp"
+#line 1184 "grammar.tab.cpp"
     break;
 
   case 5:
@@ -1258,7 +1189,7 @@ namespace LoLa {
                 yylhs.value.as < Program > () = move(yystack_[1].value.as < Program > ());
                 yylhs.value.as < Program > ().statements.emplace_back(move(yystack_[0].value.as < Statement > ()));
             }
-#line 1262 "grammar.tab.cpp"
+#line 1193 "grammar.tab.cpp"
     break;
 
   case 6:
@@ -1268,7 +1199,7 @@ namespace LoLa {
                 yylhs.value.as < Function > ().params = yystack_[2].value.as < List<std::string> > ();
                 yylhs.value.as < Function > ().body = move(yystack_[0].value.as < Statement > ());
             }
-#line 1272 "grammar.tab.cpp"
+#line 1203 "grammar.tab.cpp"
     break;
 
   case 7:
@@ -1277,7 +1208,7 @@ namespace LoLa {
                 yylhs.value.as < Function > ().name = yystack_[3].value.as < std::string > ();
                 yylhs.value.as < Function > ().body = move(yystack_[0].value.as < Statement > ());
             }
-#line 1281 "grammar.tab.cpp"
+#line 1212 "grammar.tab.cpp"
     break;
 
   case 8:
@@ -1285,7 +1216,7 @@ namespace LoLa {
             {
                 yylhs.value.as < List<std::string> > ().emplace_back(move(yystack_[0].value.as < std::string > ()));
             }
-#line 1289 "grammar.tab.cpp"
+#line 1220 "grammar.tab.cpp"
     break;
 
   case 9:
@@ -1294,19 +1225,19 @@ namespace LoLa {
                 yylhs.value.as < List<std::string> > () = move(yystack_[2].value.as < List<std::string> > ());
                 yylhs.value.as < List<std::string> > ().emplace_back(move(yystack_[0].value.as < std::string > ()));
             }
-#line 1298 "grammar.tab.cpp"
+#line 1229 "grammar.tab.cpp"
     break;
 
   case 10:
 #line 117 "grammar.yy"
                                             { yylhs.value.as < Statement > () = SubScope(move(yystack_[1].value.as < List<Statement> > ())); }
-#line 1304 "grammar.tab.cpp"
+#line 1235 "grammar.tab.cpp"
     break;
 
   case 11:
 #line 120 "grammar.yy"
               { }
-#line 1310 "grammar.tab.cpp"
+#line 1241 "grammar.tab.cpp"
     break;
 
   case 12:
@@ -1315,391 +1246,391 @@ namespace LoLa {
                 yylhs.value.as < List<Statement> > () = move(yystack_[1].value.as < List<Statement> > ());
                 yylhs.value.as < List<Statement> > ().emplace_back(move(yystack_[0].value.as < Statement > ()));
             }
-#line 1319 "grammar.tab.cpp"
+#line 1250 "grammar.tab.cpp"
     break;
 
   case 13:
 #line 127 "grammar.yy"
                                   { yylhs.value.as < Statement > () = move(yystack_[0].value.as < Statement > ()); }
-#line 1325 "grammar.tab.cpp"
+#line 1256 "grammar.tab.cpp"
     break;
 
   case 14:
 #line 128 "grammar.yy"
                                   { yylhs.value.as < Statement > () = move(yystack_[0].value.as < Statement > ()); }
-#line 1331 "grammar.tab.cpp"
+#line 1262 "grammar.tab.cpp"
     break;
 
   case 15:
 #line 129 "grammar.yy"
                                   { yylhs.value.as < Statement > () = move(yystack_[0].value.as < Statement > ()); }
-#line 1337 "grammar.tab.cpp"
+#line 1268 "grammar.tab.cpp"
     break;
 
   case 16:
 #line 130 "grammar.yy"
                                   { yylhs.value.as < Statement > () = move(yystack_[0].value.as < Statement > ()); }
-#line 1343 "grammar.tab.cpp"
+#line 1274 "grammar.tab.cpp"
     break;
 
   case 17:
 #line 131 "grammar.yy"
                                   { yylhs.value.as < Statement > () = move(yystack_[0].value.as < Statement > ()); }
-#line 1349 "grammar.tab.cpp"
+#line 1280 "grammar.tab.cpp"
     break;
 
   case 18:
 #line 132 "grammar.yy"
                                   { yylhs.value.as < Statement > () = move(yystack_[0].value.as < Statement > ()); }
-#line 1355 "grammar.tab.cpp"
+#line 1286 "grammar.tab.cpp"
     break;
 
   case 19:
 #line 133 "grammar.yy"
                                   { yylhs.value.as < Statement > () = move(yystack_[0].value.as < Statement > ()); }
-#line 1361 "grammar.tab.cpp"
+#line 1292 "grammar.tab.cpp"
     break;
 
   case 20:
 #line 134 "grammar.yy"
                                   { yylhs.value.as < Statement > () = move(yystack_[0].value.as < Statement > ()); }
-#line 1367 "grammar.tab.cpp"
+#line 1298 "grammar.tab.cpp"
     break;
 
   case 21:
 #line 135 "grammar.yy"
                                   { yylhs.value.as < Statement > () = BreakStatement(); }
-#line 1373 "grammar.tab.cpp"
+#line 1304 "grammar.tab.cpp"
     break;
 
   case 22:
 #line 136 "grammar.yy"
                                   { yylhs.value.as < Statement > () = ContinueStatement(); }
-#line 1379 "grammar.tab.cpp"
+#line 1310 "grammar.tab.cpp"
     break;
 
   case 23:
 #line 139 "grammar.yy"
                                                                 { yylhs.value.as < Statement > () = Declaration(move(yystack_[3].value.as < std::string > ()), move(yystack_[1].value.as < Expression > ())); }
-#line 1385 "grammar.tab.cpp"
+#line 1316 "grammar.tab.cpp"
     break;
 
   case 24:
 #line 140 "grammar.yy"
                                                                                 { yylhs.value.as < Statement > () = Declaration(move(yystack_[1].value.as < std::string > ())); }
-#line 1391 "grammar.tab.cpp"
+#line 1322 "grammar.tab.cpp"
     break;
 
   case 25:
 #line 141 "grammar.yy"
                                                                         { yylhs.value.as < Statement > () = ExternDeclaration(move(yystack_[1].value.as < std::string > ())); }
-#line 1397 "grammar.tab.cpp"
+#line 1328 "grammar.tab.cpp"
     break;
 
   case 26:
 #line 144 "grammar.yy"
                                                         { yylhs.value.as < Statement > () = Assignment(move(yystack_[3].value.as < LValueExpression > ()), move(yystack_[1].value.as < Expression > ())); }
-#line 1403 "grammar.tab.cpp"
+#line 1334 "grammar.tab.cpp"
     break;
 
   case 27:
 #line 145 "grammar.yy"
                                                          { auto dup = yystack_[3].value.as < LValueExpression > ()->clone(); yylhs.value.as < Statement > () = Assignment(move(yystack_[3].value.as < LValueExpression > ()), BinaryOperator(Operator::Plus, move(dup), move(yystack_[1].value.as < Expression > ()))); }
-#line 1409 "grammar.tab.cpp"
+#line 1340 "grammar.tab.cpp"
     break;
 
   case 28:
 #line 146 "grammar.yy"
                                                          { auto dup = yystack_[3].value.as < LValueExpression > ()->clone(); yylhs.value.as < Statement > () = Assignment(move(yystack_[3].value.as < LValueExpression > ()), BinaryOperator(Operator::Minus, move(dup), move(yystack_[1].value.as < Expression > ()))); }
-#line 1415 "grammar.tab.cpp"
+#line 1346 "grammar.tab.cpp"
     break;
 
   case 29:
 #line 147 "grammar.yy"
                                                          { auto dup = yystack_[3].value.as < LValueExpression > ()->clone(); yylhs.value.as < Statement > () = Assignment(move(yystack_[3].value.as < LValueExpression > ()), BinaryOperator(Operator::Multiply, move(dup), move(yystack_[1].value.as < Expression > ()))); }
-#line 1421 "grammar.tab.cpp"
+#line 1352 "grammar.tab.cpp"
     break;
 
   case 30:
 #line 148 "grammar.yy"
                                                          { auto dup = yystack_[3].value.as < LValueExpression > ()->clone(); yylhs.value.as < Statement > () = Assignment(move(yystack_[3].value.as < LValueExpression > ()), BinaryOperator(Operator::Divide, move(dup), move(yystack_[1].value.as < Expression > ()))); }
-#line 1427 "grammar.tab.cpp"
+#line 1358 "grammar.tab.cpp"
     break;
 
   case 31:
 #line 149 "grammar.yy"
                                                          { auto dup = yystack_[3].value.as < LValueExpression > ()->clone(); yylhs.value.as < Statement > () = Assignment(move(yystack_[3].value.as < LValueExpression > ()), BinaryOperator(Operator::Modulus, move(dup), move(yystack_[1].value.as < Expression > ()))); }
-#line 1433 "grammar.tab.cpp"
+#line 1364 "grammar.tab.cpp"
     break;
 
   case 32:
 #line 152 "grammar.yy"
                                                                     { yylhs.value.as < Statement > () = ForLoop(yystack_[4].value.as < std::string > (),move(yystack_[2].value.as < Expression > ()),move(yystack_[0].value.as < Statement > ())); }
-#line 1439 "grammar.tab.cpp"
+#line 1370 "grammar.tab.cpp"
     break;
 
   case 33:
 #line 155 "grammar.yy"
                                                             { yylhs.value.as < Statement > () = WhileLoop(move(yystack_[2].value.as < Expression > ()), move(yystack_[0].value.as < Statement > ())); }
-#line 1445 "grammar.tab.cpp"
+#line 1376 "grammar.tab.cpp"
     break;
 
   case 34:
 #line 158 "grammar.yy"
                                                                                 { yylhs.value.as < Statement > () = Return(move(yystack_[1].value.as < Expression > ())); }
-#line 1451 "grammar.tab.cpp"
+#line 1382 "grammar.tab.cpp"
     break;
 
   case 35:
 #line 159 "grammar.yy"
                                                                                 { yylhs.value.as < Statement > () = Return(); }
-#line 1457 "grammar.tab.cpp"
+#line 1388 "grammar.tab.cpp"
     break;
 
   case 36:
 #line 162 "grammar.yy"
                                                                   { yylhs.value.as < Statement > () = IfElse(move(yystack_[4].value.as < Expression > ()), move(yystack_[2].value.as < Statement > ()), move(yystack_[0].value.as < Statement > ())); }
-#line 1463 "grammar.tab.cpp"
+#line 1394 "grammar.tab.cpp"
     break;
 
   case 37:
 #line 163 "grammar.yy"
                                                                         { yylhs.value.as < Statement > () = IfElse(move(yystack_[2].value.as < Expression > ()), move(yystack_[0].value.as < Statement > ())); }
-#line 1469 "grammar.tab.cpp"
+#line 1400 "grammar.tab.cpp"
     break;
 
   case 38:
 #line 166 "grammar.yy"
                                                                                         { yylhs.value.as < Statement > () = DiscardResult(move(yystack_[1].value.as < Expression > ())); }
-#line 1475 "grammar.tab.cpp"
+#line 1406 "grammar.tab.cpp"
     break;
 
   case 39:
 #line 169 "grammar.yy"
                   { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
-#line 1481 "grammar.tab.cpp"
+#line 1412 "grammar.tab.cpp"
     break;
 
   case 40:
 #line 169 "grammar.yy"
                         { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
-#line 1487 "grammar.tab.cpp"
+#line 1418 "grammar.tab.cpp"
     break;
 
   case 41:
 #line 170 "grammar.yy"
                                                             { yylhs.value.as < Expression > () = BinaryOperator(yystack_[1].value.as < Operator > (), move(yystack_[2].value.as < Expression > ()), move(yystack_[0].value.as < Expression > ())); }
-#line 1493 "grammar.tab.cpp"
+#line 1424 "grammar.tab.cpp"
     break;
 
   case 42:
 #line 171 "grammar.yy"
                                                         { yylhs.value.as < Expression > () = move(yystack_[0].value.as < Expression > ()); }
-#line 1499 "grammar.tab.cpp"
+#line 1430 "grammar.tab.cpp"
     break;
 
   case 43:
 #line 174 "grammar.yy"
                   { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
-#line 1505 "grammar.tab.cpp"
+#line 1436 "grammar.tab.cpp"
     break;
 
   case 44:
 #line 174 "grammar.yy"
                          { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
-#line 1511 "grammar.tab.cpp"
+#line 1442 "grammar.tab.cpp"
     break;
 
   case 45:
 #line 174 "grammar.yy"
                                  { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
-#line 1517 "grammar.tab.cpp"
+#line 1448 "grammar.tab.cpp"
     break;
 
   case 46:
 #line 174 "grammar.yy"
                                         { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
-#line 1523 "grammar.tab.cpp"
+#line 1454 "grammar.tab.cpp"
     break;
 
   case 47:
 #line 174 "grammar.yy"
                                                { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
-#line 1529 "grammar.tab.cpp"
+#line 1460 "grammar.tab.cpp"
     break;
 
   case 48:
 #line 174 "grammar.yy"
                                                     { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
-#line 1535 "grammar.tab.cpp"
+#line 1466 "grammar.tab.cpp"
     break;
 
   case 49:
 #line 175 "grammar.yy"
                                                             { yylhs.value.as < Expression > () = BinaryOperator(yystack_[1].value.as < Operator > (), move(yystack_[2].value.as < Expression > ()), move(yystack_[0].value.as < Expression > ())); }
-#line 1541 "grammar.tab.cpp"
+#line 1472 "grammar.tab.cpp"
     break;
 
   case 50:
 #line 176 "grammar.yy"
                                                         { yylhs.value.as < Expression > () = move(yystack_[0].value.as < Expression > ()); }
-#line 1547 "grammar.tab.cpp"
+#line 1478 "grammar.tab.cpp"
     break;
 
   case 51:
 #line 180 "grammar.yy"
                   { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
-#line 1553 "grammar.tab.cpp"
+#line 1484 "grammar.tab.cpp"
     break;
 
   case 52:
 #line 180 "grammar.yy"
                          { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
-#line 1559 "grammar.tab.cpp"
+#line 1490 "grammar.tab.cpp"
     break;
 
   case 53:
 #line 181 "grammar.yy"
                                                                                 { yylhs.value.as < Expression > () = BinaryOperator(yystack_[1].value.as < Operator > (), move(yystack_[2].value.as < Expression > ()), move(yystack_[0].value.as < Expression > ())); }
-#line 1565 "grammar.tab.cpp"
+#line 1496 "grammar.tab.cpp"
     break;
 
   case 54:
 #line 182 "grammar.yy"
                                                                                         { yylhs.value.as < Expression > () = move(yystack_[0].value.as < Expression > ()); }
-#line 1571 "grammar.tab.cpp"
+#line 1502 "grammar.tab.cpp"
     break;
 
   case 55:
 #line 186 "grammar.yy"
                   { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
-#line 1577 "grammar.tab.cpp"
+#line 1508 "grammar.tab.cpp"
     break;
 
   case 56:
 #line 186 "grammar.yy"
                          { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
-#line 1583 "grammar.tab.cpp"
+#line 1514 "grammar.tab.cpp"
     break;
 
   case 57:
 #line 186 "grammar.yy"
                                { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
-#line 1589 "grammar.tab.cpp"
+#line 1520 "grammar.tab.cpp"
     break;
 
   case 58:
 #line 187 "grammar.yy"
                                                                                 { yylhs.value.as < Expression > () = BinaryOperator(yystack_[1].value.as < Operator > (), move(yystack_[2].value.as < Expression > ()), move(yystack_[0].value.as < Expression > ())); }
-#line 1595 "grammar.tab.cpp"
+#line 1526 "grammar.tab.cpp"
     break;
 
   case 59:
 #line 188 "grammar.yy"
                                                                                         { yylhs.value.as < Expression > () = move(yystack_[0].value.as < Expression > ()); }
-#line 1601 "grammar.tab.cpp"
+#line 1532 "grammar.tab.cpp"
     break;
 
   case 60:
 #line 192 "grammar.yy"
                   { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
-#line 1607 "grammar.tab.cpp"
+#line 1538 "grammar.tab.cpp"
     break;
 
   case 61:
 #line 192 "grammar.yy"
                           { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
-#line 1613 "grammar.tab.cpp"
+#line 1544 "grammar.tab.cpp"
     break;
 
   case 62:
 #line 193 "grammar.yy"
                                                                                         { yylhs.value.as < Expression > () = UnaryOperator(yystack_[1].value.as < Operator > (), move(yystack_[0].value.as < Expression > ())); }
-#line 1619 "grammar.tab.cpp"
+#line 1550 "grammar.tab.cpp"
     break;
 
   case 63:
 #line 194 "grammar.yy"
                                                                                         { yylhs.value.as < Expression > () = move(yystack_[0].value.as < Expression > ()); }
-#line 1625 "grammar.tab.cpp"
+#line 1556 "grammar.tab.cpp"
     break;
 
   case 64:
 #line 198 "grammar.yy"
                                                                                 { yylhs.value.as < Expression > () = move(yystack_[1].value.as < Expression > ()); }
-#line 1631 "grammar.tab.cpp"
+#line 1562 "grammar.tab.cpp"
     break;
 
   case 65:
 #line 199 "grammar.yy"
                                                                                         { yylhs.value.as < Expression > () = move(yystack_[0].value.as < Expression > ()); }
-#line 1637 "grammar.tab.cpp"
+#line 1568 "grammar.tab.cpp"
     break;
 
   case 66:
 #line 200 "grammar.yy"
                                                                                         { yylhs.value.as < Expression > () = move(yystack_[0].value.as < LValueExpression > ()); }
-#line 1643 "grammar.tab.cpp"
+#line 1574 "grammar.tab.cpp"
     break;
 
   case 67:
 #line 203 "grammar.yy"
                                                                                                 { yylhs.value.as < Expression > () = move(yystack_[0].value.as < Expression > ()); }
-#line 1649 "grammar.tab.cpp"
+#line 1580 "grammar.tab.cpp"
     break;
 
   case 68:
 #line 204 "grammar.yy"
                                                                                                 { yylhs.value.as < Expression > () = move(yystack_[0].value.as < Expression > ()); }
-#line 1655 "grammar.tab.cpp"
+#line 1586 "grammar.tab.cpp"
     break;
 
   case 69:
 #line 205 "grammar.yy"
                                                                                         { yylhs.value.as < Expression > () = StringLiteral(yystack_[0].value.as < std::string > ()); }
-#line 1661 "grammar.tab.cpp"
+#line 1592 "grammar.tab.cpp"
     break;
 
   case 70:
 #line 206 "grammar.yy"
                                                                                         { yylhs.value.as < Expression > () = NumberLiteral(yystack_[0].value.as < std::string > ()); }
-#line 1667 "grammar.tab.cpp"
+#line 1598 "grammar.tab.cpp"
     break;
 
   case 71:
 #line 209 "grammar.yy"
                                                                         { yylhs.value.as < Expression > () = MethodCall(move(yystack_[4].value.as < Expression > ()), yystack_[2].value.as < std::string > (), {}); }
-#line 1673 "grammar.tab.cpp"
+#line 1604 "grammar.tab.cpp"
     break;
 
   case 72:
 #line 210 "grammar.yy"
                                                         { yylhs.value.as < Expression > () = MethodCall(move(yystack_[5].value.as < Expression > ()), yystack_[3].value.as < std::string > (), move(yystack_[1].value.as < List<Expression> > ())); }
-#line 1679 "grammar.tab.cpp"
+#line 1610 "grammar.tab.cpp"
     break;
 
   case 73:
 #line 211 "grammar.yy"
                                                                                 { yylhs.value.as < Expression > () = FunctionCall(yystack_[2].value.as < std::string > (), {}); }
-#line 1685 "grammar.tab.cpp"
+#line 1616 "grammar.tab.cpp"
     break;
 
   case 74:
 #line 212 "grammar.yy"
                                                                         { yylhs.value.as < Expression > () = FunctionCall(yystack_[3].value.as < std::string > (), move(yystack_[1].value.as < List<Expression> > ())); }
-#line 1691 "grammar.tab.cpp"
+#line 1622 "grammar.tab.cpp"
     break;
 
   case 75:
 #line 215 "grammar.yy"
                                                                                         { yylhs.value.as < Expression > () = ArrayLiteral({}); }
-#line 1697 "grammar.tab.cpp"
+#line 1628 "grammar.tab.cpp"
     break;
 
   case 76:
 #line 216 "grammar.yy"
                                                                         { yylhs.value.as < Expression > () = ArrayLiteral(move(yystack_[1].value.as < List<Expression> > ())); }
-#line 1703 "grammar.tab.cpp"
+#line 1634 "grammar.tab.cpp"
     break;
 
   case 77:
@@ -1708,7 +1639,7 @@ namespace LoLa {
                 yylhs.value.as < List<Expression> > () = move(yystack_[2].value.as < List<Expression> > ());
                 yylhs.value.as < List<Expression> > ().emplace_back(move(yystack_[0].value.as < Expression > ()));
             }
-#line 1712 "grammar.tab.cpp"
+#line 1643 "grammar.tab.cpp"
     break;
 
   case 78:
@@ -1716,23 +1647,23 @@ namespace LoLa {
                      {
                 yylhs.value.as < List<Expression> > ().emplace_back(move(yystack_[0].value.as < Expression > ()));
             }
-#line 1720 "grammar.tab.cpp"
+#line 1651 "grammar.tab.cpp"
     break;
 
   case 79:
 #line 228 "grammar.yy"
                                                         { yylhs.value.as < LValueExpression > () = ArrayIndexer(move(yystack_[3].value.as < Expression > ()), move(yystack_[1].value.as < Expression > ())); }
-#line 1726 "grammar.tab.cpp"
+#line 1657 "grammar.tab.cpp"
     break;
 
   case 80:
 #line 229 "grammar.yy"
                                                         { yylhs.value.as < LValueExpression > () = VariableRef(yystack_[0].value.as < std::string > ()); }
-#line 1732 "grammar.tab.cpp"
+#line 1663 "grammar.tab.cpp"
     break;
 
 
-#line 1736 "grammar.tab.cpp"
+#line 1667 "grammar.tab.cpp"
 
             default:
               break;
@@ -1749,7 +1680,6 @@ namespace LoLa {
       YY_SYMBOL_PRINT ("-> $$ =", yylhs);
       yypop_ (yylen);
       yylen = 0;
-      YY_STACK_PRINT ();
 
       // Shift the result of the reduction.
       yypush_ (YY_NULLPTR, YY_MOVE (yylhs));
@@ -1765,7 +1695,8 @@ namespace LoLa {
     if (!yyerrstatus_)
       {
         ++yynerrs_;
-        error (yyla.location, yysyntax_error_ (yystack_[0].state, yyla));
+        std::string msg = YY_("syntax error");
+        error (yyla.location, YY_MOVE (msg));
       }
 
 
@@ -1776,7 +1707,7 @@ namespace LoLa {
            error, discard it.  */
 
         // Return failure if at end of input.
-        if (yyla.type_get () == yyeof_)
+        if (yyla.kind () == symbol_kind::S_YYEOF)
           YYABORT;
         else if (!yyla.empty ())
           {
@@ -1802,6 +1733,7 @@ namespace LoLa {
        this YYERROR.  */
     yypop_ (yylen);
     yylen = 0;
+    YY_STACK_PRINT ();
     goto yyerrlab1;
 
 
@@ -1810,31 +1742,33 @@ namespace LoLa {
   `-------------------------------------------------------------*/
   yyerrlab1:
     yyerrstatus_ = 3;   // Each real token shifted decrements this.
+    // Pop stack until we find a state that shifts the error token.
+    for (;;)
+      {
+        yyn = yypact_[+yystack_[0].state];
+        if (!yy_pact_value_is_default_ (yyn))
+          {
+            yyn += symbol_kind::S_YYerror;
+            if (0 <= yyn && yyn <= yylast_
+                && yycheck_[yyn] == symbol_kind::S_YYerror)
+              {
+                yyn = yytable_[yyn];
+                if (0 < yyn)
+                  break;
+              }
+          }
+
+        // Pop the current state because it cannot handle the error token.
+        if (yystack_.size () == 1)
+          YYABORT;
+
+        yyerror_range[1].location = yystack_[0].location;
+        yy_destroy_ ("Error: popping", yystack_[0]);
+        yypop_ ();
+        YY_STACK_PRINT ();
+      }
     {
       stack_symbol_type error_token;
-      for (;;)
-        {
-          yyn = yypact_[+yystack_[0].state];
-          if (!yy_pact_value_is_default_ (yyn))
-            {
-              yyn += yy_error_token_;
-              if (0 <= yyn && yyn <= yylast_ && yycheck_[yyn] == yy_error_token_)
-                {
-                  yyn = yytable_[yyn];
-                  if (0 < yyn)
-                    break;
-                }
-            }
-
-          // Pop the current state because it cannot handle the error token.
-          if (yystack_.size () == 1)
-            YYABORT;
-
-          yyerror_range[1].location = yystack_[0].location;
-          yy_destroy_ ("Error: popping", yystack_[0]);
-          yypop_ ();
-          YY_STACK_PRINT ();
-        }
 
       yyerror_range[2].location = yyla.location;
       YYLLOC_DEFAULT (error_token.location, yyerror_range, 2);
@@ -1872,6 +1806,7 @@ namespace LoLa {
     /* Do not reclaim the symbols of the rule whose action triggered
        this YYABORT or YYACCEPT.  */
     yypop_ (yylen);
+    YY_STACK_PRINT ();
     while (1 < yystack_.size ())
       {
         yy_destroy_ ("Cleanup: popping", yystack_[0]);
@@ -1905,12 +1840,16 @@ namespace LoLa {
     error (yyexc.location, yyexc.what ());
   }
 
-  // Generate an error message.
-  std::string
-  LoLaParser::yysyntax_error_ (state_type, const symbol_type&) const
+#if YYDEBUG || 0
+  const char *
+  LoLaParser::symbol_name (symbol_kind_type yysymbol)
   {
-    return YY_("syntax error");
+    return yytname_[yysymbol];
   }
+#endif // #if YYDEBUG || 0
+
+
+
 
 
   const signed char LoLaParser::yypact_ninf_ = -98;
@@ -2082,11 +2021,11 @@ namespace LoLa {
 
 #if YYDEBUG
   // YYTNAME[SYMBOL-NUM] -- String name of the symbol SYMBOL-NUM.
-  // First, the terminals, then, starting at \a yyntokens_, nonterminals.
+  // First, the terminals, then, starting at \a YYNTOKENS, nonterminals.
   const char*
   const LoLaParser::yytname_[] =
   {
-  "END", "error", "$undefined", "CURLY_O", "CURLY_C", "ROUND_O",
+  "END", "error", "\"invalid token\"", "CURLY_O", "CURLY_C", "ROUND_O",
   "ROUND_C", "SQUARE_O", "SQUARE_C", "VAR", "EXTERN", "FOR", "WHILE", "IF",
   "ELSE", "FUNCTION", "BREAK", "CONTINUE", "RETURN", "IN", "LEQUAL",
   "GEQUAL", "EQUALS", "DIFFERS", "LESS", "MORE", "IS", "DOT", "COMMA",
@@ -2099,8 +2038,10 @@ namespace LoLa {
   "expr_3_op", "expr_3", "expr_4", "rvalue", "call", "array", "arglist",
   "lvalue", YY_NULLPTR
   };
+#endif
 
 
+#if YYDEBUG
   const unsigned char
   LoLaParser::yyrline_[] =
   {
@@ -2115,9 +2056,8 @@ namespace LoLa {
      229
   };
 
-  // Print the state stack on the debug stream.
   void
-  LoLaParser::yystack_print_ ()
+  LoLaParser::yy_stack_print_ () const
   {
     *yycdebug_ << "Stack now";
     for (stack_type::const_iterator
@@ -2128,9 +2068,8 @@ namespace LoLa {
     *yycdebug_ << '\n';
   }
 
-  // Report on the debug stream that the rule \a yyrule is going to be reduced.
   void
-  LoLaParser::yy_reduce_print_ (int yyrule)
+  LoLaParser::yy_reduce_print_ (int yyrule) const
   {
     int yylno = yyrline_[yyrule];
     int yynrhs = yyr2_[yyrule];
@@ -2144,13 +2083,13 @@ namespace LoLa {
   }
 #endif // YYDEBUG
 
-  LoLaParser::token_number_type
+  LoLaParser::symbol_kind_type
   LoLaParser::yytranslate_ (int t)
   {
     // YYTRANSLATE[TOKEN-NUM] -- Symbol number corresponding to
     // TOKEN-NUM as returned by yylex.
     static
-    const token_number_type
+    const signed char
     translate_table[] =
     {
        0,     2,     2,     2,     2,     2,     2,     2,     2,     2,
@@ -2188,16 +2127,16 @@ namespace LoLa {
     const int user_token_number_max_ = 300;
 
     if (t <= 0)
-      return yyeof_;
+      return symbol_kind::S_YYEOF;
     else if (t <= user_token_number_max_)
-      return translate_table[t];
+      return YY_CAST (symbol_kind_type, translate_table[t]);
     else
-      return yy_undef_token_;
+      return symbol_kind::S_YYUNDEF;
   }
 
 #line 5 "grammar.yy"
 } // LoLa
-#line 2201 "grammar.tab.cpp"
+#line 2140 "grammar.tab.cpp"
 
 #line 233 "grammar.yy"
 

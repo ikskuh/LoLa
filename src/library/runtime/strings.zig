@@ -11,7 +11,7 @@ fn charToInt(c: u8) !u4 {
 
 comptime {
     // FIXME: Workaround for linker bug
-    if (@import("root") == @import("main.zig")) {
+    if (@import("root") == @import("../main.zig")) {
         @export(resolveEscapeSequencesZero, .{
             .linkage = .Strong,
             .name = "resolveEscapeSequencesZero",

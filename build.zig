@@ -17,14 +17,7 @@ const argsPkg = std.build.Pkg{
 
 pub fn build(b: *Builder) void {
     const mode = b.standardReleaseOptions();
-    const target = b.standardTargetOptions(.{
-        .default_target = std.zig.CrossTarget{
-            .glibc_version = .{
-                .major = 2,
-                .minor = 30,
-            },
-        },
-    });
+    const target = b.standardTargetOptions(.{});
 
     const precompileGrammar = b.addSystemCommand(&[_][]const u8{
         "bison",
@@ -34,7 +27,7 @@ pub fn build(b: *Builder) void {
         "--output=grammar.tab.cpp",
         "grammar.yy",
     });
-    precompileGrammar.cwd = "src/compiler/";
+    precompileGrammar.cwd = "src/library/compiler/";
 
     const precompileLexer = b.addSystemCommand(&[_][]const u8{
         "flex",
@@ -43,26 +36,27 @@ pub fn build(b: *Builder) void {
         "--outfile=yy_lex.cpp",
         "yy.l",
     });
-    precompileLexer.cwd = "src/compiler/";
+    precompileLexer.cwd = "src/library/compiler/";
     precompileLexer.step.dependOn(&precompileGrammar.step);
 
     const cppSources = [_][]const u8{
-        "src/compiler/ast.cpp",
-        "src/compiler/compiler.cpp",
-        "src/compiler/error.cpp",
-        "src/compiler/yy_lex.cpp",
-        "src/compiler/driver.cpp",
-        "src/compiler/grammar.tab.cpp",
+        "src/library/compiler/ast.cpp",
+        "src/library/compiler/compiler.cpp",
+        "src/library/compiler/error.cpp",
+        "src/library/compiler/yy_lex.cpp",
+        "src/library/compiler/driver.cpp",
+        "src/library/compiler/grammar.tab.cpp",
     };
 
-    const lib = b.addStaticLibrary("liblola", "src/runtime/main.zig");
+    const lib = b.addStaticLibrary("liblola", "./src/library/main.zig");
     lib.step.dependOn(&precompileLexer.step);
     lib.step.dependOn(&precompileGrammar.step);
     lib.setBuildMode(mode);
     lib.setTarget(target);
     lib.addPackage(interfacePkg);
-    lib.addIncludeDir("/usr/include/c++/v1");
-    lib.addIncludeDir("/usr/include");
+    lib.addIncludeDir("./libs/flex");
+    lib.linkLibC();
+    lib.linkSystemLibrary("c++");
     for (cppSources) |cppSource| {
         lib.addCSourceFile(cppSource, &[_][]const u8{
             "-std=c++17",
@@ -73,14 +67,14 @@ pub fn build(b: *Builder) void {
     }
     lib.install();
 
-    const exe = b.addExecutable("lola", "src/frontend/main.zig");
+    const exe = b.addExecutable("lola", "./src/frontend/main.zig");
     exe.setBuildMode(mode);
     exe.setTarget(target);
     exe.addPackage(argsPkg);
     exe.addPackage(interfacePkg);
     exe.addPackage(std.build.Pkg{
         .name = "lola",
-        .path = "src/runtime/main.zig",
+        .path = "./src/library/main.zig",
         .dependencies = &[_]std.build.Pkg{
             interfacePkg,
         },
@@ -92,15 +86,15 @@ pub fn build(b: *Builder) void {
     });
 
     // exe.step.dependOn(&buildCppPart.step);
-    exe.addIncludeDir("/usr/include/c++/v1");
-    exe.addIncludeDir("/usr/include");
-    exe.addLibPath("/usr/lib/");
+    // exe.addIncludeDir("/usr/include/c++/v1");
+    // exe.addIncludeDir("/usr/include");
+    // exe.addLibPath("/usr/lib/");
     exe.linkSystemLibrary("c");
     exe.linkSystemLibrary("c++");
     exe.linkLibrary(lib);
     exe.install();
 
-    var main_tests = b.addTest("src/runtime/main.zig");
+    var main_tests = b.addTest("src/library/runtime/main.zig");
     main_tests.addPackage(interfacePkg);
     main_tests.setBuildMode(mode);
 

@@ -1,5 +1,5 @@
-#include "../compiler/ast.hpp"
-#include "../compiler/compiler.hpp"
+#include "../library/compiler/ast.hpp"
+#include "../library/compiler/compiler.hpp"
 
 #include <getopt.h>
 #include <iostream>

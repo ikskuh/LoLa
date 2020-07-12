@@ -53,7 +53,7 @@ pub const CompileUnit = struct {
     debugSymbols: []DebugSymbol,
 
     /// Loads a compile unit from a data stream.
-    pub fn loadFromStream(allocator: *std.mem.Allocator, comptime Error: type, stream: *std.io.InStream(Error)) !Self {
+    pub fn loadFromStream(allocator: *std.mem.Allocator, stream: var) !Self {
         // var inStream = file.getInStream();
         // var stream = &inStream.stream;
         var header: [8]u8 = undefined;
@@ -125,8 +125,8 @@ pub const CompileUnit = struct {
             };
         }
 
-        std.sort.sort(DebugSymbol, unit.debugSymbols, struct {
-            fn lessThan(lhs: DebugSymbol, rhs: DebugSymbol) bool {
+        std.sort.sort(DebugSymbol, unit.debugSymbols, {}, struct {
+            fn lessThan(context: void, lhs: DebugSymbol, rhs: DebugSymbol) bool {
                 return lhs.offset < rhs.offset;
             }
         }.lessThan);
@@ -135,22 +135,22 @@ pub const CompileUnit = struct {
     }
 
     /// Saves a compile unit to a data stream.
-    pub fn saveToStream(self: Self, comptime Error: type, stream: *std.io.OutStream(Error)) !void {
-        try stream.write("LoLa\xB9\x40\x80\x5A");
+    pub fn saveToStream(self: Self, stream: var) !void {
+        try stream.writeAll("LoLa\xB9\x40\x80\x5A");
         try stream.writeIntLittle(u32, 1);
-        try stream.write("Made with NativeLola.zig!" ++ ("\x00" ** (256 - 25)));
+        try stream.writeAll("Made with NativeLola.zig!" ++ ("\x00" ** (256 - 25)));
         try stream.writeIntLittle(u16, self.globalCount);
         try stream.writeIntLittle(u16, self.temporaryCount);
         try stream.writeIntLittle(u16, @intCast(u16, self.functions.len));
         try stream.writeIntLittle(u32, @intCast(u32, self.code.len));
         try stream.writeIntLittle(u32, @intCast(u32, self.debugSymbols.len));
         for (self.functions) |fun| {
-            try stream.write(fun.name);
+            try stream.writeAll(fun.name);
             try stream.writeByteNTimes(0, 128 - fun.name.len);
             try stream.writeIntNative(u32, fun.entryPoint);
             try stream.writeIntNative(u16, fun.localCount);
         }
-        try stream.write(self.code);
+        try stream.writeAll(self.code);
         for (self.debugSymbols) |sym| {
             try stream.writeIntNative(u32, sym.offset);
             try stream.writeIntNative(u32, sym.sourceLine);

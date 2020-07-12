@@ -2,6 +2,8 @@
 
 ## Compiler TODO
 - Add better error message handling and error messages.
+- Implement standard library and add a simple loader
+- Refactor function interface to use `std.interface`.
 
 ## Missing features
 - Add `string` index operators?
@@ -13,43 +15,6 @@
   - Endless loop should not be endless with execution limit
   - Instructions should yield correct errors when called with inappropriate inputs
   - Instructions should yield correct output
-
-## Define LoLa stdlib
-- Set of common functions available to all LoLa users
-- String API
-  - Length(str)
-  - SubString(string, start, [length])
-  - Trim(string)
-  - TrimLeft(string)
-  - TrimRight(string)
-  - IndexOf(string, text)
-  - LastIndexOf(string, text)
-  - Byte(str)
-  - Chr(byte)
-  - NumToString(num, [base]=10)
-  - StringToNum(str, [base]=10)
-- Array API
-  - Range(count)
-  - Range(start, count)
-  - Length(array)
-  - Slice(array, start, end)
-  - IndexOf(array, item)
-  - LastIndexOf(array, item)
-- Math
-  - Pi
-  - Sin(a)
-  - Cos(a)
-  - Tan(a)
-  - Atan(y, [x])
-  - Sqrt(x)
-  - Pow(v, e)
-  - Log(v, [base])
-  - Exp(v)
-- Aux
-  - Call(functionName, args)
-  - Call(obj, methodName, args)
-  - Sleep(secs)
-  - TypeOf(arg)
 
 ## Define a LoLa runtime lib
 - ReadFile(path)

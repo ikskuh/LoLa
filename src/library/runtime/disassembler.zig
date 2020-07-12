@@ -26,7 +26,7 @@ pub const DisassemblerOptions = struct {
 /// The output of the disassembler is adjustable to different formats.
 /// If all output is disabled in the config, this function can also be used
 /// to verify that a compile unit can be parsed completly without any problems.
-pub fn disassemble(comptime Error: type, stream: *std.io.OutStream(Error), cu: CompileUnit, options: DisassemblerOptions) !void {
+pub fn disassemble(stream: var, cu: CompileUnit, options: DisassemblerOptions) !void {
     var decoder = Decoder.init(cu.code);
 
     const anyOutput = options.addressPrefix or options.labelOutput or options.instructionOutput or (options.hexwidth != null);
@@ -34,7 +34,7 @@ pub fn disassemble(comptime Error: type, stream: *std.io.OutStream(Error), cu: C
     if (options.addressPrefix)
         try stream.print("{X:0>6}\t", .{decoder.offset});
     if (options.labelOutput)
-        try stream.write("<main>:\n");
+        try stream.writeAll("<main>:\n");
 
     while (!decoder.isEof()) {
         if (options.labelOutput) {
@@ -58,8 +58,8 @@ pub fn disassemble(comptime Error: type, stream: *std.io.OutStream(Error), cu: C
         }
 
         if (options.instructionOutput) {
-            try stream.write("\t");
-            try stream.write(@tagName(@as(InstructionName, instr)));
+            try stream.writeAll("\t");
+            try stream.writeAll(@tagName(@as(InstructionName, instr)));
 
             inline for (std.meta.fields(Instruction)) |fld| {
                 if (instr == @field(InstructionName, fld.name)) {
@@ -84,7 +84,7 @@ pub fn disassemble(comptime Error: type, stream: *std.io.OutStream(Error), cu: C
         }
 
         if (anyOutput)
-            try stream.write("\n");
+            try stream.writeAll("\n");
 
         if (options.hexwidth) |hw| {
             var cursor = start + hw;
@@ -94,7 +94,7 @@ pub fn disassemble(comptime Error: type, stream: *std.io.OutStream(Error), cu: C
                     try stream.print("{X:0>6}\t", .{cursor});
                 try writeHexDump(stream, decoder.data, cursor, end, hw);
                 cursor += hw;
-                try stream.write("\n");
+                try stream.writeAll("\n");
             }
         }
     }
@@ -106,22 +106,22 @@ fn writeHexDump(stream: var, data: []const u8, begin: usize, end: usize, width: 
         if (offset_hex < end) {
             try stream.print("{X:0>2} ", .{data[offset_hex]});
         } else {
-            try stream.write("   ");
+            try stream.writeAll("   ");
         }
     }
 
-    try stream.write("|");
+    try stream.writeAll("|");
     var offset_bin = begin;
     while (offset_bin < begin + width) : (offset_bin += 1) {
         if (offset_bin < end) {
             if (std.ascii.isPrint(data[offset_bin])) {
                 try stream.print("{c}", .{data[offset_bin]});
             } else {
-                try stream.write(".");
+                try stream.writeAll(".");
             }
         } else {
-            try stream.write(" ");
+            try stream.writeAll(" ");
         }
     }
-    try stream.write("|");
+    try stream.writeAll("|");
 }
