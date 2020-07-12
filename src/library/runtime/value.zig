@@ -170,32 +170,32 @@ pub const Value = union(enum) {
         return &self.enumerator;
     }
 
-    fn formatArray(a: Array, context: var, comptime Errors: type, comptime output: fn (@TypeOf(context), []const u8) Errors!void) Errors!void {
-        try output(context, "[");
+    fn formatArray(a: Array, stream: var) !void {
+        try stream.writeAll("[");
         for (a.contents) |item, i| {
             if (i > 0)
-                try output(context, ",");
+                try stream.writeAll(",");
 
             // Workaround until #???? is fixed:
             // Print only the type name of the array item.
             // const itemType = @as(TypeId, item);
             // try std.fmt.format(context, Errors, output, " {}", .{@tagName(itemType)});
-            try std.fmt.format(context, Errors, output, " {}", .{item});
+            try stream.print(" {}", .{item});
         }
-        try output(context, " ]");
+        try stream.writeAll(" ]");
     }
 
     /// Checks if two values are equal.
-    pub fn format(value: Self, comptime fmt: []const u8, options: std.fmt.FormatOptions, context: var, comptime Errors: type, comptime output: fn (@TypeOf(context), []const u8) Errors!void) Errors!void {
+    pub fn format(value: Self, comptime fmt: []const u8, options: std.fmt.FormatOptions, stream: var) !void {
         return switch (value) {
-            .void => output(context, "void"),
-            .number => |n| std.fmt.format(context, Errors, output, "{d}", .{n}),
-            .object => |o| std.fmt.format(context, Errors, output, "${d}", .{o}),
-            .boolean => |b| if (b) output(context, "true") else output(context, "false"),
-            .string => |s| std.fmt.format(context, Errors, output, "\"{}\"", .{s.contents}),
-            .array => |a| formatArray(a, context, Errors, output),
+            .void => stream.writeAll("void"),
+            .number => |n| stream.print("{d}", .{n}),
+            .object => |o| stream.print("${d}", .{o}),
+            .boolean => |b| if (b) stream.writeAll("true") else stream.writeAll("false"),
+            .string => |s| stream.print("\"{}\"", .{s.contents}),
+            .array => |a| formatArray(a, stream),
             .enumerator => |e| {
-                try std.fmt.format(context, Errors, output, "enumerator({}/{})", .{ e.index, e.array.contents.len });
+                try stream.print("enumerator({}/{})", .{ e.index, e.array.contents.len });
             },
         };
     }

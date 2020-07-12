@@ -242,14 +242,14 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
             .destructor = null,
             .call = struct {
                 fn call(context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
-                    var stdout = &std.io.getStdOut().outStream().stream;
+                    var stdout = std.io.getStdOut().writer();
                     for (args) |value, i| {
                         switch (value) {
-                            .string => |str| try stdout.write(str.contents),
+                            .string => |str| try stdout.writeAll(str.contents),
                             else => try stdout.print("{}", .{value}),
                         }
                     }
-                    try stdout.write("\n");
+                    try stdout.writeAll("\n");
                     return lola.Value.initVoid();
                 }
             }.call,
@@ -279,7 +279,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
 
     while (true) {
         var result = vm.execute(options.limit) catch |err| {
-            try std.io.getStdErr().outStream().stream.print("Panic during execution: {}\n", .{@errorName(err)});
+            try std.io.getStdErr().writer().print("Panic during execution: {}\n", .{@errorName(err)});
             return err;
         };
 
@@ -293,7 +293,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
         switch (result) {
             .completed => return 0,
             .exhausted => {
-                try std.io.getStdErr().outStream().stream.print("Execution exhausted after {} instructions!\n", .{
+                try std.io.getStdErr().writer().print("Execution exhausted after {} instructions!\n", .{
                     options.limit,
                 });
                 return 1;

@@ -23,9 +23,7 @@ for(text in list) {
 
 - Bison 3.2 or newer
 - Flex 2.6 or newer
-- The [Zig Compiler](https://ziglang.org/) (Version 0.5.0+330e30aec or newer)
-- [libc++](https://libcxx.llvm.org/) with C++17 support
-- glibc
+- The [Zig Compiler](https://ziglang.org/) (Version 0.6.0+12a7dedb1 or newer)
 
 **Building:**
 

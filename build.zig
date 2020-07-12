@@ -6,7 +6,7 @@ const Builder = std.build.Builder;
 
 const interfacePkg = std.build.Pkg{
     .name = "interface",
-    .path = "libs/interface.zig",
+    .path = "libs/interface.zig/interface.zig",
     .dependencies = &[0]std.build.Pkg{},
 };
 const argsPkg = std.build.Pkg{

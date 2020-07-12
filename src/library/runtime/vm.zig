@@ -72,17 +72,17 @@ pub const VM = struct {
         if (self.currentAsynCall) |asyncCall| {
             asyncCall.deinit();
         }
-        for (self.stack.toSliceConst()) |v| {
+        for (self.stack.items) |v| {
             v.deinit();
         }
-        for (self.calls.toSliceConst()) |c| {
+        for (self.calls.items) |c| {
             deinitContext(self, c);
         }
         self.stack.deinit();
         self.calls.deinit();
     }
 
-    fn deinitContext(self: Self, ctx: Context) void {
+    pub fn deinitContext(self: Self, ctx: Context) void {
         for (ctx.locals) |v| {
             v.deinit();
         }
@@ -93,7 +93,7 @@ pub const VM = struct {
     fn createContext(self: *Self, fun: ScriptFunction) !Context {
         var ctx = Context{
             .decoder = Decoder.init(fun.compileUnit.code),
-            .stackBalance = self.stack.len,
+            .stackBalance = self.stack.items.len,
             .locals = undefined,
         };
         ctx.decoder.offset = fun.entryPoint;
@@ -112,7 +112,7 @@ pub const VM = struct {
     /// Peeks at the top of the stack. The returned value is still owned
     /// by the stack.
     fn peek(self: Self) !*Value {
-        const slice = self.stack.toSlice();
+        const slice = self.stack.items;
         if (slice.len == 0)
             return error.StackImbalance;
         return &slice[slice.len - 1];
@@ -120,14 +120,14 @@ pub const VM = struct {
 
     /// Pops a value from the stack. The ownership will be transferred to the caller.
     fn pop(self: *Self) !Value {
-        if (self.calls.len > 0) {
-            const ctx = &self.calls.toSlice()[self.calls.len - 1];
+        if (self.calls.items.len > 0) {
+            const ctx = &self.calls.items[self.calls.items.len - 1];
 
             // Assert we did not accidently have a stack underflow
-            std.debug.assert(self.stack.len >= ctx.stackBalance);
+            std.debug.assert(self.stack.items.len >= ctx.stackBalance);
 
             // this pop would produce a stack underrun for the current function call.
-            if (self.stack.len == ctx.stackBalance)
+            if (self.stack.items.len == ctx.stackBalance)
                 return error.StackImbalance;
         }
 
@@ -136,7 +136,7 @@ pub const VM = struct {
 
     /// Runs the virtual machine for `quota` instructions.
     pub fn execute(self: *Self, _quota: ?u32) !ExecutionResult {
-        std.debug.assert(self.calls.len > 0);
+        std.debug.assert(self.calls.items.len > 0);
 
         var quota = _quota;
         while (true) {
@@ -151,8 +151,8 @@ pub const VM = struct {
                     .completed => {
                         // A execution may only be completed if no calls
                         // are active anymore.
-                        std.debug.assert(self.calls.len == 0);
-                        std.debug.assert(self.stack.len == 0);
+                        std.debug.assert(self.calls.items.len == 0);
+                        std.debug.assert(self.stack.items.len == 0);
 
                         return ExecutionResult.completed;
                     },
@@ -183,7 +183,7 @@ pub const VM = struct {
             }
         }
 
-        const ctx = &self.calls.toSlice()[self.calls.len - 1];
+        const ctx = &self.calls.items[self.calls.items.len - 1];
 
         // std.debug.warn("execute 0x{X}…\n", .{ctx.decoder.offset});
 
@@ -252,7 +252,7 @@ pub const VM = struct {
             },
 
             .store_global_name => |i| {
-                const global_kv = self.environment.namedGlobals.get(i.value);
+                const global_kv = self.environment.namedGlobals.getEntry(i.value);
                 if (global_kv == null)
                     return error.InvalidGlobalVariable;
                 const global = &global_kv.?.value;
@@ -264,7 +264,7 @@ pub const VM = struct {
             },
 
             .load_global_name => |i| {
-                const global_kv = self.environment.namedGlobals.get(i.value);
+                const global_kv = self.environment.namedGlobals.getEntry(i.value);
                 if (global_kv == null)
                     return error.InvalidGlobalVariable;
                 const global = &global_kv.?.value;
@@ -355,13 +355,13 @@ pub const VM = struct {
                 defer self.deinitContext(call);
 
                 // Restore stack balance
-                while (self.stack.len > call.stackBalance) {
+                while (self.stack.items.len > call.stackBalance) {
                     const item = self.stack.pop();
                     item.deinit();
                 }
 
                 // No more context to execute: we have completed execution
-                if (self.calls.len == 0)
+                if (self.calls.items.len == 0)
                     return .completed;
 
                 try self.push(Value.initVoid());
@@ -375,7 +375,7 @@ pub const VM = struct {
                 defer self.deinitContext(call);
 
                 // Restore stack balance
-                while (self.stack.len > call.stackBalance) {
+                while (self.stack.items.len > call.stackBalance) {
                     const item = self.stack.pop();
                     item.deinit();
                 }
@@ -383,7 +383,7 @@ pub const VM = struct {
                 try self.push(value);
 
                 // No more context to execute: we have completed execution
-                if (self.calls.len == 0)
+                if (self.calls.items.len == 0)
                     return .completed;
             },
 
@@ -403,7 +403,7 @@ pub const VM = struct {
             },
 
             .call_fn => |call| {
-                const fun_kv = self.environment.functions.get(call.function);
+                const fun_kv = self.environment.functions.getEntry(call.function);
                 if (fun_kv == null)
                     return error.FunctionNotFound;
 
@@ -609,7 +609,7 @@ pub const VM = struct {
                 try self.readLocals(call, context.locals);
 
                 // Fixup stack balance after popping all locals
-                context.stackBalance = self.stack.len;
+                context.stackBalance = self.stack.items.len;
 
                 try self.calls.append(context);
 

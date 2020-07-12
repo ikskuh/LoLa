@@ -33,7 +33,7 @@ pub const UserFunction = struct {
     /// Is called when the function call is deinitialized.
     destructor: ?fn (context: Context) void,
 
-    fn deinit(self: Self) void {
+    pub fn deinit(self: Self) void {
         if (self.destructor) |dtor| {
             dtor(self.context);
         }
@@ -77,7 +77,7 @@ pub const AsyncUserFunction = struct {
     /// Is called when the function call is deinitialized.
     destructor: ?fn (context: Context) void,
 
-    fn deinit(self: Self) void {
+    pub fn deinit(self: Self) void {
         if (self.destructor) |dtor| {
             dtor(self.context);
         }
@@ -126,7 +126,7 @@ pub const AsyncFunctionCall = struct {
     /// Is called when the function call is deinitialized.
     destructor: ?fn (context: Context) void,
 
-    fn deinit(self: Self) void {
+    pub fn deinit(self: Self) void {
         if (self.destructor) |dtor| {
             dtor(self.context);
         }
@@ -172,7 +172,7 @@ pub const Function = union(enum) {
     /// An asynchronous function that will yield the VM execution.
     asyncUser: AsyncUserFunction,
 
-    fn deinit(self: @This()) void {
+    pub fn deinit(self: @This()) void {
         switch (self) {
             .script => {},
             .syncUser => |f| f.deinit(),
@@ -210,7 +210,7 @@ pub const ObjectPool = struct {
         };
     }
 
-    pub fn deinit(self: Self) void {
+    pub fn deinit(self: *Self) void {
         var iter = self.objects.iterator();
         while (iter.next()) |obj| {
             obj.value.object.call("destroyObject", .{});
@@ -264,7 +264,7 @@ pub const ObjectPool = struct {
 
     /// Gets the method of an object or `null` if the method does not exist.
     pub fn getMethod(self: Self, object: ObjectHandle, name: []const u8) ObjectGetError!?Function {
-        if (self.objects.get(object)) |obj| {
+        if (self.objects.getEntry(object)) |obj| {
             return obj.value.object.call("getMethod", .{name});
         } else {
             return error.InvalidObject;
@@ -283,7 +283,7 @@ pub const ObjectPool = struct {
 
     /// Marks an object handle as used
     pub fn markUsed(self: *Self, object: ObjectHandle) ObjectGetError!void {
-        if (self.objects.get(object)) |obj| {
+        if (self.objects.getEntry(object)) |obj| {
             obj.value.refcount += 1;
         } else {
             return error.InvalidObject;
@@ -307,11 +307,11 @@ pub const ObjectPool = struct {
     }
 
     pub fn walkVM(self: *Self, vm: VM) ObjectGetError!void {
-        for (vm.stack.toSliceConst()) |val| {
+        for (vm.stack.items) |val| {
             try self.walkValue(val);
         }
 
-        for (vm.calls.toSliceConst()) |call| {
+        for (vm.calls.items) |call| {
             for (call.locals) |local| {
                 try self.walkValue(local);
             }
@@ -332,7 +332,7 @@ pub const ObjectPool = struct {
 
                 // Hack: Remove modification safety check,
                 // we want to mutate the HashMap!
-                iter.initial_modification_count = iter.hm.modification_count;
+                // iter.initial_modification_count = iter.hm.modification_count;
             }
         }
     }
@@ -403,7 +403,7 @@ pub const Environment = struct {
         return self;
     }
 
-    pub fn deinit(self: Self) void {
+    pub fn deinit(self: *Self) void {
         var iter = self.functions.iterator();
         while (iter.next()) |fun| {
             fun.value.deinit();
