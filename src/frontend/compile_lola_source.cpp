@@ -1,11 +1,8 @@
 #include "../library/compiler/ast.hpp"
 #include "../library/compiler/compiler.hpp"
 
-#include <getopt.h>
-#include <iostream>
 #include <sstream>
 #include <cstring>
-#include <fstream>
 #include <sstream>
 
 using namespace LoLa;
