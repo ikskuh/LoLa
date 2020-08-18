@@ -8,7 +8,6 @@ on:
 
 jobs:
   build:
-
     strategy:
       matrix:
         platform: [ubuntu-latest, macos-latest, windows-latest]
@@ -23,7 +22,9 @@ jobs:
         version: master
     
     - name: Build toolchain
-      run: "zig build"
+      run: |
+        zig build
   
     - name: Build test suite
-      run: "zig build test"
+      run: |
+        zig build test
