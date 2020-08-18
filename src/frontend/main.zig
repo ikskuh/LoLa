@@ -405,7 +405,6 @@ fn loadModuleFromFile(allocator: *std.mem.Allocator, fileName: []const u8) !lola
 //     var env = try lola.Environment.init(std.heap.direct_allocator, &cu);
 //     defer env.deinit();
 
-
 //     var refValue = lola.Value.initNumber(23.0);
 
 //     const MyObject = struct {

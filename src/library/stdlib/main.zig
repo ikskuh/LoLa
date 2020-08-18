@@ -474,4 +474,14 @@ const sync_functions = struct {
             .enumerator => "enumerator",
         });
     }
+
+    fn ToString(context: lola.Context, args: []const lola.Value) !lola.Value {
+        const allocator = context.get(std.mem.Allocator);
+        if (args.len != 1)
+            return error.InvalidArgs;
+
+        var str = try std.fmt.allocPrint(allocator, "{}", .{args[0]});
+
+        return lola.Value.fromString(lola.String.initFromOwned(allocator, str));
+    }
 };

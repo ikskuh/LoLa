@@ -161,10 +161,8 @@ Expression LoLa::AST::StringLiteral(String literal)
                 &length);
             if (success)
             {
-
                 escaped.resize(length);
-
-                code.emit(text);
+                code.emit(escaped);
             }
             else
             {

@@ -138,6 +138,10 @@ Returns the type of the argument as a string. Returns one of the following:
 "void", "boolean", "string", "number", "object", "array"
 ```
 
+### `ToString(val): string`
+
+Converts the input `val` into a string representation.
+
 ### `Call(functionName, args): any`
 
 Calls a function `functionName` with the given argument list `args`.

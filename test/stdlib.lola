@@ -173,4 +173,12 @@ ExpectEqual(TypeOf(10.0), "number");
 ExpectEqual(TypeOf("hello"), "string");
 ExpectEqual(TypeOf([]), "array");
 
+ExpectEqual(ToString(void), "void");
+ExpectEqual(ToString(1.0), "1");
+ExpectEqual(ToString(true), "true");
+ExpectEqual(ToString(false), "false");
+ExpectEqual(ToString([]), "[ ]");
+ExpectEqual(ToString([1,2]), "[ 1, 2 ]");
+ExpectEqual(ToString("\n\n"), "\"\n\n\"");
+
 Print("Standard library test suite passed.");
