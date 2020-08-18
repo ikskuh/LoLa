@@ -101,8 +101,21 @@ pub fn build(b: *Builder) void {
     main_tests.addPackage(interfacePkg);
     main_tests.setBuildMode(mode);
 
-    const test_step = b.step("test", "Run library tests");
+    const test_step = b.step("test", "Run test suite");
     test_step.dependOn(&main_tests.step);
+
+    {
+        const behaviour_tests = exe.run();
+        behaviour_tests.addArg("run");
+        behaviour_tests.addArg("--no-stdlib"); // we don't want the behaviour tests to be run with any stdlib functions
+        behaviour_tests.addArg("./test/behaviour.lola");
+        test_step.dependOn(&behaviour_tests.step);
+
+        const stdib_test = exe.run();
+        stdib_test.addArg("run");
+        stdib_test.addArg("./test/stdlib.lola");
+        test_step.dependOn(&stdib_test.step);
+    }
 
     const run_cmd = exe.run();
     run_cmd.step.dependOn(b.getInstallStep());

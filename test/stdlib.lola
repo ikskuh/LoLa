@@ -98,3 +98,12 @@ ExpectEqual(Range(3), [0,1,2]);
 ExpectEqual(Range(5, 0), []);
 ExpectEqual(Range(5, 1), [5]);
 ExpectEqual(Range(5, 3), [5,6,7]);
+
+
+
+
+
+
+
+
+Print("Standard library test suite passed.");

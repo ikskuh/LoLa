@@ -126,7 +126,7 @@ Sleeps for `secs` seconds.
 
 Returns the type of the argument as a string. Returns one of the following:
 
-```
+```lola
 "void", "boolean", "string", "number", "object", "array"
 ```
 

@@ -2,9 +2,6 @@ const std = @import("std");
 const lola = @import("lola");
 const argsParser = @import("args");
 
-// Planned modules:
-// run [-no-stdlib] [-no-runtime] module/sourceFile
-
 // lola compile foo.lola -o foo.lm
 pub fn main() !u8 {
     var args = std.process.args();
@@ -74,6 +71,8 @@ pub fn print_usage() !void {
         \\  --limit [n]                        Limits execution to [n] instructions, then halts.
         \\  --mode [autodetect|source|module]  Determines if run should interpret the file as a source file,
         \\                                     a precompiled module or if it should autodetect the file type.
+        \\  --no-stdlib                        Removes the standard library from the environment.
+        \\  --no-runtime                       Removes the system runtime from the environment.
         \\
     ;
     // \\  -S                      Intermixes the disassembly with the original source code if possible.
@@ -210,6 +209,8 @@ fn compile(options: CompileCLI, files: []const []const u8) !u8 {
 const RunCLI = struct {
     @"limit": ?u32 = null,
     @"mode": enum { autodetect, source, module } = .autodetect,
+    @"no-stdlib": bool = false,
+    @"no-runtime": bool = false,
 };
 
 fn run(options: RunCLI, files: []const []const u8) !u8 {
@@ -233,47 +234,61 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
     var env = try lola.Environment.init(allocator, &cu);
     defer env.deinit();
 
-    try lola.std.install(&env, allocator);
+    if (!options.@"no-stdlib") {
+        try lola.std.install(&env, allocator);
+    }
 
-    try env.installFunction("Print", lola.Function.initSimpleUser(struct {
-        fn call(context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
-            var stdout = std.io.getStdOut().writer();
-            for (args) |value, i| {
-                switch (value) {
-                    .string => |str| try stdout.writeAll(str.contents),
-                    else => try stdout.print("{}", .{value}),
+    if (!options.@"no-runtime") {
+        try env.installFunction("Print", lola.Function.initSimpleUser(struct {
+            fn call(context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+                var stdout = std.io.getStdOut().writer();
+                for (args) |value, i| {
+                    switch (value) {
+                        .string => |str| try stdout.writeAll(str.contents),
+                        else => try stdout.print("{}", .{value}),
+                    }
                 }
+                try stdout.writeAll("\n");
+                return lola.Value.initVoid();
             }
-            try stdout.writeAll("\n");
-            return lola.Value.initVoid();
-        }
-    }.call));
+        }.call));
 
-    try env.installFunction("Expect", lola.Function.initSimpleUser(struct {
-        fn call(context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
-            if (args.len != 1)
-                return error.InvalidArgs;
-            const assertion = try args[0].toBoolean();
+        try env.installFunction("Expect", lola.Function.initSimpleUser(struct {
+            fn call(context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+                if (args.len != 1)
+                    return error.InvalidArgs;
+                const assertion = try args[0].toBoolean();
 
-            if (!assertion)
-                return error.AssertionFailed;
+                if (!assertion)
+                    return error.AssertionFailed;
 
-            return lola.Value.initVoid();
-        }
-    }.call));
-
-    try env.installFunction("ExpectEqual", lola.Function.initSimpleUser(struct {
-        fn call(context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
-            if (args.len != 2)
-                return error.InvalidArgs;
-            if (!args[0].eql(args[1])) {
-                std.log.err("Expected {}, got {}\n", .{ args[1], args[0] });
-                return error.AssertionFailed;
+                return lola.Value.initVoid();
             }
+        }.call));
 
-            return lola.Value.initVoid();
-        }
-    }.call));
+        try env.installFunction("ExpectEqual", lola.Function.initSimpleUser(struct {
+            fn call(context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+                if (args.len != 2)
+                    return error.InvalidArgs;
+                if (!args[0].eql(args[1])) {
+                    std.log.err("Expected {}, got {}\n", .{ args[1], args[0] });
+                    return error.AssertionFailed;
+                }
+
+                return lola.Value.initVoid();
+            }
+        }.call));
+
+        try env.installFunction("Exit", lola.Function.initSimpleUser(struct {
+            fn call(context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+                if (args.len != 1)
+                    return error.InvalidArgs;
+
+                const status = try args[0].toInteger(u8);
+                std.process.exit(status);
+            }
+        }.call));
+    }
 
     var vm = try lola.VM.init(allocator, &env);
     defer vm.deinit();
