@@ -13,8 +13,8 @@ for(text in list) {
 
 - [Documentation](Documentation/README.md)
 - [Examples](Examples/README.md)
-- [Bison Grammar](NativeLoLa/src/grammar.yy)
-- [Flex Tokenizer](NativeLoLa/src/yy.ll)
+- [Bison Grammar](src/library/compiler/grammar.yy)
+- [Flex Tokenizer](src/library/compiler/yy.l)
 - [TODO List](TODO.md)
 
 ## Building
