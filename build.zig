@@ -17,7 +17,12 @@ const argsPkg = std.build.Pkg{
 
 pub fn build(b: *Builder) void {
     const mode = b.standardReleaseOptions();
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = if (std.builtin.os.tag == .windows)
+            std.zig.CrossTarget.parse(.{ .arch_os_abi = "native-native-gnu" }) catch unreachable
+        else
+            std.zig.CrossTarget{},
+    });
 
     const precompileGrammar = b.addSystemCommand(&[_][]const u8{
         "bison",
