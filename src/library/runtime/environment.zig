@@ -452,21 +452,21 @@ test "Environment" {
 
     std.debug.assert(env.scriptGlobals.len == 4);
 
-    std.debug.assert(env.functions.size == 3);
+    std.debug.assert(env.functions.items().len == 3);
 
     const f1 = env.functions.get("fun1") orelse unreachable;
     const f2 = env.functions.get("fun_2") orelse unreachable;
     const f3 = env.functions.get("fun 3") orelse unreachable;
 
-    std.debug.assert(f1.value.script.entryPoint == 10);
-    std.debug.assert(f1.value.script.localCount == 5);
-    std.debug.assert(f1.value.script.compileUnit == &cu);
+    std.debug.assert(f1.script.entryPoint == 10);
+    std.debug.assert(f1.script.localCount == 5);
+    std.debug.assert(f1.script.compileUnit == &cu);
 
-    std.debug.assert(f2.value.script.entryPoint == 21);
-    std.debug.assert(f2.value.script.localCount == 1);
-    std.debug.assert(f2.value.script.compileUnit == &cu);
+    std.debug.assert(f2.script.entryPoint == 21);
+    std.debug.assert(f2.script.localCount == 1);
+    std.debug.assert(f2.script.compileUnit == &cu);
 
-    std.debug.assert(f3.value.script.entryPoint == 32);
-    std.debug.assert(f3.value.script.localCount == 3);
-    std.debug.assert(f3.value.script.compileUnit == &cu);
+    std.debug.assert(f3.script.entryPoint == 32);
+    std.debug.assert(f3.script.localCount == 3);
+    std.debug.assert(f3.script.compileUnit == &cu);
 }

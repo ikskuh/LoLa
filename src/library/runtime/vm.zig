@@ -54,6 +54,9 @@ pub const VM = struct {
         errdefer vm.stack.deinit();
         errdefer vm.calls.deinit();
 
+        try vm.stack.ensureCapacity(128);
+        try vm.calls.ensureCapacity(32);
+
         // Initialize with special "init context" that runs the script itself
         // and hosts the global variables.
         const initFun = try vm.createContext(ScriptFunction{
@@ -589,18 +592,19 @@ pub const VM = struct {
 
             // Deperecated Section:
             .scope_push, .scope_pop, .declare => return error.DeprectedInstruction,
-            else => {
-                std.debug.warn("Instruction `{}` not implemented yet!\n", .{
-                    @tagName(@as(InstructionName, instruction)),
-                });
-                return error.NotImplementedYet; // @panic("Not implemented yet!"),
-            },
+
+            // else => {
+            //     std.debug.warn("Instruction `{}` not implemented yet!\n", .{
+            //         @tagName(@as(InstructionName, instruction)),
+            //     });
+            //     return error.NotImplementedYet; // @panic("Not implemented yet!"),
+            // },
         }
 
         return null;
     }
 
-    fn executeFunctionCall(self: *Self, call: var, function: Function, object: ?ObjectHandle) !bool {
+    fn executeFunctionCall(self: *Self, call: anytype, function: Function, object: ?ObjectHandle) !bool {
         switch (function) {
             .script => |fun| {
                 var context = try self.createContext(fun);
@@ -710,7 +714,7 @@ pub const VM = struct {
         return &array.contents[index];
     }
 
-    fn floatToInt(comptime T: type, flt: var) error{Overflow}!T {
+    fn floatToInt(comptime T: type, flt: anytype) error{Overflow}!T {
         comptime std.debug.assert(@typeInfo(T) == .Int); // must pass an integer
         comptime std.debug.assert(@typeInfo(@TypeOf(flt)) == .Float); // must pass a float
         if (flt > std.math.maxInt(T)) {

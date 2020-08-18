@@ -114,7 +114,7 @@ pub const Decoder = struct {
         unreachable;
     }
 
-    fn mapEndOfStreamToNotEnoughData(err: var) @TypeOf(err) {
+    fn mapEndOfStreamToNotEnoughData(err: anytype) @TypeOf(err) {
         return switch (err) {
             error.EndOfStream => error.NotEnoughData,
             else => err,

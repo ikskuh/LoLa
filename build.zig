@@ -94,7 +94,7 @@ pub fn build(b: *Builder) void {
     exe.linkLibrary(lib);
     exe.install();
 
-    var main_tests = b.addTest("src/library/runtime/main.zig");
+    var main_tests = b.addTest("src/library/main.zig");
     main_tests.addPackage(interfacePkg);
     main_tests.setBuildMode(mode);
 

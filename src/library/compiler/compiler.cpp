@@ -422,13 +422,52 @@ void LoLa::Compiler::ErrorCollection::invalidString(std::string const &str)
     });
 }
 
+static char const *op_to_string(LoLa::AST::Operator op)
+{
+    using namespace LoLa;
+    switch (op)
+    {
+    case AST::Operator::LessOrEqual:
+        return "<=";
+    case AST::Operator::MoreOrEqual:
+        return ">=";
+    case AST::Operator::Equals:
+        return "==";
+    case AST::Operator::Differs:
+        return "!=";
+    case AST::Operator::Less:
+        return "<";
+    case AST::Operator::More:
+        return ">";
+
+    case AST::Operator::Plus:
+        return "+";
+    case AST::Operator::Minus:
+        return "-";
+    case AST::Operator::Multiply:
+        return "*";
+    case AST::Operator::Divide:
+        return "/";
+    case AST::Operator::Modulus:
+        return "%";
+
+    case AST::Operator::And:
+        return "and";
+    case AST::Operator::Or:
+        return "or";
+    case AST::Operator::Not:
+        return "not";
+    }
+    return "<invalid>";
+}
+
 void LoLa::Compiler::ErrorCollection::invalidOperator(AST::Operator op)
 {
     add(CompileError{
         "<not implemented yet>",
         1,
         1,
-        "The operator is not valid.",
+        "The operator " + std::string(op_to_string(op)) + " is not valid at this point.",
         false,
     });
 }

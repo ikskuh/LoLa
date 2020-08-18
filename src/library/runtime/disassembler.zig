@@ -26,7 +26,7 @@ pub const DisassemblerOptions = struct {
 /// The output of the disassembler is adjustable to different formats.
 /// If all output is disabled in the config, this function can also be used
 /// to verify that a compile unit can be parsed completly without any problems.
-pub fn disassemble(stream: var, cu: CompileUnit, options: DisassemblerOptions) !void {
+pub fn disassemble(stream: anytype, cu: CompileUnit, options: DisassemblerOptions) !void {
     var decoder = Decoder.init(cu.code);
 
     const anyOutput = options.addressPrefix or options.labelOutput or options.instructionOutput or (options.hexwidth != null);
@@ -100,7 +100,7 @@ pub fn disassemble(stream: var, cu: CompileUnit, options: DisassemblerOptions) !
     }
 }
 
-fn writeHexDump(stream: var, data: []const u8, begin: usize, end: usize, width: usize) !void {
+fn writeHexDump(stream: anytype, data: []const u8, begin: usize, end: usize, width: usize) !void {
     var offset_hex = begin;
     while (offset_hex < begin + width) : (offset_hex += 1) {
         if (offset_hex < end) {

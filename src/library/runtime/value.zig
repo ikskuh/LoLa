@@ -170,7 +170,7 @@ pub const Value = union(enum) {
         return &self.enumerator;
     }
 
-    fn formatArray(a: Array, stream: var) !void {
+    fn formatArray(a: Array, stream: anytype) !void {
         try stream.writeAll("[");
         for (a.contents) |item, i| {
             if (i > 0)
@@ -186,7 +186,7 @@ pub const Value = union(enum) {
     }
 
     /// Checks if two values are equal.
-    pub fn format(value: Self, comptime fmt: []const u8, options: std.fmt.FormatOptions, stream: var) !void {
+    pub fn format(value: Self, comptime fmt: []const u8, options: std.fmt.FormatOptions, stream: anytype) !void {
         return switch (value) {
             .void => stream.writeAll("void"),
             .number => |n| stream.print("{d}", .{n}),

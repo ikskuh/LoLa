@@ -47,13 +47,13 @@ pub const CompileUnit = struct {
     code: []u8,
 
     /// Array of function definitions
-    functions: []Function,
+    functions: []const Function,
 
     /// Sorted array of debug symbols
-    debugSymbols: []DebugSymbol,
+    debugSymbols: []const DebugSymbol,
 
     /// Loads a compile unit from a data stream.
-    pub fn loadFromStream(allocator: *std.mem.Allocator, stream: var) !Self {
+    pub fn loadFromStream(allocator: *std.mem.Allocator, stream: anytype) !Self {
         // var inStream = file.getInStream();
         // var stream = &inStream.stream;
         var header: [8]u8 = undefined;
@@ -94,11 +94,11 @@ pub const CompileUnit = struct {
             return error.CorruptedData;
         }
 
-        unit.functions = try unit.arena.allocator.alloc(Function, functionCount);
-        unit.code = try unit.arena.allocator.alloc(u8, codeSize);
-        unit.debugSymbols = try unit.arena.allocator.alloc(DebugSymbol, numSymbols);
+        const functions = try unit.arena.allocator.alloc(Function, functionCount);
+        const code = try unit.arena.allocator.alloc(u8, codeSize);
+        const debugSymbols = try unit.arena.allocator.alloc(DebugSymbol, numSymbols);
 
-        for (unit.functions) |*fun| {
+        for (functions) |*fun| {
             var name: [128]u8 = undefined;
             try stream.readNoEof(&name);
 
@@ -111,10 +111,12 @@ pub const CompileUnit = struct {
                 .localCount = localCount,
             };
         }
+        unit.functions = functions;
 
-        try stream.readNoEof(unit.code);
+        try stream.readNoEof(code);
+        unit.code = code;
 
-        for (unit.debugSymbols) |*sym| {
+        for (debugSymbols) |*sym| {
             const offset = try stream.readIntLittle(u32);
             const sourceLine = try stream.readIntLittle(u32);
             const sourceColumn = try stream.readIntLittle(u16);
@@ -124,18 +126,18 @@ pub const CompileUnit = struct {
                 .sourceColumn = sourceColumn,
             };
         }
-
-        std.sort.sort(DebugSymbol, unit.debugSymbols, {}, struct {
+        std.sort.sort(DebugSymbol, debugSymbols, {}, struct {
             fn lessThan(context: void, lhs: DebugSymbol, rhs: DebugSymbol) bool {
                 return lhs.offset < rhs.offset;
             }
         }.lessThan);
+        unit.debugSymbols = debugSymbols;
 
         return unit;
     }
 
     /// Saves a compile unit to a data stream.
-    pub fn saveToStream(self: Self, stream: var) !void {
+    pub fn saveToStream(self: Self, stream: anytype) !void {
         try stream.writeAll("LoLa\xB9\x40\x80\x5A");
         try stream.writeIntLittle(u32, 1);
         try stream.writeAll("Made with NativeLola.zig!" ++ ("\x00" ** (256 - 25)));
@@ -200,9 +202,9 @@ const serializedCompileUnit = "" // SoT
     ;
 
 test "CompileUnit I/O" {
-    var sliceInStream = std.io.SliceInStream.init(serializedCompileUnit);
+    var sliceInStream = std.io.fixedBufferStream(serializedCompileUnit);
 
-    const cu = try CompileUnit.loadFromStream(std.testing.allocator, std.io.SliceInStream.Error, &sliceInStream.stream);
+    const cu = try CompileUnit.loadFromStream(std.testing.allocator, sliceInStream.reader());
     defer cu.deinit();
 
     std.debug.assert(std.mem.eql(u8, cu.comment, "Made with NativeLola.zig!"));
@@ -233,9 +235,9 @@ test "CompileUnit I/O" {
     std.debug.assert(cu.debugSymbols[2].sourceColumn == 8);
 
     var storage: [serializedCompileUnit.len]u8 = undefined;
-    var sliceOutStream = std.io.SliceOutStream.init(&storage);
+    var sliceOutStream = std.io.fixedBufferStream(&storage);
 
-    try cu.saveToStream(std.io.SliceOutStream.Error, &sliceOutStream.stream);
+    try cu.saveToStream(sliceOutStream.writer());
 
     std.debug.assert(sliceOutStream.getWritten().len == serializedCompileUnit.len);
 
@@ -243,9 +245,9 @@ test "CompileUnit I/O" {
 }
 
 test "CompileUnit.lookUp" {
-    var sliceInStream = std.io.SliceInStream.init(serializedCompileUnit);
+    var sliceInStream = std.io.fixedBufferStream(serializedCompileUnit);
 
-    const cu = try CompileUnit.loadFromStream(std.testing.allocator, std.io.SliceInStream.Error, &sliceInStream.stream);
+    const cu = try CompileUnit.loadFromStream(std.testing.allocator, sliceInStream.reader());
     defer cu.deinit();
 
     std.debug.assert(cu.lookUp(0) == null); // no debug symbol before 1

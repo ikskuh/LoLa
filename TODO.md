@@ -4,6 +4,7 @@
 - Add better error message handling and error messages.
 - Implement standard library and add a simple loader
 - Refactor function interface to use `std.interface`.
+- Bugfix: Empty file crashes the compiler.
 
 ## Missing features
 - Add `string` index operators?
