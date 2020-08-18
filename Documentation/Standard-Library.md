@@ -126,6 +126,10 @@ Returns *e* to the power of `v`. *e* is the euler number.
 
 Sleeps for `secs` seconds.
 
+### `Timestamp(): number`
+
+Returns the current wall clock time as a unix timestamp.
+
 ### `TypeOf(arg): string`
 
 Returns the type of the argument as a string. Returns one of the following:

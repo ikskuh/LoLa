@@ -151,4 +151,26 @@ Expect(DeltaEqual(Exp(0), 1, delta));
 Expect(DeltaEqual(Exp(1), 2.71828182845904523536, delta));
 Expect(DeltaEqual(Exp(2), 7.38905609893065022723, delta));
 
+
+/////////////////////////////////////////////////////////////////////
+// Auxiliary library
+
+// Test if we aren't testing in the past (LOL)
+Expect(Timestamp() > 1597775634.0);
+
+// test if we sleep at least 0.1 seconds
+{
+  var start = Timestamp();
+  Sleep(0.1);
+  var delta = Timestamp() - start; 
+  // Print(delta);
+  Expect(delta >= 0.1);
+}
+
+ExpectEqual(TypeOf(void), "void");
+ExpectEqual(TypeOf(true), "boolean");
+ExpectEqual(TypeOf(10.0), "number");
+ExpectEqual(TypeOf("hello"), "string");
+ExpectEqual(TypeOf([]), "array");
+
 Print("Standard library test suite passed.");

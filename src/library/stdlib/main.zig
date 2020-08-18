@@ -15,12 +15,21 @@ const whitespace = [_]u8{
 /// `allocator` will be used to perform new allocations for the environment.
 pub fn install(environment: *lola.Environment, allocator: *std.mem.Allocator) !void {
     // Install all functions from the namespace "functions":
-    inline for (std.meta.declarations(functions)) |decl| {
+    inline for (std.meta.declarations(sync_functions)) |decl| {
         try environment.installFunction(decl.name, lola.Function{
             .syncUser = lola.UserFunction{
                 .context = lola.Context.init(std.mem.Allocator, allocator),
                 .destructor = null,
-                .call = @field(functions, decl.name),
+                .call = @field(sync_functions, decl.name),
+            },
+        });
+    }
+    inline for (std.meta.declarations(async_functions)) |decl| {
+        try environment.installFunction(decl.name, lola.Function{
+            .asyncUser = lola.AsyncUserFunction{
+                .context = lola.Context.init(std.mem.Allocator, allocator),
+                .destructor = null,
+                .call = @field(async_functions, decl.name),
             },
         });
     }
@@ -53,7 +62,49 @@ test "stdlib behaviour test" {
     try install(&env, std.testing.allocator);
 }
 
-const functions = struct {
+const async_functions = struct {
+    fn Sleep(call_context: lola.Context, args: []const lola.Value) anyerror!lola.AsyncFunctionCall {
+        const allocator = call_context.get(std.mem.Allocator);
+
+        if (args.len != 1)
+            return error.InvalidArgs;
+        const seconds = try args[0].toNumber();
+
+        const Context = struct {
+            allocator: *std.mem.Allocator,
+            end_time: f64,
+        };
+
+        const ptr = try allocator.create(Context);
+        ptr.* = Context{
+            .allocator = allocator,
+            .end_time = @intToFloat(f64, std.time.milliTimestamp()) + 1000.0 * seconds,
+        };
+
+        return lola.AsyncFunctionCall{
+            .context = lola.Context.init(Context, ptr),
+            .destructor = struct {
+                fn dtor(exec_context: lola.Context) void {
+                    const ctx = exec_context.get(Context);
+                    ctx.allocator.destroy(ctx);
+                }
+            }.dtor,
+            .execute = struct {
+                fn execute(exec_context: lola.Context) anyerror!?lola.Value {
+                    const ctx = exec_context.get(Context);
+
+                    if (ctx.end_time < @intToFloat(f64, std.time.milliTimestamp())) {
+                        return lola.Value.initVoid();
+                    } else {
+                        return null;
+                    }
+                }
+            }.execute,
+        };
+    }
+};
+
+const sync_functions = struct {
     fn Length(context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len != 1)
@@ -400,5 +451,27 @@ const functions = struct {
         if (args.len != 1)
             return error.InvalidArgs;
         return lola.Value.initNumber(std.math.exp(try args[0].toNumber()));
+    }
+
+    fn Timestamp(context: lola.Context, args: []const lola.Value) !lola.Value {
+        const allocator = context.get(std.mem.Allocator);
+        if (args.len != 0)
+            return error.InvalidArgs;
+        return lola.Value.initNumber(@intToFloat(f64, std.time.milliTimestamp()) / 1000.0);
+    }
+
+    fn TypeOf(context: lola.Context, args: []const lola.Value) !lola.Value {
+        const allocator = context.get(std.mem.Allocator);
+        if (args.len != 1)
+            return error.InvalidArgs;
+        return lola.Value.initString(allocator, switch (args[0]) {
+            .void => "void",
+            .boolean => "boolean",
+            .string => "string",
+            .number => "number",
+            .object => "object",
+            .array => "array",
+            .enumerator => "enumerator",
+        });
     }
 };
