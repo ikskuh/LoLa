@@ -85,9 +85,10 @@ and                         { lval->emplace<Operator>(Operator::And); return tok
 or                          { lval->emplace<Operator>(Operator::Or); return token::OR; }
 not                         { lval->emplace<Operator>(Operator::Not); return token::INVERT; }
 
+0x[0-9A-Fa-f]+              { lval->emplace<std::string>(yytext); return token::NUMBER; }
 [0-9]+(\.[0-9]+)?           { lval->emplace<std::string>(yytext); return token::NUMBER; }
 
-\"(\\\"|[^\"])*?\"            { lval->emplace<std::string>(yytext); return token::STRING; }
+\"(\\\"|[^\"])*?\"          { lval->emplace<std::string>(yytext); return token::STRING; }
 
 [A-Za-z_][A-Za-z0-9_]*      { lval->emplace<std::string>(yytext); return token::IDENT; }
 
