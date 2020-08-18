@@ -24,6 +24,8 @@ pub fn install(environment: *lola.Environment, allocator: *std.mem.Allocator) !v
             },
         });
     }
+
+    try environment.addGlobal("Pi", lola.Value.initNumber(std.math.pi));
 }
 
 /// empty compile unit for testing purposes
@@ -308,5 +310,95 @@ const functions = struct {
         }
 
         return lola.Value.fromArray(arr);
+    }
+
+    fn DeltaEqual(context: lola.Context, args: []const lola.Value) !lola.Value {
+        const allocator = context.get(std.mem.Allocator);
+        if (args.len != 3)
+            return error.InvalidArgs;
+        const a = try args[0].toNumber();
+        const b = try args[1].toNumber();
+        const delta = try args[2].toNumber();
+        return lola.Value.initBoolean(std.math.fabs(a - b) < delta);
+    }
+
+    fn Sin(context: lola.Context, args: []const lola.Value) !lola.Value {
+        const allocator = context.get(std.mem.Allocator);
+        if (args.len != 1)
+            return error.InvalidArgs;
+        return lola.Value.initNumber(std.math.sin(try args[0].toNumber()));
+    }
+
+    fn Cos(context: lola.Context, args: []const lola.Value) !lola.Value {
+        const allocator = context.get(std.mem.Allocator);
+        if (args.len != 1)
+            return error.InvalidArgs;
+        return lola.Value.initNumber(std.math.cos(try args[0].toNumber()));
+    }
+
+    fn Tan(context: lola.Context, args: []const lola.Value) !lola.Value {
+        const allocator = context.get(std.mem.Allocator);
+        if (args.len != 1)
+            return error.InvalidArgs;
+        return lola.Value.initNumber(std.math.tan(try args[0].toNumber()));
+    }
+
+    fn Atan(context: lola.Context, args: []const lola.Value) !lola.Value {
+        const allocator = context.get(std.mem.Allocator);
+        if (args.len == 1) {
+            return lola.Value.initNumber(
+                std.math.atan(try args[0].toNumber()),
+            );
+        } else if (args.len == 2) {
+            return lola.Value.initNumber(std.math.atan2(
+                f64,
+                try args[0].toNumber(),
+                try args[1].toNumber(),
+            ));
+        } else {
+            return error.InvalidArgs;
+        }
+    }
+
+    fn Sqrt(context: lola.Context, args: []const lola.Value) !lola.Value {
+        const allocator = context.get(std.mem.Allocator);
+        if (args.len != 1)
+            return error.InvalidArgs;
+        return lola.Value.initNumber(std.math.sqrt(try args[0].toNumber()));
+    }
+
+    fn Pow(context: lola.Context, args: []const lola.Value) !lola.Value {
+        const allocator = context.get(std.mem.Allocator);
+        if (args.len != 2)
+            return error.InvalidArgs;
+        return lola.Value.initNumber(std.math.pow(
+            f64,
+            try args[0].toNumber(),
+            try args[1].toNumber(),
+        ));
+    }
+
+    fn Log(context: lola.Context, args: []const lola.Value) !lola.Value {
+        const allocator = context.get(std.mem.Allocator);
+        if (args.len == 1) {
+            return lola.Value.initNumber(
+                std.math.log10(try args[0].toNumber()),
+            );
+        } else if (args.len == 2) {
+            return lola.Value.initNumber(std.math.log(
+                f64,
+                try args[1].toNumber(),
+                try args[0].toNumber(),
+            ));
+        } else {
+            return error.InvalidArgs;
+        }
+    }
+
+    fn Exp(context: lola.Context, args: []const lola.Value) !lola.Value {
+        const allocator = context.get(std.mem.Allocator);
+        if (args.len != 1)
+            return error.InvalidArgs;
+        return lola.Value.initNumber(std.math.exp(try args[0].toNumber()));
     }
 };

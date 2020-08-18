@@ -431,11 +431,21 @@ pub const Environment = struct {
         self.objectPool.deinit();
     }
 
+    /// Adds a function to the environment and makes it available for the script.
     pub fn installFunction(self: *Self, name: []const u8, function: Function) !void {
         var result = try self.functions.getOrPut(name);
         if (result.found_existing)
             return error.AlreadyExists;
         result.entry.value = function;
+    }
+
+    /// Adds a named global to the environment and makes it available for the script.
+    /// Import this with `extern`
+    pub fn addGlobal(self: *Self, name: []const u8, value: Value) !void {
+        var result = try self.namedGlobals.getOrPut(name);
+        if (result.found_existing)
+            return error.AlreadyExists;
+        result.entry.value = NamedGlobal.initStored(value);
     }
 };
 

@@ -3,6 +3,7 @@
 // intended to be run via the test suite.
 ///
 
+/////////////////////////////////////////////////////////////////////
 // String API:
 
 ExpectEqual(Length(""), 0);
@@ -85,6 +86,7 @@ ExpectEqual(StringToNum(""), void);
 ExpectEqual(StringToNum("lol"), void);
 ExpectEqual(StringToNum("bla10bla"), void);
 
+/////////////////////////////////////////////////////////////////////
 // Array API
 
 ExpectEqual(Length([]), 0);
@@ -114,5 +116,39 @@ ExpectEqual(LastIndexOf([1,2,3,1,2,3], 2), 4);
 ExpectEqual(LastIndexOf([1,2,3,1,2,3], 3), 5);
 ExpectEqual(LastIndexOf([1,2,3,1,2,3], 4), void);
 
+/////////////////////////////////////////////////////////////////////
+// Math
+
+// this should be enough precision testing
+extern Pi;
+Expect(Pi > 3.1415);
+Expect(Pi < 3.1416);
+
+var delta = 0.00001;
+
+Expect(DeltaEqual(0.000001, 0.000002, delta));
+
+Expect(DeltaEqual(Sin(Pi), 0.0, delta));
+Expect(DeltaEqual(Cos(Pi), -1.0, delta));
+Expect(DeltaEqual(Tan(Pi), 0.0, delta));
+
+Expect(DeltaEqual(Atan(1), Pi/4, delta));
+Expect(DeltaEqual(Atan(10, 10), Pi/4, delta));
+
+Expect(DeltaEqual(Pow(10, 0), 1, delta));
+Expect(DeltaEqual(Pow(10, 1), 10, delta));
+Expect(DeltaEqual(Pow(10, 2), 100, delta));
+Expect(DeltaEqual(Pow(10, 3), 1000, delta));
+
+Expect(DeltaEqual(Log(1), 0, delta));
+Expect(DeltaEqual(Log(10), 1, delta));
+Expect(DeltaEqual(Log(100), 2, delta));
+Expect(DeltaEqual(Log(1000), 3, delta));
+
+Expect(DeltaEqual(Log(1000), 3, delta));
+
+Expect(DeltaEqual(Exp(0), 1, delta));
+Expect(DeltaEqual(Exp(1), 2.71828182845904523536, delta));
+Expect(DeltaEqual(Exp(2), 7.38905609893065022723, delta));
 
 Print("Standard library test suite passed.");

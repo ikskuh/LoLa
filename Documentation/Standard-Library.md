@@ -90,6 +90,10 @@ Returns the last index of a given `item` in `array`. If the item is not found, `
 
 Global constant containing the number *pi*.
 
+### `DeltaEqual(a, b, delta): boolean`
+
+Compares `a` and `b` with a certain `delta`. Returns `true` when `abs(a-b) < delta`.
+
 ### `Sin(a): number`, `Cos(a): number`, `Tan(a): number`
 
 Trigonometric functions, all use radians.
@@ -110,7 +114,7 @@ Returns `v` to the power of `e`.
 
 ### `Log(v, [base]): number`
 
-Returns the logarithm of `v`  to base `base`. If `base` is not given, base 10 is used.
+Returns the logarithm of `v` to base `base`. If `base` is not given, base 10 is used.
 
 ### `Exp(v): number`
 
