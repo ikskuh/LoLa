@@ -49,8 +49,6 @@ pub fn build(b: *Builder) void {
     };
 
     const lib = b.addStaticLibrary("liblola", "./src/library/main.zig");
-    lib.step.dependOn(&precompileLexer.step);
-    lib.step.dependOn(&precompileGrammar.step);
     lib.setBuildMode(mode);
     lib.setTarget(target);
     lib.addPackage(interfacePkg);
@@ -106,4 +104,8 @@ pub fn build(b: *Builder) void {
 
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
+
+    const refresh_step = b.step("refresh", "Recompiles flex/bison grammar files");
+    refresh_step.dependOn(&precompileLexer.step);
+    refresh_step.dependOn(&precompileGrammar.step);
 }
