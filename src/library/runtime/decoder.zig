@@ -12,7 +12,9 @@ pub const Decoder = struct {
     const Self = @This();
 
     data: []const u8,
-    offset: usize,
+
+    // we are restricted to 4GB code size in the binary format, the decoder itself can use the same restriction
+    offset: u32,
 
     pub fn init(source: []const u8) Self {
         return Self{
@@ -31,7 +33,7 @@ pub const Decoder = struct {
         if (self.offset + dest.len > self.data.len)
             return error.NotEnoughData;
         std.mem.copy(u8, dest, self.data[self.offset .. self.offset + dest.len]);
-        self.offset += dest.len;
+        self.offset += @intCast(u32, dest.len);
     }
 
     pub fn readBytes(self: *Self, comptime count: comptime_int) ![count]u8 {

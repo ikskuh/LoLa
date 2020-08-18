@@ -132,34 +132,55 @@ const functions = struct {
         const allocator = context.get(std.mem.Allocator);
         if (args.len != 2)
             return error.InvalidArgs;
-        if (args[0] != .string)
-            return error.TypeMismatch;
-        if (args[1] != .string)
-            return error.TypeMismatch;
-        const haystack = args[0].string.contents;
-        const needle = args[1].string.contents;
+        if (args[0] == .string) {
+            if (args[1] != .string)
+                return error.TypeMismatch;
+            const haystack = args[0].string.contents;
+            const needle = args[1].string.contents;
 
-        return if (std.mem.indexOf(u8, haystack, needle)) |index|
-            lola.Value.initNumber(@intToFloat(f64, index))
-        else
-            lola.Value.initVoid();
+            return if (std.mem.indexOf(u8, haystack, needle)) |index|
+                lola.Value.initNumber(@intToFloat(f64, index))
+            else
+                lola.Value.initVoid();
+        } else if (args[0] == .array) {
+            const haystack = args[0].array.contents;
+            for (haystack) |val, i| {
+                if (val.eql(args[1]))
+                    return lola.Value.initNumber(@intToFloat(f64, i));
+            }
+            return lola.Value.initVoid();
+        } else {
+            return error.TypeMismatch;
+        }
     }
 
     fn LastIndexOf(context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len != 2)
             return error.InvalidArgs;
-        if (args[0] != .string)
-            return error.TypeMismatch;
-        if (args[1] != .string)
-            return error.TypeMismatch;
-        const haystack = args[0].string.contents;
-        const needle = args[1].string.contents;
+        if (args[0] == .string) {
+            if (args[1] != .string)
+                return error.TypeMismatch;
+            const haystack = args[0].string.contents;
+            const needle = args[1].string.contents;
 
-        return if (std.mem.lastIndexOf(u8, haystack, needle)) |index|
-            lola.Value.initNumber(@intToFloat(f64, index))
-        else
-            lola.Value.initVoid();
+            return if (std.mem.lastIndexOf(u8, haystack, needle)) |index|
+                lola.Value.initNumber(@intToFloat(f64, index))
+            else
+                lola.Value.initVoid();
+        } else if (args[0] == .array) {
+            const haystack = args[0].array.contents;
+
+            var i: usize = haystack.len;
+            while (i > 0) {
+                i -= 1;
+                if (haystack[i].eql(args[1]))
+                    return lola.Value.initNumber(@intToFloat(f64, i));
+            }
+            return lola.Value.initVoid();
+        } else {
+            return error.TypeMismatch;
+        }
     }
 
     fn Byte(context: lola.Context, args: []const lola.Value) !lola.Value {
@@ -262,5 +283,30 @@ const functions = struct {
             }
             return lola.Value.fromArray(arr);
         }
+    }
+
+    fn Slice(context: lola.Context, args: []const lola.Value) !lola.Value {
+        const allocator = context.get(std.mem.Allocator);
+        if (args.len != 3)
+            return error.InvalidArgs;
+
+        const array = try args[0].toArray();
+        const start = try args[1].toInteger(usize);
+        const length = try args[2].toInteger(usize);
+
+        // Out of bounds
+        if (start >= array.contents.len)
+            return lola.Value.fromArray(try lola.Array.init(allocator, 0));
+
+        const actual_length = std.math.min(length, array.contents.len - start);
+
+        var arr = try lola.Array.init(allocator, actual_length);
+        errdefer arr.deinit();
+
+        for (arr.contents) |*item, i| {
+            item.* = try array.contents[start + i].clone();
+        }
+
+        return lola.Value.fromArray(arr);
     }
 };

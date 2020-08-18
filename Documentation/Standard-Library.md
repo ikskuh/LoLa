@@ -72,9 +72,9 @@ Returns an array with `count` increasing numbers starting at `start`.
 
 Returns the number of items in `array`.
 
-### `Slice(array, start, end): array`
+### `Slice(array, start, length): array`
 
-Returns a portion of the `array`, starting at `index` (inclusive) and ending at `end` (exclusive).
+Returns a portion of the `array`, starting at `index` (inclusive) and taking up to `length` items from the array. If less items are possible, an empty array is returned.
 
 ### `IndexOf(array, item): number|void`
 
@@ -82,7 +82,7 @@ Returns the index of a given `item` in `array`. If the item is not found, `void`
 
 ### `LastIndexOf(array, item): number|void`
 
-Returns the last index of a given `item` in `array`. If the item is not found, `void` is returned. 
+Returns the last index of a given `item` in `array`. If the item is not found, `void` is returned.
 
 ## Math
 

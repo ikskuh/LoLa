@@ -34,6 +34,9 @@ pub const VM = struct {
         /// This is used to reset the stack to the right balance at the
         /// end of a function call. It is also used to check for stack underflows.
         stackBalance: usize,
+
+        /// The script function which this context is currently executing
+        function: ScriptFunction,
     };
 
     allocator: *std.mem.Allocator,
@@ -98,6 +101,7 @@ pub const VM = struct {
             .decoder = Decoder.init(fun.compileUnit.code),
             .stackBalance = self.stack.items.len,
             .locals = undefined,
+            .function = fun,
         };
         ctx.decoder.offset = fun.entryPoint;
         ctx.locals = try self.allocator.alloc(Value, fun.localCount);

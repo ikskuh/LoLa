@@ -295,8 +295,20 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
 
     while (true) {
         var result = vm.execute(options.limit) catch |err| {
-            try std.io.getStdErr().writer().print("Panic during execution: {}\n", .{@errorName(err)});
-            return err;
+            var stderr = std.io.getStdErr().writer();
+            try stderr.print("Panic during execution: {}\n", .{@errorName(err)});
+            try stderr.print("Call stack:\n", .{});
+
+            for (vm.calls.items) |call, i| {
+                try stderr.print("[{}] {} {} {}\n", .{
+                    i,
+                    call.function.compileUnit.debugSymbols.len,
+                    call.function.compileUnit.lookUp(call.function.entryPoint),
+                    call.function.compileUnit.lookUp(call.decoder.offset),
+                });
+            }
+
+            return 1;
         };
 
         env.objectPool.clearUsageCounters();

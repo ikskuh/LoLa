@@ -99,11 +99,20 @@ ExpectEqual(Range(5, 0), []);
 ExpectEqual(Range(5, 1), [5]);
 ExpectEqual(Range(5, 3), [5,6,7]);
 
+ExpectEqual(Slice([1,2,3],1,0), []);
+ExpectEqual(Slice([1,2,3],1,1), [2]);
+ExpectEqual(Slice([1,2,3],1,2), [2,3]);
+ExpectEqual(Slice([1,2,3],1,3), [2,3]);
 
+ExpectEqual(IndexOf([1,2,3,1,2,3], 1), 0);
+ExpectEqual(IndexOf([1,2,3,1,2,3], 2), 1);
+ExpectEqual(IndexOf([1,2,3,1,2,3], 3), 2);
+ExpectEqual(IndexOf([1,2,3,1,2,3], 4), void);
 
-
-
-
+ExpectEqual(LastIndexOf([1,2,3,1,2,3], 1), 3);
+ExpectEqual(LastIndexOf([1,2,3,1,2,3], 2), 4);
+ExpectEqual(LastIndexOf([1,2,3,1,2,3], 3), 5);
+ExpectEqual(LastIndexOf([1,2,3,1,2,3], 4), void);
 
 
 Print("Standard library test suite passed.");
