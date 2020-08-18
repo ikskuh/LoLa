@@ -12,3 +12,12 @@ usingnamespace @import("runtime/strings.zig");
 
 // Export the stdlib as `lola.std`:
 pub const std = @import("stdlib/main.zig");
+
+comptime {
+    _ = std;
+}
+
+
+test "behaviour tests" {
+    
+}

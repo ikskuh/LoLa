@@ -162,6 +162,8 @@ test "AsyncFunctionCall.deinit" {
 
 /// A function that can be called by a script.
 pub const Function = union(enum) {
+    const Self = @This();
+
     /// This is another function of a script. It may be a foreign
     /// or local script to the environment.
     script: ScriptFunction,
@@ -171,6 +173,16 @@ pub const Function = union(enum) {
 
     /// An asynchronous function that will yield the VM execution.
     asyncUser: AsyncUserFunction,
+
+    pub fn initSimpleUser(fun: fn (context: Context, args: []const Value) anyerror!Value) Function {
+        return Self{
+            .syncUser = UserFunction{
+                .context = Context.initVoid(),
+                .destructor = null,
+                .call = fun,
+            },
+        };
+    }
 
     pub fn deinit(self: @This()) void {
         switch (self) {
@@ -417,6 +429,13 @@ pub const Environment = struct {
         self.functions.deinit();
         self.allocator.free(self.scriptGlobals);
         self.objectPool.deinit();
+    }
+
+    pub fn installFunction(self: *Self, name: []const u8, function: Function) !void {
+        var result = try self.functions.getOrPut(name);
+        if (result.found_existing)
+            return error.AlreadyExists;
+        result.entry.value = function;
     }
 };
 

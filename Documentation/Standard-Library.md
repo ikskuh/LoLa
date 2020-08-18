@@ -14,7 +14,13 @@ Returns a portion of `string`. The portion starts at `start` and is `length` byt
 
 ### `Trim(string): string`
 
-Removes leading and trailing white space from the string.
+Removes leading and trailing white space from the string. White space is on of the following ascii characters:
+- `0x09` (horizontal tab)
+- `0x0A` (line feed)
+- `0x0B` (vertical tab)
+- `0x0C` (form feed)
+- `0x0D` (carriage return)
+- `0x20` (space)
 
 ### `TrimLeft(string): string`
 
@@ -42,11 +48,11 @@ Returns a string of the length 1 containing `byte` as a byte value.
 
 ### `NumToString(num, [base]=10): string`
 
-Converts the number `num` into a string represenation to base `base`. If `base` is not given, base 10 is assumed.
+Converts the number `num` into a string represenation to base `base`. If `base` is given, it will format the integer value of the number to `base`, otherwise, a decimal floating point output will be given.
 
 ### `StringToNum(str, [base]=10): number|void`
 
-Converts the string `str` to a number. If `base` is not given, the number is assumed to be base 10. Otherwise, `base` is used as the numeric base for conversion.
+Converts the string `str` to a number. If `base` is not given, the number is assumed to be base 10 and a floating point value. Otherwise, `base` is used as the numeric base for conversion, and only integer values are accepted.
 
 If the conversion fails, `void` is returned.
 

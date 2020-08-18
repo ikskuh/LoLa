@@ -1,0 +1,100 @@
+///
+// This file tests the implementation of the LoLa standard library and is
+// intended to be run via the test suite.
+///
+
+// String API:
+
+ExpectEqual(Length(""), 0);
+ExpectEqual(Length("a"), 1);
+ExpectEqual(Length("ab"), 2);
+
+ExpectEqual(SubString("hallo", 2), "llo");
+ExpectEqual(SubString("hallo", 2, 2), "ll");
+ 
+ExpectEqual(Trim(""), "");
+ExpectEqual(Trim("a"), "a");
+ExpectEqual(Trim(" a "), "a");
+ExpectEqual(Trim("a "), "a");
+ExpectEqual(Trim(" a"), "a");
+
+ExpectEqual(TrimLeft(""), "");
+ExpectEqual(TrimLeft("a"), "a");
+ExpectEqual(TrimLeft(" a "), "a ");
+ExpectEqual(TrimLeft("a "), "a ");
+ExpectEqual(TrimLeft(" a"), "a");
+
+ExpectEqual(TrimRight(""), "");
+ExpectEqual(TrimRight("a"), "a");
+ExpectEqual(TrimRight(" a "), " a");
+ExpectEqual(TrimRight("a "), "a");
+ExpectEqual(TrimRight(" a"), " a");
+
+ExpectEqual(IndexOf("abcabc", "a"), 0);
+ExpectEqual(IndexOf("abcabc", "b"), 1);
+ExpectEqual(IndexOf("abcabc", "bc"), 1);
+ExpectEqual(IndexOf("abcabc", "d"), void);
+
+ExpectEqual(LastIndexOf("abcabc", "a"), 3);
+ExpectEqual(LastIndexOf("abcabc", "b"), 4);
+ExpectEqual(LastIndexOf("abcabc", "ca"), 2);
+ExpectEqual(LastIndexOf("abcabc", "d"), void);
+
+ExpectEqual(Byte("") , void);
+ExpectEqual(Byte(" "), 0x20);
+ExpectEqual(Byte("!"), 0x21);
+ExpectEqual(Byte("A"), 0x41);
+ExpectEqual(Byte("~"), 0x7E);
+
+ExpectEqual(Chr(0x20), " ");
+ExpectEqual(Chr(0x21), "!");
+ExpectEqual(Chr(0x41), "A");
+ExpectEqual(Chr(0x7E), "~");
+
+ExpectEqual(NumToString(0), "0");
+ExpectEqual(NumToString(1), "1");
+ExpectEqual(NumToString(10), "10");
+ExpectEqual(NumToString(-1), "-1");
+ExpectEqual(NumToString(-1.5), "-1.5");
+ExpectEqual(NumToString(1.5), "1.5");
+
+ExpectEqual(NumToString(2, 2), "10");
+ExpectEqual(NumToString(4, 2), "100");
+ExpectEqual(NumToString(8, 2), "1000");
+ExpectEqual(NumToString(8, 8), "10");
+ExpectEqual(NumToString(0xFF, 16), "FF");
+
+ExpectEqual(StringToNum("0"), 0);
+ExpectEqual(StringToNum("1"), 1);
+ExpectEqual(StringToNum("-1"), -1);
+ExpectEqual(StringToNum("10"), 10);
+ExpectEqual(StringToNum("-10"),  -10);
+ExpectEqual(StringToNum("1.5"),  1.5);
+ExpectEqual(StringToNum("-1.5"), -1.5);
+
+ExpectEqual(StringToNum("10", 2), 2);
+ExpectEqual(StringToNum("10", 3), 3);
+ExpectEqual(StringToNum("10", 4), 4);
+ExpectEqual(StringToNum("10", 5), 5);
+
+ExpectEqual(StringToNum("0x10", 16), 16);
+ExpectEqual(StringToNum("10h", 16), 16);
+ExpectEqual(StringToNum("0x10h", 16), 16);
+
+ExpectEqual(StringToNum(""), void);
+ExpectEqual(StringToNum("lol"), void);
+ExpectEqual(StringToNum("bla10bla"), void);
+
+// Array API
+
+ExpectEqual(Length([]), 0);
+ExpectEqual(Length([1]), 1);
+ExpectEqual(Length([1,2]), 2);
+
+ExpectEqual(Range(0), []);
+ExpectEqual(Range(1), [0]);
+ExpectEqual(Range(3), [0,1,2]);
+
+ExpectEqual(Range(5, 0), []);
+ExpectEqual(Range(5, 1), [5]);
+ExpectEqual(Range(5, 3), [5,6,7]);

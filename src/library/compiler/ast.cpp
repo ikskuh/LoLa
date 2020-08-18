@@ -130,7 +130,6 @@ Expression LoLa::AST::NumberLiteral(String literal)
 
         void emit(CodeWriter &code, Scope &, Compiler::ErrorCollection &) override
         {
-
             code.emit(Instruction::push_num);
             code.emit(value);
         }

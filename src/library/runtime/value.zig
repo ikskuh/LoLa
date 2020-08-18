@@ -38,11 +38,6 @@ pub const Value = union(enum) {
         return Self{ .string = try String.init(allocator, text) };
     }
 
-    /// Initializes a new string literal.
-    pub fn initStringLiteral(comptime text: []const u8) Self {
-        return Self{ .string = String.initLiteral(text) };
-    }
-
     /// Creates a new value that takes ownership of the passed string.
     /// This string must not be deinited.
     pub fn fromString(str: String) Self {
@@ -118,12 +113,21 @@ pub const Value = union(enum) {
         }
     }
 
-    const ConversionError = error{TypeMismatch};
+    const ConversionError = error{ TypeMismatch, OutOfBounds };
 
     pub fn toNumber(self: Self) ConversionError!f64 {
         if (self != .number)
             return error.TypeMismatch;
         return self.number;
+    }
+
+    pub fn toInteger(self: Self, comptime T: type) ConversionError!T {
+        const num = std.math.floor(try self.toNumber());
+        if (num < std.math.minInt(T))
+            return error.OutOfBounds;
+        if (num > std.math.maxInt(T))
+            return error.OutOfBounds;
+        return @floatToInt(T, num);
     }
 
     pub fn toBoolean(self: Self) ConversionError!bool {
@@ -325,12 +329,6 @@ pub const String = struct {
             .allocator = allocator,
             .contents = text,
         };
-    }
-
-    /// Creates a string value that will not be freed as the passed `text`
-    /// is located in static memory, not in the heap.
-    pub fn initLiteral(comptime text: []const u8) Self {
-        return initFromOwned(null_allocator, text);
     }
 
     pub fn clone(self: Self) error{OutOfMemory}!Self {

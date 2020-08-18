@@ -1,6 +1,5 @@
 const std = @import("std");
 const lola = @import("lola");
-const lolastd = @import("lola");
 const argsParser = @import("args");
 
 // Planned modules:
@@ -234,43 +233,47 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
     var env = try lola.Environment.init(allocator, &cu);
     defer env.deinit();
 
-    try env.functions.putNoClobber("Print", lola.Function{
-        .syncUser = lola.UserFunction{
-            .context = undefined,
-            .destructor = null,
-            .call = struct {
-                fn call(context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
-                    var stdout = std.io.getStdOut().writer();
-                    for (args) |value, i| {
-                        switch (value) {
-                            .string => |str| try stdout.writeAll(str.contents),
-                            else => try stdout.print("{}", .{value}),
-                        }
-                    }
-                    try stdout.writeAll("\n");
-                    return lola.Value.initVoid();
-                }
-            }.call,
-        },
-    });
+    try lola.std.install(&env, allocator);
 
-    try env.functions.putNoClobber("Length", lola.Function{
-        .syncUser = lola.UserFunction{
-            .context = undefined,
-            .destructor = null,
-            .call = struct {
-                fn call(context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
-                    if (args.len != 1)
-                        return error.InvalidArgs;
-                    return switch (args[0]) {
-                        .string => |str| lola.Value.initNumber(@intToFloat(f64, str.contents.len)),
-                        .array => |arr| lola.Value.initNumber(@intToFloat(f64, arr.contents.len)),
-                        else => error.TypeMismatch,
-                    };
+    try env.installFunction("Print", lola.Function.initSimpleUser(struct {
+        fn call(context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+            var stdout = std.io.getStdOut().writer();
+            for (args) |value, i| {
+                switch (value) {
+                    .string => |str| try stdout.writeAll(str.contents),
+                    else => try stdout.print("{}", .{value}),
                 }
-            }.call,
-        },
-    });
+            }
+            try stdout.writeAll("\n");
+            return lola.Value.initVoid();
+        }
+    }.call));
+
+    try env.installFunction("Expect", lola.Function.initSimpleUser(struct {
+        fn call(context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+            if (args.len != 1)
+                return error.InvalidArgs;
+            const assertion = try args[0].toBoolean();
+
+            if (!assertion)
+                return error.AssertionFailed;
+
+            return lola.Value.initVoid();
+        }
+    }.call));
+
+    try env.installFunction("ExpectEqual", lola.Function.initSimpleUser(struct {
+        fn call(context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+            if (args.len != 2)
+                return error.InvalidArgs;
+            if (!args[0].eql(args[1])) {
+                std.log.err("Expected {}, got {}\n", .{ args[1], args[0] });
+                return error.AssertionFailed;
+            }
+
+            return lola.Value.initVoid();
+        }
+    }.call));
 
     var vm = try lola.VM.init(allocator, &env);
     defer vm.deinit();
