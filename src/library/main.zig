@@ -16,8 +16,3 @@ pub const std = @import("stdlib/main.zig");
 comptime {
     _ = std;
 }
-
-
-test "behaviour tests" {
-    
-}

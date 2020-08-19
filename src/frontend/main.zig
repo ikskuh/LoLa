@@ -63,6 +63,10 @@ pub fn print_usage() !void {
         \\General Options:
         \\  -o [output file]                   Defines the output file for the action.
         \\
+        \\Compile Options:
+        \\  --verify, -v                       Does not emit the output file, but only runs in-memory checks.
+        \\                                     This can be used to do syntax checks of the code.
+        \\
         \\Disassemble Options:
         \\  --with-offset, -O                  Adds offsets to the disassembly.
         \\  --with-hexdump, -b                 Adds the hex dump in the disassembly.
@@ -236,6 +240,12 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
 
     var cu = autoLoadModule(allocator, options, files[0]) catch |err| {
         const stderr = std.io.getStdErr().writer();
+
+        if (err == error.FileNotFound) {
+            try stderr.print("Could not find '{}'. Are you sure you passed the right file?\n", .{files[0]});
+            return 1;
+        }
+
         try stderr.writeAll(switch (options.mode) {
             .autodetect => "Failed to run file: File seems not to be a compiled module or source file!\n",
             .module => "Failed to run file: File seems not to be a compiled module.\n",
