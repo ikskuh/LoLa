@@ -2,8 +2,9 @@
 
 ## Compiler TODO
 - Add better error message handling and error messages.
-- Implement standard library and add a simple loader
-- Refactor function interface to use `std.interface`.
+  - Syntax errors yield unreadable messages atm
+- Improve code gen to use chunk/file name
+- Improve code gen to emit debug symbols
 - Bugfix: Empty file crashes the compiler.
 
 ## Missing features
