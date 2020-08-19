@@ -104,6 +104,7 @@ pub fn build(b: *Builder) void {
     const test_step = b.step("test", "Run test suite");
     test_step.dependOn(&main_tests.step);
 
+    // Run compiler test suites
     {
         const behaviour_tests = exe.run();
         behaviour_tests.addArg("run");
@@ -115,6 +116,17 @@ pub fn build(b: *Builder) void {
         stdib_test.addArg("run");
         stdib_test.addArg("./test/stdlib.lola");
         test_step.dependOn(&stdib_test.step);
+
+        const emptyfile_test = exe.run();
+        emptyfile_test.addArg("run");
+        emptyfile_test.addArg("./test/empty.lola");
+        test_step.dependOn(&emptyfile_test.step);
+
+        const compiler_test = exe.run();
+        compiler_test.addArg("compile");
+        compiler_test.addArg("--verify"); // verify should not emit a compiled module
+        compiler_test.addArg("./test/empty.lola");
+        test_step.dependOn(&compiler_test.step);
     }
 
     const run_cmd = exe.run();

@@ -159,9 +159,11 @@ fn disassemble(options: DisassemblerCLI, files: []const []const u8) !u8 {
 
 const CompileCLI = struct {
     @"output": ?[]const u8 = null,
+    verify: bool = false,
 
     pub const shorthands = .{
         .o = "output",
+        .v = "verify",
     };
 };
 
@@ -196,7 +198,7 @@ fn compile(options: CompileCLI, files: []const []const u8) !u8 {
     const cu = try compileFileToUnit(allocator, inname);
     defer cu.deinit();
 
-    {
+    if (!options.verify) {
         var file = try std.fs.cwd().createFile(outname, .{ .truncate = true, .read = false, .exclusive = false });
         defer file.close();
 
@@ -213,6 +215,17 @@ const RunCLI = struct {
     @"no-runtime": bool = false,
 };
 
+fn autoLoadModule(allocator: *std.mem.Allocator, options: RunCLI, file: []const u8) !lola.CompileUnit {
+    return switch (options.mode) {
+        .autodetect => loadModuleFromFile(allocator, file) catch |err| if (err == error.InvalidFormat)
+            try compileFileToUnit(allocator, file)
+        else
+            return err,
+        .module => try loadModuleFromFile(allocator, file),
+        .source => try compileFileToUnit(allocator, file),
+    };
+}
+
 fn run(options: RunCLI, files: []const []const u8) !u8 {
     if (files.len != 1) {
         try print_usage();
@@ -221,13 +234,19 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
 
     const allocator = std.heap.c_allocator;
 
-    var cu = switch (options.mode) {
-        .autodetect => loadModuleFromFile(allocator, files[0]) catch |err| if (err == error.InvalidFormat)
-            try compileFileToUnit(allocator, files[0])
-        else
-            return err,
-        .module => try loadModuleFromFile(allocator, files[0]),
-        .source => try compileFileToUnit(allocator, files[0]),
+    var cu = autoLoadModule(allocator, options, files[0]) catch |err| {
+        const stderr = std.io.getStdErr().writer();
+        try stderr.writeAll(switch (options.mode) {
+            .autodetect => "Failed to run file: File seems not to be a compiled module or source file!\n",
+            .module => "Failed to run file: File seems not to be a compiled module.\n",
+            .source => return 1, // We already have the diagnostic output of the compiler anyways
+        });
+        if (err != error.InvalidFormat) {
+            try stderr.print("The following error happened: {}\n", .{
+                @errorName(err),
+            });
+        }
+        return 1;
     };
     defer cu.deinit();
 

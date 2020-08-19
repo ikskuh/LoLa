@@ -449,6 +449,7 @@ namespace LoLa {
       // DIFFERS
       // LESS
       // MORE
+      // INVERT
       // PLUS
       // MINUS
       // MULT
@@ -456,7 +457,6 @@ namespace LoLa {
       // MOD
       // AND
       // OR
-      // INVERT
       // expr_0_op
       // expr_02_op
       // expr_1_op
@@ -565,14 +565,14 @@ namespace LoLa {
     MULT_IS = 287,                 // MULT_IS
     DIV_IS = 288,                  // DIV_IS
     MOD_IS = 289,                  // MOD_IS
-    PLUS = 290,                    // PLUS
-    MINUS = 291,                   // MINUS
-    MULT = 292,                    // MULT
-    DIV = 293,                     // DIV
-    MOD = 294,                     // MOD
-    AND = 295,                     // AND
-    OR = 296,                      // OR
-    INVERT = 297,                  // INVERT
+    INVERT = 290,                  // INVERT
+    PLUS = 291,                    // PLUS
+    MINUS = 292,                   // MINUS
+    MULT = 293,                    // MULT
+    DIV = 294,                     // DIV
+    MOD = 295,                     // MOD
+    AND = 296,                     // AND
+    OR = 297,                      // OR
     IDENT = 298,                   // IDENT
     NUMBER = 299,                  // NUMBER
     STRING = 300                   // STRING
@@ -629,14 +629,14 @@ namespace LoLa {
         S_MULT_IS = 32,                          // MULT_IS
         S_DIV_IS = 33,                           // DIV_IS
         S_MOD_IS = 34,                           // MOD_IS
-        S_PLUS = 35,                             // PLUS
-        S_MINUS = 36,                            // MINUS
-        S_MULT = 37,                             // MULT
-        S_DIV = 38,                              // DIV
-        S_MOD = 39,                              // MOD
-        S_AND = 40,                              // AND
-        S_OR = 41,                               // OR
-        S_INVERT = 42,                           // INVERT
+        S_INVERT = 35,                           // INVERT
+        S_PLUS = 36,                             // PLUS
+        S_MINUS = 37,                            // MINUS
+        S_MULT = 38,                             // MULT
+        S_DIV = 39,                              // DIV
+        S_MOD = 40,                              // MOD
+        S_AND = 41,                              // AND
+        S_OR = 42,                               // OR
         S_IDENT = 43,                            // IDENT
         S_NUMBER = 44,                           // NUMBER
         S_STRING = 45,                           // STRING
@@ -745,14 +745,14 @@ namespace LoLa {
       case 23: // DIFFERS
       case 24: // LESS
       case 25: // MORE
-      case 35: // PLUS
-      case 36: // MINUS
-      case 37: // MULT
-      case 38: // DIV
-      case 39: // MOD
-      case 40: // AND
-      case 41: // OR
-      case 42: // INVERT
+      case 35: // INVERT
+      case 36: // PLUS
+      case 37: // MINUS
+      case 38: // MULT
+      case 39: // DIV
+      case 40: // MOD
+      case 41: // AND
+      case 42: // OR
       case 61: // expr_0_op
       case 63: // expr_02_op
       case 65: // expr_1_op
@@ -996,14 +996,14 @@ switch (yykind)
       case 23: // DIFFERS
       case 24: // LESS
       case 25: // MORE
-      case 35: // PLUS
-      case 36: // MINUS
-      case 37: // MULT
-      case 38: // DIV
-      case 39: // MOD
-      case 40: // AND
-      case 41: // OR
-      case 42: // INVERT
+      case 35: // INVERT
+      case 36: // PLUS
+      case 37: // MINUS
+      case 38: // MULT
+      case 39: // DIV
+      case 40: // MOD
+      case 41: // AND
+      case 42: // OR
       case 61: // expr_0_op
       case 63: // expr_02_op
       case 65: // expr_1_op
@@ -1140,13 +1140,13 @@ switch (yykind)
       symbol_type (int tok, Operator v, location_type l)
         : super_type(token_type (tok), std::move (v), std::move (l))
       {
-        YY_ASSERT (tok == token::LEQUAL || tok == token::GEQUAL || tok == token::EQUALS || tok == token::DIFFERS || tok == token::LESS || tok == token::MORE || tok == token::PLUS || tok == token::MINUS || tok == token::MULT || tok == token::DIV || tok == token::MOD || tok == token::AND || tok == token::OR || tok == token::INVERT);
+        YY_ASSERT (tok == token::LEQUAL || tok == token::GEQUAL || tok == token::EQUALS || tok == token::DIFFERS || tok == token::LESS || tok == token::MORE || tok == token::INVERT || tok == token::PLUS || tok == token::MINUS || tok == token::MULT || tok == token::DIV || tok == token::MOD || tok == token::AND || tok == token::OR);
       }
 #else
       symbol_type (int tok, const Operator& v, const location_type& l)
         : super_type(token_type (tok), v, l)
       {
-        YY_ASSERT (tok == token::LEQUAL || tok == token::GEQUAL || tok == token::EQUALS || tok == token::DIFFERS || tok == token::LESS || tok == token::MORE || tok == token::PLUS || tok == token::MINUS || tok == token::MULT || tok == token::DIV || tok == token::MOD || tok == token::AND || tok == token::OR || tok == token::INVERT);
+        YY_ASSERT (tok == token::LEQUAL || tok == token::GEQUAL || tok == token::EQUALS || tok == token::DIFFERS || tok == token::LESS || tok == token::MORE || tok == token::INVERT || tok == token::PLUS || tok == token::MINUS || tok == token::MULT || tok == token::DIV || tok == token::MOD || tok == token::AND || tok == token::OR);
       }
 #endif
 #if 201103L <= YY_CPLUSPLUS
@@ -1741,6 +1741,21 @@ switch (yykind)
 #if 201103L <= YY_CPLUSPLUS
       static
       symbol_type
+      make_INVERT (Operator v, location_type l)
+      {
+        return symbol_type (token::INVERT, std::move (v), std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_INVERT (const Operator& v, const location_type& l)
+      {
+        return symbol_type (token::INVERT, v, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
       make_PLUS (Operator v, location_type l)
       {
         return symbol_type (token::PLUS, std::move (v), std::move (l));
@@ -1841,21 +1856,6 @@ switch (yykind)
       make_OR (const Operator& v, const location_type& l)
       {
         return symbol_type (token::OR, v, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_INVERT (Operator v, location_type l)
-      {
-        return symbol_type (token::INVERT, std::move (v), std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_INVERT (const Operator& v, const location_type& l)
-      {
-        return symbol_type (token::INVERT, v, l);
       }
 #endif
 #if 201103L <= YY_CPLUSPLUS
@@ -2207,7 +2207,7 @@ switch (yykind)
     /// Constants.
     enum
     {
-      yylast_ = 227,     ///< Last index in yytable_.
+      yylast_ = 239,     ///< Last index in yytable_.
       yynnts_ = 31,  ///< Number of nonterminal symbols.
       yyfinal_ = 3 ///< Termination state number.
     };

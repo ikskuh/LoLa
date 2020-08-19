@@ -5,11 +5,9 @@
   - Syntax errors yield unreadable messages atm
 - Improve code gen to use chunk/file name
 - Improve code gen to emit debug symbols
-- Bugfix: Empty file crashes the compiler.
 
 ## Missing features
 - Add `string` index operators?
-- Fix operator associativity (3 - 2 - 1 => 0)
 
 ## More tasks
 - Tests for the ObjectPool struct

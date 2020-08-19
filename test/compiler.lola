@@ -1,6 +1,10 @@
-// LoLa exerciser
-// This file covers all possible instructions and constructs
-// in the LoLa language
+///
+// This file tests the compiler implementation and is intended to be run
+// via the test suite.
+// It tries to emit every possible instruction and tries to contain every
+// possible syntax construct.
+// This file is not meant to be run, just compiled.
+///
 
 var _; // variable for discarding stuff
 

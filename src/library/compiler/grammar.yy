@@ -58,9 +58,10 @@ namespace LoLa {
 %token BREAK CONTINUE RETURN IN
 
 // Operators
-%left  <Operator> LEQUAL GEQUAL EQUALS DIFFERS LESS MORE
+%right <Operator> LEQUAL GEQUAL EQUALS DIFFERS LESS MORE
 %left  IS DOT COMMA TERMINATOR PLUS_IS MINUS_IS MULT_IS DIV_IS MOD_IS
-%left  <Operator> PLUS MINUS MULT DIV MOD AND OR INVERT
+%left  <Operator> INVERT
+%right <Operator> PLUS MINUS MULT DIV MOD AND OR
 %token <std::string> IDENT
 
 // Literals
@@ -141,7 +142,7 @@ decl        : VAR IDENT IS expr_0 TERMINATOR			{ $$ = Declaration(move($2), move
             | EXTERN IDENT TERMINATOR					{ $$ = ExternDeclaration(move($2)); }
             ;
 
-ass         : lvalue IS expr_0 TERMINATOR               { $$ = Assignment(move($1), move($3)); }
+ass         : lvalue IS expr_0 TERMINATOR                { $$ = Assignment(move($1), move($3)); }
             | lvalue PLUS_IS  expr_0 TERMINATOR          { auto dup = $1->clone(); $$ = Assignment(move($1), BinaryOperator(Operator::Plus, move(dup), move($3))); }
             | lvalue MINUS_IS expr_0 TERMINATOR          { auto dup = $1->clone(); $$ = Assignment(move($1), BinaryOperator(Operator::Minus, move(dup), move($3))); }
             | lvalue MULT_IS  expr_0 TERMINATOR          { auto dup = $1->clone(); $$ = Assignment(move($1), BinaryOperator(Operator::Multiply, move(dup), move($3))); }
@@ -167,24 +168,24 @@ expression	: call TERMINATOR							{ $$ = DiscardResult(move($1)); }
             ;
 
 expr_0_op	: AND | OR;
-expr_0		: expr_0 expr_0_op expr_0                   { $$ = BinaryOperator($2, move($1), move($3)); }
+expr_0		: expr_0 expr_0_op expr_02                  { $$ = BinaryOperator($2, move($1), move($3)); }
             | expr_02                                   { $$ = move($1); }
             ;
 
 expr_02_op	: EQUALS|DIFFERS|LEQUAL|GEQUAL|MORE|LESS;
-expr_02		: expr_02 expr_02_op expr_02                { $$ = BinaryOperator($2, move($1), move($3)); }
+expr_02		: expr_02 expr_02_op expr_1                 { $$ = BinaryOperator($2, move($1), move($3)); }
             | expr_1                                    { $$ = move($1); }
             ;
 
 
 expr_1_op	: PLUS | MINUS ;
-expr_1		: expr_1 expr_1_op expr_1					{ $$ = BinaryOperator($2, move($1), move($3)); }
+expr_1		: expr_1 expr_1_op expr_2					{ $$ = BinaryOperator($2, move($1), move($3)); }
             | expr_2									{ $$ = move($1); }
             ;
 
 
 expr_2_op	: MULT | DIV | MOD;
-expr_2		: expr_2 expr_2_op expr_2					{ $$ = BinaryOperator($2, move($1), move($3)); }
+expr_2		: expr_2 expr_2_op expr_3					{ $$ = BinaryOperator($2, move($1), move($3)); }
             | expr_3									{ $$ = move($1); }
             ;
 

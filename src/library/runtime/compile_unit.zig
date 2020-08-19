@@ -57,7 +57,10 @@ pub const CompileUnit = struct {
         // var inStream = file.getInStream();
         // var stream = &inStream.stream;
         var header: [8]u8 = undefined;
-        try stream.readNoEof(&header);
+        stream.readNoEof(&header) catch |err| switch (err) {
+            error.EndOfStream => return error.InvalidFormat, // file is too short!
+            else => return err,
+        };
         if (!std.mem.eql(u8, &header, "LoLa\xB9\x40\x80\x5A"))
             return error.InvalidFormat;
         const version = try stream.readIntLittle(u32);

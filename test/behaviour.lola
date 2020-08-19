@@ -130,4 +130,15 @@ Expect(v[1] == [ 3, 4 ]);
 // Print(v);
 // Expect(v[0] == [ 1, 5 ]);
 
+
+// Test operator precedence
+ExpectEqual(3 + 2 * 1, 5);
+ExpectEqual(3 + 1 * 2, 5);
+ExpectEqual(1 * 2 + 3, 5);
+ExpectEqual(2 * 1 + 3, 5);
+
+// Test operator associativity
+ExpectEqual(3 - 2 - 1, 0);
+ExpectEqual(12 / 2 / 2, 3);
+
 Print("Behaviour test suite passed.");

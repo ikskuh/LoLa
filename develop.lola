@@ -1,25 +1,3 @@
 
 
-function Fibonacci(num)
-{
-    var a = 1;
-    var b = 0;
-    var temp;
-
-    while (num >= 0)
-    {
-         temp = a;
-         a = a + b;
-         b = temp;
-         num = num - 1;
-    }
-
-    return b;
-}
-
-var i = 1;
-while(i < 10)
-{
-  Print("fib(", i, ") = ", Fibonacci(i));
-  i += 1;
-}
+Print("Hello, World!");

@@ -220,14 +220,14 @@ namespace LoLa {
       case 23: // DIFFERS
       case 24: // LESS
       case 25: // MORE
-      case 35: // PLUS
-      case 36: // MINUS
-      case 37: // MULT
-      case 38: // DIV
-      case 39: // MOD
-      case 40: // AND
-      case 41: // OR
-      case 42: // INVERT
+      case 35: // INVERT
+      case 36: // PLUS
+      case 37: // MINUS
+      case 38: // MULT
+      case 39: // DIV
+      case 40: // MOD
+      case 41: // AND
+      case 42: // OR
       case 61: // expr_0_op
       case 63: // expr_02_op
       case 65: // expr_1_op
@@ -325,14 +325,14 @@ namespace LoLa {
       case 23: // DIFFERS
       case 24: // LESS
       case 25: // MORE
-      case 35: // PLUS
-      case 36: // MINUS
-      case 37: // MULT
-      case 38: // DIV
-      case 39: // MOD
-      case 40: // AND
-      case 41: // OR
-      case 42: // INVERT
+      case 35: // INVERT
+      case 36: // PLUS
+      case 37: // MINUS
+      case 38: // MULT
+      case 39: // DIV
+      case 40: // MOD
+      case 41: // AND
+      case 42: // OR
       case 61: // expr_0_op
       case 63: // expr_02_op
       case 65: // expr_1_op
@@ -498,14 +498,14 @@ namespace LoLa {
       case 23: // DIFFERS
       case 24: // LESS
       case 25: // MORE
-      case 35: // PLUS
-      case 36: // MINUS
-      case 37: // MULT
-      case 38: // DIV
-      case 39: // MOD
-      case 40: // AND
-      case 41: // OR
-      case 42: // INVERT
+      case 35: // INVERT
+      case 36: // PLUS
+      case 37: // MINUS
+      case 38: // MULT
+      case 39: // DIV
+      case 40: // MOD
+      case 41: // AND
+      case 42: // OR
       case 61: // expr_0_op
       case 63: // expr_02_op
       case 65: // expr_1_op
@@ -589,14 +589,14 @@ namespace LoLa {
       case 23: // DIFFERS
       case 24: // LESS
       case 25: // MORE
-      case 35: // PLUS
-      case 36: // MINUS
-      case 37: // MULT
-      case 38: // DIV
-      case 39: // MOD
-      case 40: // AND
-      case 41: // OR
-      case 42: // INVERT
+      case 35: // INVERT
+      case 36: // PLUS
+      case 37: // MINUS
+      case 38: // MULT
+      case 39: // DIV
+      case 40: // MOD
+      case 41: // AND
+      case 42: // OR
       case 61: // expr_0_op
       case 63: // expr_02_op
       case 65: // expr_1_op
@@ -680,14 +680,14 @@ namespace LoLa {
       case 23: // DIFFERS
       case 24: // LESS
       case 25: // MORE
-      case 35: // PLUS
-      case 36: // MINUS
-      case 37: // MULT
-      case 38: // DIV
-      case 39: // MOD
-      case 40: // AND
-      case 41: // OR
-      case 42: // INVERT
+      case 35: // INVERT
+      case 36: // PLUS
+      case 37: // MINUS
+      case 38: // MULT
+      case 39: // DIV
+      case 40: // MOD
+      case 41: // AND
+      case 42: // OR
       case 61: // expr_0_op
       case 63: // expr_02_op
       case 65: // expr_1_op
@@ -770,14 +770,14 @@ namespace LoLa {
       case 23: // DIFFERS
       case 24: // LESS
       case 25: // MORE
-      case 35: // PLUS
-      case 36: // MINUS
-      case 37: // MULT
-      case 38: // DIV
-      case 39: // MOD
-      case 40: // AND
-      case 41: // OR
-      case 42: // INVERT
+      case 35: // INVERT
+      case 36: // PLUS
+      case 37: // MINUS
+      case 38: // MULT
+      case 39: // DIV
+      case 40: // MOD
+      case 41: // AND
+      case 42: // OR
       case 61: // expr_0_op
       case 63: // expr_02_op
       case 65: // expr_1_op
@@ -1104,14 +1104,14 @@ namespace LoLa {
       case 23: // DIFFERS
       case 24: // LESS
       case 25: // MORE
-      case 35: // PLUS
-      case 36: // MINUS
-      case 37: // MULT
-      case 38: // DIV
-      case 39: // MOD
-      case 40: // AND
-      case 41: // OR
-      case 42: // INVERT
+      case 35: // INVERT
+      case 36: // PLUS
+      case 37: // MINUS
+      case 38: // MULT
+      case 39: // DIV
+      case 40: // MOD
+      case 41: // AND
+      case 42: // OR
       case 61: // expr_0_op
       case 63: // expr_02_op
       case 65: // expr_1_op
@@ -1163,19 +1163,19 @@ namespace LoLa {
           switch (yyn)
             {
   case 2:
-#line 82 "grammar.yy"
+#line 83 "grammar.yy"
                        { driver.program = move(yystack_[0].value.as < Program > ()); }
 #line 1169 "grammar.tab.cpp"
     break;
 
   case 3:
-#line 84 "grammar.yy"
+#line 85 "grammar.yy"
               { }
 #line 1175 "grammar.tab.cpp"
     break;
 
   case 4:
-#line 85 "grammar.yy"
+#line 86 "grammar.yy"
                                {
                 yylhs.value.as < Program > () = move(yystack_[1].value.as < Program > ());
                 yylhs.value.as < Program > ().functions.emplace_back(move(yystack_[0].value.as < Function > ()));
@@ -1184,7 +1184,7 @@ namespace LoLa {
     break;
 
   case 5:
-#line 89 "grammar.yy"
+#line 90 "grammar.yy"
                                 {
                 yylhs.value.as < Program > () = move(yystack_[1].value.as < Program > ());
                 yylhs.value.as < Program > ().statements.emplace_back(move(yystack_[0].value.as < Statement > ()));
@@ -1193,7 +1193,7 @@ namespace LoLa {
     break;
 
   case 6:
-#line 95 "grammar.yy"
+#line 96 "grammar.yy"
                                                         {
                 yylhs.value.as < Function > ().name = yystack_[4].value.as < std::string > ();
                 yylhs.value.as < Function > ().params = yystack_[2].value.as < List<std::string> > ();
@@ -1203,7 +1203,7 @@ namespace LoLa {
     break;
 
   case 7:
-#line 100 "grammar.yy"
+#line 101 "grammar.yy"
                                                   {
                 yylhs.value.as < Function > ().name = yystack_[3].value.as < std::string > ();
                 yylhs.value.as < Function > ().body = move(yystack_[0].value.as < Statement > ());
@@ -1212,7 +1212,7 @@ namespace LoLa {
     break;
 
   case 8:
-#line 107 "grammar.yy"
+#line 108 "grammar.yy"
             {
                 yylhs.value.as < List<std::string> > ().emplace_back(move(yystack_[0].value.as < std::string > ()));
             }
@@ -1220,7 +1220,7 @@ namespace LoLa {
     break;
 
   case 9:
-#line 111 "grammar.yy"
+#line 112 "grammar.yy"
             {
                 yylhs.value.as < List<std::string> > () = move(yystack_[2].value.as < List<std::string> > ());
                 yylhs.value.as < List<std::string> > ().emplace_back(move(yystack_[0].value.as < std::string > ()));
@@ -1229,19 +1229,19 @@ namespace LoLa {
     break;
 
   case 10:
-#line 117 "grammar.yy"
+#line 118 "grammar.yy"
                                             { yylhs.value.as < Statement > () = SubScope(move(yystack_[1].value.as < List<Statement> > ())); }
 #line 1235 "grammar.tab.cpp"
     break;
 
   case 11:
-#line 120 "grammar.yy"
+#line 121 "grammar.yy"
               { }
 #line 1241 "grammar.tab.cpp"
     break;
 
   case 12:
-#line 121 "grammar.yy"
+#line 122 "grammar.yy"
                                  {
                 yylhs.value.as < List<Statement> > () = move(yystack_[1].value.as < List<Statement> > ());
                 yylhs.value.as < List<Statement> > ().emplace_back(move(yystack_[0].value.as < Statement > ()));
@@ -1250,391 +1250,391 @@ namespace LoLa {
     break;
 
   case 13:
-#line 127 "grammar.yy"
+#line 128 "grammar.yy"
                                   { yylhs.value.as < Statement > () = move(yystack_[0].value.as < Statement > ()); }
 #line 1256 "grammar.tab.cpp"
     break;
 
   case 14:
-#line 128 "grammar.yy"
+#line 129 "grammar.yy"
                                   { yylhs.value.as < Statement > () = move(yystack_[0].value.as < Statement > ()); }
 #line 1262 "grammar.tab.cpp"
     break;
 
   case 15:
-#line 129 "grammar.yy"
+#line 130 "grammar.yy"
                                   { yylhs.value.as < Statement > () = move(yystack_[0].value.as < Statement > ()); }
 #line 1268 "grammar.tab.cpp"
     break;
 
   case 16:
-#line 130 "grammar.yy"
+#line 131 "grammar.yy"
                                   { yylhs.value.as < Statement > () = move(yystack_[0].value.as < Statement > ()); }
 #line 1274 "grammar.tab.cpp"
     break;
 
   case 17:
-#line 131 "grammar.yy"
+#line 132 "grammar.yy"
                                   { yylhs.value.as < Statement > () = move(yystack_[0].value.as < Statement > ()); }
 #line 1280 "grammar.tab.cpp"
     break;
 
   case 18:
-#line 132 "grammar.yy"
+#line 133 "grammar.yy"
                                   { yylhs.value.as < Statement > () = move(yystack_[0].value.as < Statement > ()); }
 #line 1286 "grammar.tab.cpp"
     break;
 
   case 19:
-#line 133 "grammar.yy"
+#line 134 "grammar.yy"
                                   { yylhs.value.as < Statement > () = move(yystack_[0].value.as < Statement > ()); }
 #line 1292 "grammar.tab.cpp"
     break;
 
   case 20:
-#line 134 "grammar.yy"
+#line 135 "grammar.yy"
                                   { yylhs.value.as < Statement > () = move(yystack_[0].value.as < Statement > ()); }
 #line 1298 "grammar.tab.cpp"
     break;
 
   case 21:
-#line 135 "grammar.yy"
+#line 136 "grammar.yy"
                                   { yylhs.value.as < Statement > () = BreakStatement(); }
 #line 1304 "grammar.tab.cpp"
     break;
 
   case 22:
-#line 136 "grammar.yy"
+#line 137 "grammar.yy"
                                   { yylhs.value.as < Statement > () = ContinueStatement(); }
 #line 1310 "grammar.tab.cpp"
     break;
 
   case 23:
-#line 139 "grammar.yy"
+#line 140 "grammar.yy"
                                                                 { yylhs.value.as < Statement > () = Declaration(move(yystack_[3].value.as < std::string > ()), move(yystack_[1].value.as < Expression > ())); }
 #line 1316 "grammar.tab.cpp"
     break;
 
   case 24:
-#line 140 "grammar.yy"
+#line 141 "grammar.yy"
                                                                                 { yylhs.value.as < Statement > () = Declaration(move(yystack_[1].value.as < std::string > ())); }
 #line 1322 "grammar.tab.cpp"
     break;
 
   case 25:
-#line 141 "grammar.yy"
+#line 142 "grammar.yy"
                                                                         { yylhs.value.as < Statement > () = ExternDeclaration(move(yystack_[1].value.as < std::string > ())); }
 #line 1328 "grammar.tab.cpp"
     break;
 
   case 26:
-#line 144 "grammar.yy"
-                                                        { yylhs.value.as < Statement > () = Assignment(move(yystack_[3].value.as < LValueExpression > ()), move(yystack_[1].value.as < Expression > ())); }
+#line 145 "grammar.yy"
+                                                         { yylhs.value.as < Statement > () = Assignment(move(yystack_[3].value.as < LValueExpression > ()), move(yystack_[1].value.as < Expression > ())); }
 #line 1334 "grammar.tab.cpp"
     break;
 
   case 27:
-#line 145 "grammar.yy"
+#line 146 "grammar.yy"
                                                          { auto dup = yystack_[3].value.as < LValueExpression > ()->clone(); yylhs.value.as < Statement > () = Assignment(move(yystack_[3].value.as < LValueExpression > ()), BinaryOperator(Operator::Plus, move(dup), move(yystack_[1].value.as < Expression > ()))); }
 #line 1340 "grammar.tab.cpp"
     break;
 
   case 28:
-#line 146 "grammar.yy"
+#line 147 "grammar.yy"
                                                          { auto dup = yystack_[3].value.as < LValueExpression > ()->clone(); yylhs.value.as < Statement > () = Assignment(move(yystack_[3].value.as < LValueExpression > ()), BinaryOperator(Operator::Minus, move(dup), move(yystack_[1].value.as < Expression > ()))); }
 #line 1346 "grammar.tab.cpp"
     break;
 
   case 29:
-#line 147 "grammar.yy"
+#line 148 "grammar.yy"
                                                          { auto dup = yystack_[3].value.as < LValueExpression > ()->clone(); yylhs.value.as < Statement > () = Assignment(move(yystack_[3].value.as < LValueExpression > ()), BinaryOperator(Operator::Multiply, move(dup), move(yystack_[1].value.as < Expression > ()))); }
 #line 1352 "grammar.tab.cpp"
     break;
 
   case 30:
-#line 148 "grammar.yy"
+#line 149 "grammar.yy"
                                                          { auto dup = yystack_[3].value.as < LValueExpression > ()->clone(); yylhs.value.as < Statement > () = Assignment(move(yystack_[3].value.as < LValueExpression > ()), BinaryOperator(Operator::Divide, move(dup), move(yystack_[1].value.as < Expression > ()))); }
 #line 1358 "grammar.tab.cpp"
     break;
 
   case 31:
-#line 149 "grammar.yy"
+#line 150 "grammar.yy"
                                                          { auto dup = yystack_[3].value.as < LValueExpression > ()->clone(); yylhs.value.as < Statement > () = Assignment(move(yystack_[3].value.as < LValueExpression > ()), BinaryOperator(Operator::Modulus, move(dup), move(yystack_[1].value.as < Expression > ()))); }
 #line 1364 "grammar.tab.cpp"
     break;
 
   case 32:
-#line 152 "grammar.yy"
+#line 153 "grammar.yy"
                                                                     { yylhs.value.as < Statement > () = ForLoop(yystack_[4].value.as < std::string > (),move(yystack_[2].value.as < Expression > ()),move(yystack_[0].value.as < Statement > ())); }
 #line 1370 "grammar.tab.cpp"
     break;
 
   case 33:
-#line 155 "grammar.yy"
+#line 156 "grammar.yy"
                                                             { yylhs.value.as < Statement > () = WhileLoop(move(yystack_[2].value.as < Expression > ()), move(yystack_[0].value.as < Statement > ())); }
 #line 1376 "grammar.tab.cpp"
     break;
 
   case 34:
-#line 158 "grammar.yy"
+#line 159 "grammar.yy"
                                                                                 { yylhs.value.as < Statement > () = Return(move(yystack_[1].value.as < Expression > ())); }
 #line 1382 "grammar.tab.cpp"
     break;
 
   case 35:
-#line 159 "grammar.yy"
+#line 160 "grammar.yy"
                                                                                 { yylhs.value.as < Statement > () = Return(); }
 #line 1388 "grammar.tab.cpp"
     break;
 
   case 36:
-#line 162 "grammar.yy"
+#line 163 "grammar.yy"
                                                                   { yylhs.value.as < Statement > () = IfElse(move(yystack_[4].value.as < Expression > ()), move(yystack_[2].value.as < Statement > ()), move(yystack_[0].value.as < Statement > ())); }
 #line 1394 "grammar.tab.cpp"
     break;
 
   case 37:
-#line 163 "grammar.yy"
+#line 164 "grammar.yy"
                                                                         { yylhs.value.as < Statement > () = IfElse(move(yystack_[2].value.as < Expression > ()), move(yystack_[0].value.as < Statement > ())); }
 #line 1400 "grammar.tab.cpp"
     break;
 
   case 38:
-#line 166 "grammar.yy"
+#line 167 "grammar.yy"
                                                                                         { yylhs.value.as < Statement > () = DiscardResult(move(yystack_[1].value.as < Expression > ())); }
 #line 1406 "grammar.tab.cpp"
     break;
 
   case 39:
-#line 169 "grammar.yy"
+#line 170 "grammar.yy"
                   { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
 #line 1412 "grammar.tab.cpp"
     break;
 
   case 40:
-#line 169 "grammar.yy"
+#line 170 "grammar.yy"
                         { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
 #line 1418 "grammar.tab.cpp"
     break;
 
   case 41:
-#line 170 "grammar.yy"
+#line 171 "grammar.yy"
                                                             { yylhs.value.as < Expression > () = BinaryOperator(yystack_[1].value.as < Operator > (), move(yystack_[2].value.as < Expression > ()), move(yystack_[0].value.as < Expression > ())); }
 #line 1424 "grammar.tab.cpp"
     break;
 
   case 42:
-#line 171 "grammar.yy"
+#line 172 "grammar.yy"
                                                         { yylhs.value.as < Expression > () = move(yystack_[0].value.as < Expression > ()); }
 #line 1430 "grammar.tab.cpp"
     break;
 
   case 43:
-#line 174 "grammar.yy"
+#line 175 "grammar.yy"
                   { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
 #line 1436 "grammar.tab.cpp"
     break;
 
   case 44:
-#line 174 "grammar.yy"
+#line 175 "grammar.yy"
                          { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
 #line 1442 "grammar.tab.cpp"
     break;
 
   case 45:
-#line 174 "grammar.yy"
+#line 175 "grammar.yy"
                                  { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
 #line 1448 "grammar.tab.cpp"
     break;
 
   case 46:
-#line 174 "grammar.yy"
+#line 175 "grammar.yy"
                                         { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
 #line 1454 "grammar.tab.cpp"
     break;
 
   case 47:
-#line 174 "grammar.yy"
+#line 175 "grammar.yy"
                                                { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
 #line 1460 "grammar.tab.cpp"
     break;
 
   case 48:
-#line 174 "grammar.yy"
+#line 175 "grammar.yy"
                                                     { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
 #line 1466 "grammar.tab.cpp"
     break;
 
   case 49:
-#line 175 "grammar.yy"
+#line 176 "grammar.yy"
                                                             { yylhs.value.as < Expression > () = BinaryOperator(yystack_[1].value.as < Operator > (), move(yystack_[2].value.as < Expression > ()), move(yystack_[0].value.as < Expression > ())); }
 #line 1472 "grammar.tab.cpp"
     break;
 
   case 50:
-#line 176 "grammar.yy"
+#line 177 "grammar.yy"
                                                         { yylhs.value.as < Expression > () = move(yystack_[0].value.as < Expression > ()); }
 #line 1478 "grammar.tab.cpp"
     break;
 
   case 51:
-#line 180 "grammar.yy"
+#line 181 "grammar.yy"
                   { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
 #line 1484 "grammar.tab.cpp"
     break;
 
   case 52:
-#line 180 "grammar.yy"
+#line 181 "grammar.yy"
                          { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
 #line 1490 "grammar.tab.cpp"
     break;
 
   case 53:
-#line 181 "grammar.yy"
+#line 182 "grammar.yy"
                                                                                 { yylhs.value.as < Expression > () = BinaryOperator(yystack_[1].value.as < Operator > (), move(yystack_[2].value.as < Expression > ()), move(yystack_[0].value.as < Expression > ())); }
 #line 1496 "grammar.tab.cpp"
     break;
 
   case 54:
-#line 182 "grammar.yy"
+#line 183 "grammar.yy"
                                                                                         { yylhs.value.as < Expression > () = move(yystack_[0].value.as < Expression > ()); }
 #line 1502 "grammar.tab.cpp"
     break;
 
   case 55:
-#line 186 "grammar.yy"
+#line 187 "grammar.yy"
                   { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
 #line 1508 "grammar.tab.cpp"
     break;
 
   case 56:
-#line 186 "grammar.yy"
+#line 187 "grammar.yy"
                          { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
 #line 1514 "grammar.tab.cpp"
     break;
 
   case 57:
-#line 186 "grammar.yy"
+#line 187 "grammar.yy"
                                { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
 #line 1520 "grammar.tab.cpp"
     break;
 
   case 58:
-#line 187 "grammar.yy"
+#line 188 "grammar.yy"
                                                                                 { yylhs.value.as < Expression > () = BinaryOperator(yystack_[1].value.as < Operator > (), move(yystack_[2].value.as < Expression > ()), move(yystack_[0].value.as < Expression > ())); }
 #line 1526 "grammar.tab.cpp"
     break;
 
   case 59:
-#line 188 "grammar.yy"
+#line 189 "grammar.yy"
                                                                                         { yylhs.value.as < Expression > () = move(yystack_[0].value.as < Expression > ()); }
 #line 1532 "grammar.tab.cpp"
     break;
 
   case 60:
-#line 192 "grammar.yy"
+#line 193 "grammar.yy"
                   { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
 #line 1538 "grammar.tab.cpp"
     break;
 
   case 61:
-#line 192 "grammar.yy"
+#line 193 "grammar.yy"
                           { yylhs.value.as < Operator > () = yystack_[0].value.as < Operator > (); }
 #line 1544 "grammar.tab.cpp"
     break;
 
   case 62:
-#line 193 "grammar.yy"
+#line 194 "grammar.yy"
                                                                                         { yylhs.value.as < Expression > () = UnaryOperator(yystack_[1].value.as < Operator > (), move(yystack_[0].value.as < Expression > ())); }
 #line 1550 "grammar.tab.cpp"
     break;
 
   case 63:
-#line 194 "grammar.yy"
+#line 195 "grammar.yy"
                                                                                         { yylhs.value.as < Expression > () = move(yystack_[0].value.as < Expression > ()); }
 #line 1556 "grammar.tab.cpp"
     break;
 
   case 64:
-#line 198 "grammar.yy"
+#line 199 "grammar.yy"
                                                                                 { yylhs.value.as < Expression > () = move(yystack_[1].value.as < Expression > ()); }
 #line 1562 "grammar.tab.cpp"
     break;
 
   case 65:
-#line 199 "grammar.yy"
+#line 200 "grammar.yy"
                                                                                         { yylhs.value.as < Expression > () = move(yystack_[0].value.as < Expression > ()); }
 #line 1568 "grammar.tab.cpp"
     break;
 
   case 66:
-#line 200 "grammar.yy"
+#line 201 "grammar.yy"
                                                                                         { yylhs.value.as < Expression > () = move(yystack_[0].value.as < LValueExpression > ()); }
 #line 1574 "grammar.tab.cpp"
     break;
 
   case 67:
-#line 203 "grammar.yy"
+#line 204 "grammar.yy"
                                                                                                 { yylhs.value.as < Expression > () = move(yystack_[0].value.as < Expression > ()); }
 #line 1580 "grammar.tab.cpp"
     break;
 
   case 68:
-#line 204 "grammar.yy"
+#line 205 "grammar.yy"
                                                                                                 { yylhs.value.as < Expression > () = move(yystack_[0].value.as < Expression > ()); }
 #line 1586 "grammar.tab.cpp"
     break;
 
   case 69:
-#line 205 "grammar.yy"
+#line 206 "grammar.yy"
                                                                                         { yylhs.value.as < Expression > () = StringLiteral(yystack_[0].value.as < std::string > ()); }
 #line 1592 "grammar.tab.cpp"
     break;
 
   case 70:
-#line 206 "grammar.yy"
+#line 207 "grammar.yy"
                                                                                         { yylhs.value.as < Expression > () = NumberLiteral(yystack_[0].value.as < std::string > ()); }
 #line 1598 "grammar.tab.cpp"
     break;
 
   case 71:
-#line 209 "grammar.yy"
+#line 210 "grammar.yy"
                                                                         { yylhs.value.as < Expression > () = MethodCall(move(yystack_[4].value.as < Expression > ()), yystack_[2].value.as < std::string > (), {}); }
 #line 1604 "grammar.tab.cpp"
     break;
 
   case 72:
-#line 210 "grammar.yy"
+#line 211 "grammar.yy"
                                                         { yylhs.value.as < Expression > () = MethodCall(move(yystack_[5].value.as < Expression > ()), yystack_[3].value.as < std::string > (), move(yystack_[1].value.as < List<Expression> > ())); }
 #line 1610 "grammar.tab.cpp"
     break;
 
   case 73:
-#line 211 "grammar.yy"
+#line 212 "grammar.yy"
                                                                                 { yylhs.value.as < Expression > () = FunctionCall(yystack_[2].value.as < std::string > (), {}); }
 #line 1616 "grammar.tab.cpp"
     break;
 
   case 74:
-#line 212 "grammar.yy"
+#line 213 "grammar.yy"
                                                                         { yylhs.value.as < Expression > () = FunctionCall(yystack_[3].value.as < std::string > (), move(yystack_[1].value.as < List<Expression> > ())); }
 #line 1622 "grammar.tab.cpp"
     break;
 
   case 75:
-#line 215 "grammar.yy"
+#line 216 "grammar.yy"
                                                                                         { yylhs.value.as < Expression > () = ArrayLiteral({}); }
 #line 1628 "grammar.tab.cpp"
     break;
 
   case 76:
-#line 216 "grammar.yy"
+#line 217 "grammar.yy"
                                                                         { yylhs.value.as < Expression > () = ArrayLiteral(move(yystack_[1].value.as < List<Expression> > ())); }
 #line 1634 "grammar.tab.cpp"
     break;
 
   case 77:
-#line 219 "grammar.yy"
+#line 220 "grammar.yy"
                                    {
                 yylhs.value.as < List<Expression> > () = move(yystack_[2].value.as < List<Expression> > ());
                 yylhs.value.as < List<Expression> > ().emplace_back(move(yystack_[0].value.as < Expression > ()));
@@ -1643,7 +1643,7 @@ namespace LoLa {
     break;
 
   case 78:
-#line 223 "grammar.yy"
+#line 224 "grammar.yy"
                      {
                 yylhs.value.as < List<Expression> > ().emplace_back(move(yystack_[0].value.as < Expression > ()));
             }
@@ -1651,13 +1651,13 @@ namespace LoLa {
     break;
 
   case 79:
-#line 228 "grammar.yy"
+#line 229 "grammar.yy"
                                                         { yylhs.value.as < LValueExpression > () = ArrayIndexer(move(yystack_[3].value.as < Expression > ()), move(yystack_[1].value.as < Expression > ())); }
 #line 1657 "grammar.tab.cpp"
     break;
 
   case 80:
-#line 229 "grammar.yy"
+#line 230 "grammar.yy"
                                                         { yylhs.value.as < LValueExpression > () = VariableRef(yystack_[0].value.as < std::string > ()); }
 #line 1663 "grammar.tab.cpp"
     break;
@@ -1852,28 +1852,28 @@ namespace LoLa {
 
 
 
-  const signed char LoLaParser::yypact_ninf_ = -98;
+  const signed char LoLaParser::yypact_ninf_ = -101;
 
   const signed char LoLaParser::yytable_ninf_ = -1;
 
   const short
   LoLaParser::yypact_[] =
   {
-     -98,    10,    35,   -98,   -98,   163,    54,   -37,   -22,    19,
-      23,    26,    42,    31,    57,   158,    88,   -98,   -98,   -98,
-     -98,   -98,   -98,   -98,   -98,   -98,   -98,   -98,   -98,     2,
-     -98,    71,   -98,   187,   117,   -98,   -98,    17,   202,   -19,
-      45,   163,   -98,     2,   -98,   -98,   -98,    51,    -3,   -15,
-      72,    59,   163,   163,    99,   -98,   -98,   -98,   -14,    69,
-     163,    63,   -98,   163,   163,   163,   163,   163,   163,   -98,
-     -98,   -98,   -98,   -98,   163,   -98,   -98,   -98,   -98,   -98,
-     -98,   163,   -98,   -98,   163,   -98,   -98,   -98,   163,   -98,
-     -98,   163,   163,   -98,   -98,    90,    24,    48,     6,   -98,
-     -98,     7,    -4,   110,   118,   137,   140,   150,   156,   169,
-      51,   202,   -19,    45,    51,   175,   163,   120,   139,   120,
-     -98,    13,   -98,   -98,   131,   -98,   -98,   -98,   -98,   -98,
-     -98,   -98,    67,   -98,   111,   -98,   120,    89,   -98,    75,
-     120,   139,   -98,   -98,   -98,   -98,   -98
+    -101,     5,    32,  -101,  -101,   183,    17,   -28,    -5,    18,
+      54,    78,    41,    57,    59,   158,    84,  -101,  -101,  -101,
+    -101,  -101,  -101,  -101,  -101,  -101,  -101,  -101,  -101,     4,
+    -101,    62,  -101,   199,   117,  -101,  -101,    23,   214,   -24,
+      66,   183,  -101,     4,  -101,  -101,  -101,   -21,     2,   -20,
+      71,    64,   183,   183,    94,  -101,  -101,  -101,   -15,   131,
+     183,    72,  -101,   183,   183,   183,   183,   183,   183,  -101,
+    -101,  -101,  -101,  -101,   183,  -101,  -101,  -101,  -101,  -101,
+    -101,   183,  -101,  -101,   183,  -101,  -101,  -101,   183,  -101,
+    -101,   183,   183,  -101,  -101,     9,    40,    51,    10,  -101,
+    -101,    52,    70,   108,    56,    61,   129,   144,   163,   169,
+     214,   -24,    66,  -101,   -21,   171,   183,   111,   139,   111,
+    -101,    68,  -101,  -101,   172,  -101,  -101,  -101,  -101,  -101,
+    -101,  -101,    67,  -101,   109,  -101,   111,    82,  -101,    73,
+     111,   139,  -101,  -101,  -101,  -101,  -101
   };
 
   const signed char
@@ -1882,7 +1882,7 @@ namespace LoLa {
        3,     0,     2,     1,    11,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,    80,    70,    69,     4,
       20,     5,    13,    14,    15,    16,    19,    17,    18,     0,
-      65,    67,    68,    66,     0,    60,    61,     0,    42,    50,
+      65,    67,    68,    66,     0,    61,    60,     0,    42,    50,
       54,     0,    59,    63,    67,    66,    75,    78,     0,     0,
        0,     0,     0,     0,     0,    21,    22,    35,     0,     0,
        0,     0,    38,     0,     0,     0,     0,     0,     0,    10,
@@ -1899,9 +1899,9 @@ namespace LoLa {
   const signed char
   LoLaParser::yypgoto_[] =
   {
-     -98,   -98,   -98,   -98,   -98,   -97,   -98,   -31,   -98,   -98,
-     -98,   -98,   -98,   -98,   -98,   -98,     3,   -98,    50,   -98,
-      61,   -98,    55,   -98,   112,    -2,   -98,    -1,   -98,   -52,
+    -101,  -101,  -101,  -101,  -101,  -100,  -101,   -31,  -101,  -101,
+    -101,  -101,  -101,  -101,  -101,  -101,     3,  -101,    58,  -101,
+      50,  -101,    63,  -101,   -37,    -2,  -101,    -1,  -101,   -52,
        0
   };
 
@@ -1917,57 +1917,59 @@ namespace LoLa {
   const unsigned char
   LoLaParser::yytable_[] =
   {
-      29,    31,    33,    70,   123,    90,    49,   101,    37,    60,
-       3,    92,   119,   122,    93,    99,    82,    83,    58,   136,
-     133,    50,   135,    71,    51,    91,    72,    73,    52,    61,
-     117,    53,    29,    31,    33,    91,    72,    73,     4,   142,
-       5,   137,     6,   145,     7,     8,     9,    10,    11,   120,
-      12,    13,    14,    15,   118,    96,    97,    72,    73,     5,
-      55,     6,    46,   102,    72,    73,   104,   105,   106,   107,
-     108,   109,   139,   140,     5,   100,     6,   110,    16,    17,
-      18,   144,    85,    86,    87,    54,    56,   134,    72,    73,
-      35,    72,    73,    59,   114,   115,    36,    16,    17,    18,
-      62,    94,    95,    91,    98,    35,   103,    72,    73,   116,
-     146,    36,    16,    17,    18,   124,    29,    31,    33,   132,
-       4,    69,     5,     4,     6,   141,     7,     8,     9,    10,
-      11,   111,   143,    13,    14,    15,     5,   138,     6,    29,
-      31,    33,     4,   113,     5,   112,     6,   125,     7,     8,
-       9,    10,    11,    89,     0,    13,    14,    15,    72,    73,
-      16,    17,    18,     5,     0,     6,   126,    35,     5,   127,
-       6,     0,     0,    36,    16,    17,    18,    72,    73,   128,
-      72,    73,    16,    17,    18,   129,     0,    57,     0,     0,
-      72,    73,     0,     0,    35,     0,    72,    73,   130,    35,
-      36,    16,    17,    18,   131,    36,    16,    17,    18,    72,
-      73,     0,     0,    63,     0,    72,    73,    64,    65,    66,
-      67,    68,    75,    76,    77,    78,    79,    80
+      29,    31,    33,    70,    89,     3,    92,   101,    37,    93,
+      90,    60,    82,    83,    99,    49,   119,   133,    58,   135,
+      72,    73,     5,    51,     6,    46,    72,    73,   116,    71,
+      91,    61,    29,    31,    33,     4,   142,     5,    50,     6,
+     145,     7,     8,     9,    10,    11,   117,    12,    13,    14,
+      15,   113,    35,   120,    36,    96,    97,   118,   122,    52,
+      16,    17,    18,   102,    72,    73,   104,   105,   106,   107,
+     108,   109,   139,   140,   136,    16,    17,    18,   123,   144,
+      91,    72,    73,    53,    54,   125,    55,   134,    56,    59,
+     126,    62,    72,    73,   114,   115,   137,    72,    73,    98,
+      94,    91,    72,    73,    85,    86,    87,    95,    72,    73,
+     146,    72,    73,   124,     4,   103,    29,    31,    33,   132,
+       4,    69,     5,   141,     6,   143,     7,     8,     9,    10,
+      11,   111,   110,    13,    14,    15,     5,   100,     6,    29,
+      31,    33,     4,     0,     5,     0,     6,   112,     7,     8,
+       9,    10,    11,     0,     0,    13,    14,    15,   127,     0,
+      16,    17,    18,     5,     0,     6,    35,     0,    36,     0,
+      72,    73,     0,   128,    16,    17,    18,     5,   138,     6,
+       0,     0,    16,    17,    18,    72,    73,    57,     5,     0,
+       6,     0,   129,    35,     0,    36,     0,     0,   130,     0,
+     131,    16,    17,    18,    72,    73,     0,    35,     0,    36,
+      72,    73,    72,    73,     0,    16,    17,    18,    35,     0,
+      36,     0,     0,     0,     0,    63,    16,    17,    18,    64,
+      65,    66,    67,    68,    75,    76,    77,    78,    79,    80
   };
 
   const short
   LoLaParser::yycheck_[] =
   {
-       2,     2,     2,    34,     8,     8,    43,    59,     5,     7,
-       0,    26,     6,     6,    29,    29,    35,    36,    15,     6,
-     117,    43,   119,     6,     5,    28,    40,    41,     5,    27,
-       6,     5,    34,    34,    34,    28,    40,    41,     3,   136,
-       5,    28,     7,   140,     9,    10,    11,    12,    13,    43,
-      15,    16,    17,    18,     6,    52,    53,    40,    41,     5,
-      29,     7,     8,    60,    40,    41,    63,    64,    65,    66,
-      67,    68,   124,     6,     5,     6,     7,    74,    43,    44,
-      45,     6,    37,    38,    39,    43,    29,   118,    40,    41,
-      36,    40,    41,     5,    91,    92,    42,    43,    44,    45,
-      29,    29,    43,    28,     5,    36,    43,    40,    41,    19,
-     141,    42,    43,    44,    45,     5,   118,   118,   118,   116,
-       3,     4,     5,     3,     7,    14,     9,    10,    11,    12,
-      13,    81,    43,    16,    17,    18,     5,     6,     7,   141,
-     141,   141,     3,    88,     5,    84,     7,    29,     9,    10,
-      11,    12,    13,    41,    -1,    16,    17,    18,    40,    41,
-      43,    44,    45,     5,    -1,     7,    29,    36,     5,    29,
-       7,    -1,    -1,    42,    43,    44,    45,    40,    41,    29,
-      40,    41,    43,    44,    45,    29,    -1,    29,    -1,    -1,
-      40,    41,    -1,    -1,    36,    -1,    40,    41,    29,    36,
-      42,    43,    44,    45,    29,    42,    43,    44,    45,    40,
-      41,    -1,    -1,    26,    -1,    40,    41,    30,    31,    32,
-      33,    34,    20,    21,    22,    23,    24,    25
+       2,     2,     2,    34,    41,     0,    26,    59,     5,    29,
+       8,     7,    36,    37,    29,    43,     6,   117,    15,   119,
+      41,    42,     5,     5,     7,     8,    41,    42,    19,     6,
+      28,    27,    34,    34,    34,     3,   136,     5,    43,     7,
+     140,     9,    10,    11,    12,    13,     6,    15,    16,    17,
+      18,    88,    35,    43,    37,    52,    53,     6,     6,     5,
+      43,    44,    45,    60,    41,    42,    63,    64,    65,    66,
+      67,    68,   124,     6,     6,    43,    44,    45,     8,     6,
+      28,    41,    42,     5,    43,    29,    29,   118,    29,     5,
+      29,    29,    41,    42,    91,    92,    28,    41,    42,     5,
+      29,    28,    41,    42,    38,    39,    40,    43,    41,    42,
+     141,    41,    42,     5,     3,    43,   118,   118,   118,   116,
+       3,     4,     5,    14,     7,    43,     9,    10,    11,    12,
+      13,    81,    74,    16,    17,    18,     5,     6,     7,   141,
+     141,   141,     3,    -1,     5,    -1,     7,    84,     9,    10,
+      11,    12,    13,    -1,    -1,    16,    17,    18,    29,    -1,
+      43,    44,    45,     5,    -1,     7,    35,    -1,    37,    -1,
+      41,    42,    -1,    29,    43,    44,    45,     5,     6,     7,
+      -1,    -1,    43,    44,    45,    41,    42,    29,     5,    -1,
+       7,    -1,    29,    35,    -1,    37,    -1,    -1,    29,    -1,
+      29,    43,    44,    45,    41,    42,    -1,    35,    -1,    37,
+      41,    42,    41,    42,    -1,    43,    44,    45,    35,    -1,
+      37,    -1,    -1,    -1,    -1,    26,    43,    44,    45,    30,
+      31,    32,    33,    34,    20,    21,    22,    23,    24,    25
   };
 
   const signed char
@@ -1976,15 +1978,15 @@ namespace LoLa {
        0,    47,    48,     0,     3,     5,     7,     9,    10,    11,
       12,    13,    15,    16,    17,    18,    43,    44,    45,    49,
       51,    53,    54,    55,    56,    57,    58,    59,    60,    71,
-      72,    73,    74,    76,    52,    36,    42,    62,    64,    66,
+      72,    73,    74,    76,    52,    35,    37,    62,    64,    66,
       68,    69,    70,    71,    73,    76,     8,    62,    75,    43,
       43,     5,     5,     5,    43,    29,    29,    29,    62,     5,
        7,    27,    29,    26,    30,    31,    32,    33,    34,     4,
-      53,     6,    40,    41,    61,    20,    21,    22,    23,    24,
-      25,    63,    35,    36,    65,    37,    38,    39,    67,    70,
+      53,     6,    41,    42,    61,    20,    21,    22,    23,    24,
+      25,    63,    36,    37,    65,    38,    39,    40,    67,    70,
        8,    28,    26,    29,    29,    43,    62,    62,     5,    29,
        6,    75,    62,    43,    62,    62,    62,    62,    62,    62,
-      62,    64,    66,    68,    62,    62,    19,     6,     6,     6,
+      64,    66,    68,    70,    62,    62,    19,     6,     6,     6,
       43,    50,     6,     8,     5,    29,    29,    29,    29,    29,
       29,    29,    62,    51,    53,    51,     6,    28,     6,    75,
        6,    14,    51,    43,     6,    51,    53
@@ -2030,7 +2032,7 @@ namespace LoLa {
   "ELSE", "FUNCTION", "BREAK", "CONTINUE", "RETURN", "IN", "LEQUAL",
   "GEQUAL", "EQUALS", "DIFFERS", "LESS", "MORE", "IS", "DOT", "COMMA",
   "TERMINATOR", "PLUS_IS", "MINUS_IS", "MULT_IS", "DIV_IS", "MOD_IS",
-  "PLUS", "MINUS", "MULT", "DIV", "MOD", "AND", "OR", "INVERT", "IDENT",
+  "INVERT", "PLUS", "MINUS", "MULT", "DIV", "MOD", "AND", "OR", "IDENT",
   "NUMBER", "STRING", "$accept", "compile_unit", "program", "function",
   "plist", "body", "stmtlist", "statement", "decl", "ass", "for", "while",
   "return", "conditional", "expression", "expr_0_op", "expr_0",
@@ -2045,15 +2047,15 @@ namespace LoLa {
   const unsigned char
   LoLaParser::yyrline_[] =
   {
-       0,    82,    82,    84,    85,    89,    95,   100,   106,   110,
-     117,   120,   121,   127,   128,   129,   130,   131,   132,   133,
-     134,   135,   136,   139,   140,   141,   144,   145,   146,   147,
-     148,   149,   152,   155,   158,   159,   162,   163,   166,   169,
-     169,   170,   171,   174,   174,   174,   174,   174,   174,   175,
-     176,   180,   180,   181,   182,   186,   186,   186,   187,   188,
-     192,   192,   193,   194,   198,   199,   200,   203,   204,   205,
-     206,   209,   210,   211,   212,   215,   216,   219,   223,   228,
-     229
+       0,    83,    83,    85,    86,    90,    96,   101,   107,   111,
+     118,   121,   122,   128,   129,   130,   131,   132,   133,   134,
+     135,   136,   137,   140,   141,   142,   145,   146,   147,   148,
+     149,   150,   153,   156,   159,   160,   163,   164,   167,   170,
+     170,   171,   172,   175,   175,   175,   175,   175,   175,   176,
+     177,   181,   181,   182,   183,   187,   187,   187,   188,   189,
+     193,   193,   194,   195,   199,   200,   201,   204,   205,   206,
+     207,   210,   211,   212,   213,   216,   217,   220,   224,   229,
+     230
   };
 
   void
@@ -2136,9 +2138,9 @@ namespace LoLa {
 
 #line 5 "grammar.yy"
 } // LoLa
-#line 2140 "grammar.tab.cpp"
+#line 2142 "grammar.tab.cpp"
 
-#line 233 "grammar.yy"
+#line 234 "grammar.yy"
 
 
 
