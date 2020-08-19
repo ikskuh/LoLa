@@ -206,7 +206,7 @@ a[i] = c; // indexed assignment: copy the value of c into the i'th index of the 
 
 This allows mutating the contents of the array. The same rules as for a normal variable assignment apply here.
 
-### if`-Conditional
+### `if`-Conditional
 
 The conditional `if` statement provides a simple way to do things depending on a condition:
 

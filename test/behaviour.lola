@@ -176,17 +176,6 @@ while(false) {
   Expect(false);
 }
 
-
-{
-  var done = false;
-  while(true) {
-    done = true;
-    break;
-    Expect(false);
-  }
-  ExpectEqual(done, true);
-}
-
 {
   var loops = 0;
   while(loops == 0) {
@@ -201,6 +190,27 @@ while(false) {
     loops += 1;
   }
   ExpectEqual(loops, 10);
+}
+
+{
+  var done = false;
+  while(true) {
+    done = true;
+    break;
+    Expect(false);
+  }
+  ExpectEqual(done, true);
+}
+
+{
+  var count = 0;
+  while(count < 3) {
+    count += 1;
+    if(count > 1)
+      continue;
+    ExpectEqual(count, 1);
+  }
+  ExpectEqual(count, 3);
 }
 
 

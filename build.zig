@@ -103,7 +103,7 @@ pub fn build(b: *Builder) void {
     // Run compiler test suites
     {
         const prefix = if (std.builtin.os.tag == .windows)
-            ".\\test\\"
+            "test\\" // TODO: Fix when .\ works on windows again
         else
             "./test/";
 

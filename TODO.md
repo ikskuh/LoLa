@@ -9,12 +9,14 @@
 ## Missing features
 - Add `string` index operators?
 
-## More tasks
+## Tests
 - Tests for the ObjectPool struct
 - Tests for VM
   - Endless loop should not be endless with execution limit
   - Instructions should yield correct errors when called with inappropriate inputs
   - Instructions should yield correct output
+- More behaviour tests
+  - Object API
 
 ## Define a LoLa runtime lib
 - ReadFile(path)
