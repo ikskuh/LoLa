@@ -62,37 +62,39 @@ pub const VM = struct {
 
         // Initialize with special "init context" that runs the script itself
         // and hosts the global variables.
-        const initFun = try vm.createContext(ScriptFunction{
+        var initFun = try vm.createContext(ScriptFunction{
             .compileUnit = environment.compileUnit,
             .entryPoint = 0, // start at the very first byte
             .localCount = environment.compileUnit.temporaryCount,
         });
-        errdefer vm.deinitContext(initFun);
+        errdefer vm.deinitContext(&initFun);
 
         try vm.calls.append(initFun);
 
         return vm;
     }
 
-    pub fn deinit(self: Self) void {
-        if (self.currentAsynCall) |asyncCall| {
+    pub fn deinit(self: *Self) void {
+        if (self.currentAsynCall) |*asyncCall| {
             asyncCall.deinit();
         }
-        for (self.stack.items) |v| {
+        for (self.stack.items) |*v| {
             v.deinit();
         }
-        for (self.calls.items) |c| {
-            deinitContext(self, c);
+        for (self.calls.items) |*c| {
+            self.deinitContext(c);
         }
         self.stack.deinit();
         self.calls.deinit();
+        self.* = undefined;
     }
 
-    pub fn deinitContext(self: Self, ctx: Context) void {
-        for (ctx.locals) |v| {
+    pub fn deinitContext(self: Self, ctx: *Context) void {
+        for (ctx.locals) |*v| {
             v.deinit();
         }
         self.allocator.free(ctx.locals);
+        ctx.* = undefined;
     }
 
     /// Creates a new execution context.
@@ -177,13 +179,13 @@ pub const VM = struct {
                     return error.AsyncCallWithInvalidObject;
             }
 
-            const res = try asyncCall.execute(asyncCall.context);
-            if (res) |result| {
+            var res = try asyncCall.execute(asyncCall.context);
+            if (res) |*result| {
                 asyncCall.deinit();
                 self.currentAsynCall = null;
 
                 errdefer result.deinit();
-                try self.push(result);
+                try self.push(result.*);
             } else {
                 // We are not finished, continue later...
                 return .yield;
@@ -201,7 +203,7 @@ pub const VM = struct {
             .nop => {},
 
             .pop => {
-                const value = try self.pop();
+                var value = try self.pop();
                 value.deinit();
             },
 
@@ -233,7 +235,7 @@ pub const VM = struct {
                 if (i.value >= self.environment.scriptGlobals.len)
                     return error.InvalidGlobalVariable;
 
-                const value = try self.environment.scriptGlobals[i.value].clone();
+                var value = try self.environment.scriptGlobals[i.value].clone();
                 errdefer value.deinit();
 
                 try self.push(value);
@@ -252,7 +254,7 @@ pub const VM = struct {
                 if (i.value >= ctx.locals.len)
                     return error.InvalidLocalVariable;
 
-                const value = try ctx.locals[i.value].clone();
+                var value = try ctx.locals[i.value].clone();
                 errdefer value.deinit();
 
                 try self.push(value);
@@ -264,7 +266,7 @@ pub const VM = struct {
                     return error.InvalidGlobalVariable;
                 const global = &global_kv.?.value;
 
-                const value = try self.pop();
+                var value = try self.pop();
                 errdefer value.deinit();
 
                 try global.set(value);
@@ -276,7 +278,7 @@ pub const VM = struct {
                     return error.InvalidGlobalVariable;
                 const global = &global_kv.?.value;
 
-                const value = try global.get();
+                var value = try global.get();
                 errdefer value.deinit();
 
                 try self.push(value);
@@ -289,7 +291,7 @@ pub const VM = struct {
                 errdefer array.deinit();
 
                 for (array.contents) |*item| {
-                    const value = try self.pop();
+                    var value = try self.pop();
                     errdefer value.deinit();
 
                     item.replaceWith(value);
@@ -302,12 +304,12 @@ pub const VM = struct {
                 var array_val = try self.pop();
                 defer array_val.deinit();
 
-                const index_val = try self.pop();
+                var index_val = try self.pop();
                 defer index_val.deinit();
 
                 const item = try getArrayItem(&array_val, index_val);
 
-                const dupe = try item.clone();
+                var dupe = try item.clone();
                 errdefer dupe.deinit();
 
                 try self.push(dupe);
@@ -317,26 +319,31 @@ pub const VM = struct {
                 var array_val = try self.pop();
                 errdefer array_val.deinit();
 
-                const index_val = try self.pop();
+                var index_val = try self.pop();
                 defer index_val.deinit();
 
-                const value = try self.pop();
-                defer value.deinit();
+                var value = try self.pop();
+                {
+                    // only destroy value when we fail to get the array item,
+                    // otherwise the value is stored in the array and must not
+                    // be deinitialized after that
+                    errdefer value.deinit();
 
-                const item = try getArrayItem(&array_val, index_val);
+                    const item = try getArrayItem(&array_val, index_val);
 
-                item.replaceWith(value);
+                    item.replaceWith(value);
+                }
 
                 try self.push(array_val);
             },
 
             // Iterator Section:
             .iter_make => {
-                const array_val = try self.pop();
+                var array_val = try self.pop();
                 errdefer array_val.deinit();
 
                 // is still owned by array_val and will be destroyed in case of array.
-                const array = try array_val.toArray();
+                var array = try array_val.toArray();
 
                 try self.push(Value.fromEnumerator(Enumerator.initFromOwned(array)));
             },
@@ -346,7 +353,8 @@ pub const VM = struct {
                 const enumerator = try enumerator_val.getEnumerator();
                 if (enumerator.next()) |value| {
                     self.push(value) catch |err| {
-                        value.deinit();
+                        var clone = value;
+                        clone.deinit();
                         return err;
                     };
                     try self.push(Value.initBoolean(true));
@@ -358,12 +366,12 @@ pub const VM = struct {
             // Control Flow Section:
 
             .ret => {
-                const call = self.calls.pop();
-                defer self.deinitContext(call);
+                var call = self.calls.pop();
+                defer self.deinitContext(&call);
 
                 // Restore stack balance
                 while (self.stack.items.len > call.stackBalance) {
-                    const item = self.stack.pop();
+                    var item = self.stack.pop();
                     item.deinit();
                 }
 
@@ -375,15 +383,15 @@ pub const VM = struct {
             },
 
             .retval => {
-                const value = try self.pop();
+                var value = try self.pop();
                 errdefer value.deinit();
 
-                const call = self.calls.pop();
-                defer self.deinitContext(call);
+                var call = self.calls.pop();
+                defer self.deinitContext(&call);
 
                 // Restore stack balance
                 while (self.stack.items.len > call.stackBalance) {
-                    const item = self.stack.pop();
+                    var item = self.stack.pop();
                     item.deinit();
                 }
 
@@ -399,7 +407,7 @@ pub const VM = struct {
             },
 
             .jif, .jnf => |target| {
-                const value = try self.pop();
+                var value = try self.pop();
                 defer value.deinit();
 
                 const boolean = try value.toBoolean();
@@ -419,7 +427,8 @@ pub const VM = struct {
             },
 
             .call_obj => |call| {
-                const obj_val = try self.pop();
+                var obj_val = try self.pop();
+                errdefer obj_val.deinit();
                 if (obj_val != .object)
                     return error.TypeMismatch;
 
@@ -439,10 +448,10 @@ pub const VM = struct {
 
             // Logic Section:
             .bool_and => {
-                const lhs = try self.pop();
+                var lhs = try self.pop();
                 defer lhs.deinit();
 
-                const rhs = try self.pop();
+                var rhs = try self.pop();
                 defer rhs.deinit();
 
                 const a = try lhs.toBoolean();
@@ -452,10 +461,10 @@ pub const VM = struct {
             },
 
             .bool_or => {
-                const lhs = try self.pop();
+                var lhs = try self.pop();
                 defer lhs.deinit();
 
-                const rhs = try self.pop();
+                var rhs = try self.pop();
                 defer rhs.deinit();
 
                 const a = try lhs.toBoolean();
@@ -465,7 +474,7 @@ pub const VM = struct {
             },
 
             .bool_not => {
-                const val = try self.pop();
+                var val = try self.pop();
                 defer val.deinit();
 
                 const a = try val.toBoolean();
@@ -476,7 +485,7 @@ pub const VM = struct {
             // Arithmetic Section:
 
             .negate => {
-                const value = try self.pop();
+                var value = try self.pop();
                 defer value.deinit();
 
                 const num = try value.toNumber();
@@ -485,10 +494,10 @@ pub const VM = struct {
             },
 
             .add => {
-                const rhs = try self.pop();
+                var rhs = try self.pop();
                 defer rhs.deinit();
 
-                const lhs = try self.pop();
+                var lhs = try self.pop();
                 defer lhs.deinit();
 
                 if (@as(TypeId, lhs) != @as(TypeId, rhs))
@@ -572,19 +581,19 @@ pub const VM = struct {
 
             // Comparisons:
             .eq => {
-                const lhs = try self.pop();
+                var lhs = try self.pop();
                 defer lhs.deinit();
 
-                const rhs = try self.pop();
+                var rhs = try self.pop();
                 defer rhs.deinit();
 
                 try self.push(Value.initBoolean(lhs.eql(rhs)));
             },
             .neq => {
-                const lhs = try self.pop();
+                var lhs = try self.pop();
                 defer lhs.deinit();
 
-                const rhs = try self.pop();
+                var rhs = try self.pop();
                 defer rhs.deinit();
 
                 try self.push(Value.initBoolean(!lhs.eql(rhs)));
@@ -608,11 +617,13 @@ pub const VM = struct {
         return null;
     }
 
+    /// Initiates or executes a function call.
+    /// Returns `true` when the VM execution should suspend after the call, else `false`.
     fn executeFunctionCall(self: *Self, call: anytype, function: Function, object: ?ObjectHandle) !bool {
-        switch (function) {
-            .script => |fun| {
+        return switch (function) {
+            .script => |fun| blk: {
                 var context = try self.createContext(fun);
-                errdefer self.deinitContext(context);
+                errdefer self.deinitContext(&context);
 
                 try self.readLocals(call, context.locals);
 
@@ -621,15 +632,15 @@ pub const VM = struct {
 
                 try self.calls.append(context);
 
-                return false;
+                break :blk false;
             },
-            .syncUser => |fun| {
+            .syncUser => |fun| blk: {
                 var locals = try self.allocator.alloc(Value, call.argc);
                 for (locals) |*l| {
                     l.* = Value.initVoid();
                 }
                 defer {
-                    for (locals) |l| {
+                    for (locals) |*l| {
                         l.deinit();
                     }
                     self.allocator.free(locals);
@@ -637,20 +648,20 @@ pub const VM = struct {
 
                 try self.readLocals(call, locals);
 
-                const result = try fun.call(fun.context, locals);
+                var result = try fun.call(fun.context, locals);
                 errdefer result.deinit();
 
                 try self.push(result);
 
-                return false;
+                break :blk false;
             },
-            .asyncUser => |fun| {
+            .asyncUser => |fun| blk: {
                 var locals = try self.allocator.alloc(Value, call.argc);
                 for (locals) |*l| {
                     l.* = Value.initVoid();
                 }
                 defer {
-                    for (locals) |l| {
+                    for (locals) |*l| {
                         l.deinit();
                     }
                     self.allocator.free(locals);
@@ -661,11 +672,9 @@ pub const VM = struct {
                 self.currentAsynCall = try fun.call(fun.context, locals);
                 self.currentAsynCall.?.object = object;
 
-                return true;
+                break :blk true;
             },
-        }
-
-        unreachable;
+        };
     }
 
     /// Reads a number of call arguments into a slice.
@@ -673,7 +682,7 @@ pub const VM = struct {
     fn readLocals(self: *Self, call: Instruction.CallArg, locals: []Value) !void {
         var i: usize = 0;
         while (i < call.argc) : (i += 1) {
-            const value = try self.pop();
+            var value = try self.pop();
             if (i < locals.len) {
                 locals[i].replaceWith(value);
             } else {
@@ -683,10 +692,10 @@ pub const VM = struct {
     }
 
     fn executeCompareValues(self: *Self, wantedOrder: std.math.Order, allowEql: bool) !void {
-        const rhs = try self.pop();
+        var rhs = try self.pop();
         defer rhs.deinit();
 
-        const lhs = try self.pop();
+        var lhs = try self.pop();
         defer lhs.deinit();
 
         if (@as(TypeId, lhs) != @as(TypeId, rhs))
@@ -739,10 +748,10 @@ pub const VM = struct {
     };
 
     fn executeNumberArithmetic(self: *Self, operator: fn (f64, f64) error{DivideByZero}!f64) !void {
-        const rhs = try self.pop();
+        var rhs = try self.pop();
         defer rhs.deinit();
 
-        const lhs = try self.pop();
+        var lhs = try self.pop();
         defer lhs.deinit();
 
         const n_lhs = try lhs.toNumber();

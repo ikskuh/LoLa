@@ -125,10 +125,8 @@ v = [
 ];
 Expect(v[0] == [ 1, 2 ]);
 Expect(v[1] == [ 3, 4 ]);
-// TODO: Fix writeback bug for inner array values
-// v[0][1] = 5;
-// Print(v);
-// Expect(v[0] == [ 1, 5 ]);
+v[0][1] = 5;
+Expect(v[0] == [ 1, 5 ]);
 
 // Test array concatenation
 ExpectEqual([]+[], []);

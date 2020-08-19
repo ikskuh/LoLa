@@ -104,13 +104,14 @@ pub const Value = union(enum) {
         };
     }
 
-    pub fn deinit(self: Self) void {
-        switch (self) {
-            .array => |a| a.deinit(),
-            .string => |s| s.deinit(),
-            .enumerator => |e| e.deinit(),
+    pub fn deinit(self: *Self) void {
+        switch (self.*) {
+            .array => |*a| a.deinit(),
+            .string => |*s| s.deinit(),
+            .enumerator => |*e| e.deinit(),
             else => {},
         }
+        self.* = undefined;
     }
 
     const ConversionError = error{ TypeMismatch, OutOfBounds };
@@ -342,8 +343,9 @@ pub const String = struct {
         return std.mem.eql(u8, lhs.contents, rhs.contents);
     }
 
-    pub fn deinit(self: Self) void {
+    pub fn deinit(self: *Self) void {
         self.allocator.free(self.contents);
+        self.* = undefined;
     }
 };
 
@@ -425,11 +427,12 @@ pub const Array = struct {
         return true;
     }
 
-    pub fn deinit(self: Self) void {
-        for (self.contents) |item| {
+    pub fn deinit(self: *Self) void {
+        for (self.contents) |*item| {
             item.deinit();
         }
         self.allocator.free(self.contents);
+        self.* = undefined;
     }
 };
 
@@ -536,8 +539,9 @@ pub const Enumerator = struct {
         return false;
     }
 
-    pub fn deinit(self: Self) void {
+    pub fn deinit(self: *Self) void {
         self.array.deinit();
+        self.* = undefined;
     }
 };
 

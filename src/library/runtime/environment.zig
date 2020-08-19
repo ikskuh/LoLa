@@ -33,10 +33,11 @@ pub const UserFunction = struct {
     /// Is called when the function call is deinitialized.
     destructor: ?fn (context: Context) void,
 
-    pub fn deinit(self: Self) void {
+    pub fn deinit(self: *Self) void {
         if (self.destructor) |dtor| {
             dtor(self.context);
         }
+        self.* = undefined;
     }
 };
 
@@ -77,10 +78,11 @@ pub const AsyncUserFunction = struct {
     /// Is called when the function call is deinitialized.
     destructor: ?fn (context: Context) void,
 
-    pub fn deinit(self: Self) void {
+    pub fn deinit(self: *Self) void {
         if (self.destructor) |dtor| {
             dtor(self.context);
         }
+        self.* = undefined;
     }
 };
 
@@ -126,10 +128,11 @@ pub const AsyncFunctionCall = struct {
     /// Is called when the function call is deinitialized.
     destructor: ?fn (context: Context) void,
 
-    pub fn deinit(self: Self) void {
+    pub fn deinit(self: *Self) void {
         if (self.destructor) |dtor| {
             dtor(self.context);
         }
+        self.* = undefined;
     }
 };
 
@@ -184,11 +187,11 @@ pub const Function = union(enum) {
         };
     }
 
-    pub fn deinit(self: @This()) void {
-        switch (self) {
+    pub fn deinit(self: *@This()) void {
+        switch (self.*) {
             .script => {},
-            .syncUser => |f| f.deinit(),
-            .asyncUser => |f| f.deinit(),
+            .syncUser => |*f| f.deinit(),
+            .asyncUser => |*f| f.deinit(),
         }
     }
 };
@@ -421,7 +424,7 @@ pub const Environment = struct {
             fun.value.deinit();
         }
 
-        for (self.scriptGlobals) |glob| {
+        for (self.scriptGlobals) |*glob| {
             glob.deinit();
         }
 
@@ -429,6 +432,8 @@ pub const Environment = struct {
         self.functions.deinit();
         self.allocator.free(self.scriptGlobals);
         self.objectPool.deinit();
+
+        self.* = undefined;
     }
 
     /// Adds a function to the environment and makes it available for the script.

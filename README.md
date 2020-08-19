@@ -28,6 +28,8 @@ When you want to contribute to the compiler, check out the following documents:
 
 ## Building
 
+![CI](https://github.com/MasterQ32/LoLa-native/workflows/CI/badge.svg?branch=master)
+
 **Requirements:**
 
 Required:
@@ -39,7 +41,17 @@ Optional dependencies for development:
 
 **Building:**
 
-```
+```sh
 zig build
 ./zig-cache/bin/lola
 ```
+
+**Running the test suite:**
+
+When you change things in the compiler or VM implementation, run the test suite:
+
+```sh
+zig build test
+```
+
+This will execute all zig tests, and also runs a set of predefined tests within the [`tests/`](tests/) folder. These tests will verify that the compiler and language runtime behave correctly.

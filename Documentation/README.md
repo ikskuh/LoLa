@@ -26,7 +26,6 @@ More [Examples](#Examples) can be found at the end of the document.
 These documents contain additional information about implementation details of the current runtime generation.
 
 - [The LoLa Programming Language – Quick Reference](LoLa.md)
-- [C++ API Usage](API.md) (Deprecated)
 - [Intermedia Representation](IR.md)
 - [Compiled Modules](Modules.md)
 

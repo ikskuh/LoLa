@@ -211,7 +211,6 @@ void LoLa::Compiler::Scope::leave()
 void LoLa::Compiler::Scope::declare(const std::string &name)
 {
     // TODO: Test here for shadowing
-
     if (is_global and (return_point.size() == 1))
     {
         global_variables.emplace_back(name);

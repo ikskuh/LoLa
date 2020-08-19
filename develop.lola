@@ -1,6 +1,9 @@
 
+var a = [
+	[ 0, 1 ],
+	[ 2, 3 ]
+];
 
-var list = [ "Hello", "World" ];
-for(text in list) {
-	Print(text);
-}
+a[0][0] = 10;
+
+Print(a);
