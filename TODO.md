@@ -6,6 +6,12 @@
 - Improve code gen to use chunk/file name
 - Improve code gen to emit debug symbols
 
+## Runtime Implementations
+- Standard Library
+  - `HasFunction`
+  - `Call`
+- Runtime Library
+
 ## Missing features
 - Add `string` index operators?
 
@@ -17,11 +23,6 @@
   - Instructions should yield correct output
 - More behaviour tests
   - Object API
-
-## Define a LoLa runtime lib
-- ReadFile(path)
-- WriteFile(path, contents)
-- FileExists(path)
 
 ## Implement compiler optimizations
 - Auto-constant detection

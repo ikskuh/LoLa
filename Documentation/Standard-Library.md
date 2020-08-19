@@ -142,6 +142,10 @@ Returns the type of the argument as a string. Returns one of the following:
 
 Converts the input `val` into a string representation.
 
+### `HasFunction(object, name): boolean`
+
+Returns `true` if the `object` has a function called `name`, `false` otherwise.
+
 ### `Call(functionName, args): any`
 
 Calls a function `functionName` with the given argument list `args`.

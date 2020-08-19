@@ -21,4 +21,19 @@ function BubbleSort(arr)
   return arr;
 }
 
+// Sorting works on numbers
 Print(BubbleSort([ 7, 8, 9, 3, 2, 1 ]));
+
+// as well as strings
+Print(BubbleSort([
+	"scorn",
+	"by nature",
+	"Agave cantala",
+	"solvophobic",
+	"outpost",
+	"ovotestis",
+	"weather",
+	"ablation",
+	"boresighting",
+	"postfix"
+]));
