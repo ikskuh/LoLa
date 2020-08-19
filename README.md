@@ -1,6 +1,6 @@
 # LoLa Programming Language
 
-LoLa is a small programming language meant to be embedded into games. The compiler and runtime are implemented in Zig and C++.
+LoLa is a small programming language meant to be embedded into games to be programmed by the players. The compiler and runtime are implemented in Zig and C++.
 
 ## Short Example
 ```js

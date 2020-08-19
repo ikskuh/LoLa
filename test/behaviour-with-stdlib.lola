@@ -1,0 +1,16 @@
+///
+// This file tests some more behaviours, but requires the LoLa standard library and is
+// intended to be run via the test suite.
+///
+
+// Test escape sequences
+ExpectEqual(Byte("\a"),  7); // Alert / Bell
+ExpectEqual(Byte("\b"),  8); // Backspace
+ExpectEqual(Byte("\t"),  9); // Horizontal Tab
+ExpectEqual(Byte("\n"), 10); // Line Feed
+ExpectEqual(Byte("\r"), 13); // Carriage Return
+ExpectEqual(Byte("\e"), 27); // Escape
+ExpectEqual(Byte("\""), 34); // Double Quotes
+ExpectEqual(Byte("\'"), 39); // Single Quote
+
+Print("Extended behaviour test suite passed.");

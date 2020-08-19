@@ -123,10 +123,15 @@ pub fn build(b: *Builder) void {
         emptyfile_test.addArg(prefix ++ "empty.lola");
         test_step.dependOn(&emptyfile_test.step);
 
+        const extended_behaviour_test = exe.run();
+        extended_behaviour_test.addArg("run");
+        extended_behaviour_test.addArg(prefix ++ "behaviour-with-stdlib.lola");
+        test_step.dependOn(&extended_behaviour_test.step);
+
         const compiler_test = exe.run();
         compiler_test.addArg("compile");
         compiler_test.addArg("--verify"); // verify should not emit a compiled module
-        compiler_test.addArg(prefix ++ "empty.lola");
+        compiler_test.addArg(prefix ++ "compiler.lola");
         test_step.dependOn(&compiler_test.step);
     }
 
