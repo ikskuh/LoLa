@@ -21,6 +21,7 @@ To get familiar with LoLa, you can check out these starting points:
 
 When you want to contribute to the compiler, check out the following documents:
 
+- [Source Code](src/)
 - [Bison Grammar](src/library/compiler/grammar.yy)
 - [Flex Tokenizer](src/library/compiler/yy.l)
 - [TODO List](TODO.md)

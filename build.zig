@@ -88,10 +88,6 @@ pub fn build(b: *Builder) void {
         "-fno-use-cxa-atexit",
     });
 
-    // exe.step.dependOn(&buildCppPart.step);
-    // exe.addIncludeDir("/usr/include/c++/v1");
-    // exe.addIncludeDir("/usr/include");
-    // exe.addLibPath("/usr/lib/");
     exe.linkSystemLibrary("c");
     exe.linkSystemLibrary("c++");
     exe.linkLibrary(lib);
@@ -106,26 +102,31 @@ pub fn build(b: *Builder) void {
 
     // Run compiler test suites
     {
+        const prefix = if (std.builtin.os.tag == .windows)
+            ".\\test\\"
+        else
+            "./test/";
+
         const behaviour_tests = exe.run();
         behaviour_tests.addArg("run");
         behaviour_tests.addArg("--no-stdlib"); // we don't want the behaviour tests to be run with any stdlib functions
-        behaviour_tests.addArg("./test/behaviour.lola");
+        behaviour_tests.addArg(prefix ++ "behaviour.lola");
         test_step.dependOn(&behaviour_tests.step);
 
         const stdib_test = exe.run();
         stdib_test.addArg("run");
-        stdib_test.addArg("./test/stdlib.lola");
+        stdib_test.addArg(prefix ++ "stdlib.lola");
         test_step.dependOn(&stdib_test.step);
 
         const emptyfile_test = exe.run();
         emptyfile_test.addArg("run");
-        emptyfile_test.addArg("./test/empty.lola");
+        emptyfile_test.addArg(prefix ++ "empty.lola");
         test_step.dependOn(&emptyfile_test.step);
 
         const compiler_test = exe.run();
         compiler_test.addArg("compile");
         compiler_test.addArg("--verify"); // verify should not emit a compiled module
-        compiler_test.addArg("./test/empty.lola");
+        compiler_test.addArg(prefix ++ "empty.lola");
         test_step.dependOn(&compiler_test.step);
     }
 
