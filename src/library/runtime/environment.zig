@@ -19,6 +19,12 @@ pub const ScriptFunction = struct {
     localCount: u16,
 };
 
+const UserFunctionCall = fn (
+    // env: *Environment, // REINSERT THIS
+    context: Context,
+    args: []const Value,
+) anyerror!Value;
+
 /// A synchronous function that may be called from the script environment
 pub const UserFunction = struct {
     const Self = @This();
@@ -27,7 +33,7 @@ pub const UserFunction = struct {
     context: Context,
 
     /// Executes the function, returns a value synchronously.
-    call: fn (context: Context, args: []const Value) anyerror!Value,
+    call: UserFunctionCall,
 
     /// Optional destructor that may free the memory stored in `context`.
     /// Is called when the function call is deinitialized.

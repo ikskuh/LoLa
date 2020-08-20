@@ -269,7 +269,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
 
     if (!options.@"no-runtime") {
         try env.installFunction("Print", lola.Function.initSimpleUser(struct {
-            fn call(context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+            fn call(env: *lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
                 var stdout = std.io.getStdOut().writer();
                 for (args) |value, i| {
                     switch (value) {
@@ -283,7 +283,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
         }.call));
 
         try env.installFunction("Expect", lola.Function.initSimpleUser(struct {
-            fn call(context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+            fn call(env: *lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
                 if (args.len != 1)
                     return error.InvalidArgs;
                 const assertion = try args[0].toBoolean();
@@ -296,7 +296,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
         }.call));
 
         try env.installFunction("ExpectEqual", lola.Function.initSimpleUser(struct {
-            fn call(context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+            fn call(env: *lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
                 if (args.len != 2)
                     return error.InvalidArgs;
                 if (!args[0].eql(args[1])) {
@@ -309,7 +309,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
         }.call));
 
         try env.installFunction("Exit", lola.Function.initSimpleUser(struct {
-            fn call(context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+            fn call(env: *lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
                 if (args.len != 1)
                     return error.InvalidArgs;
 
