@@ -114,7 +114,7 @@ pub const Value = union(enum) {
         self.* = undefined;
     }
 
-    const ConversionError = error{ TypeMismatch, OutOfBounds };
+    const ConversionError = error{ TypeMismatch, OutOfRange };
 
     pub fn toNumber(self: Self) ConversionError!f64 {
         if (self != .number)
@@ -125,9 +125,9 @@ pub const Value = union(enum) {
     pub fn toInteger(self: Self, comptime T: type) ConversionError!T {
         const num = std.math.floor(try self.toNumber());
         if (num < std.math.minInt(T))
-            return error.OutOfBounds;
+            return error.OutOfRange;
         if (num > std.math.maxInt(T))
-            return error.OutOfBounds;
+            return error.OutOfRange;
         return @floatToInt(T, num);
     }
 
@@ -152,6 +152,13 @@ pub const Value = union(enum) {
         if (self != .array)
             return error.TypeMismatch;
         return self.array;
+    }
+
+    /// Returns either the string contents or errors with TypeMismatch
+    pub fn toString(self: Self) ConversionError![]const u8 {
+        if (self != .string)
+            return error.TypeMismatch;
+        return self.string.contents;
     }
 
     /// Gets the contained array or fails.
@@ -228,10 +235,10 @@ test "Value.boolean" {
 }
 
 test "Value.object" {
-    var value = Value{ .object = 2394 };
+    var value = Value{ .object = @intToEnum(envsrc.ObjectHandle, 2394) };
     defer value.deinit();
     std.debug.assert(value == .object);
-    std.debug.assert(value.object == 2394);
+    std.debug.assert(value.object == @intToEnum(envsrc.ObjectHandle, 2394));
 }
 
 test "Value.string (move)" {
@@ -280,9 +287,9 @@ test "Value.eql (number)" {
 }
 
 test "Value.eql (object)" {
-    var v1 = Value.initObject(1);
-    var v2 = Value.initObject(1);
-    var v3 = Value.initObject(2);
+    var v1 = Value.initObject(@intToEnum(envsrc.ObjectHandle, 1));
+    var v2 = Value.initObject(@intToEnum(envsrc.ObjectHandle, 1));
+    var v3 = Value.initObject(@intToEnum(envsrc.ObjectHandle, 2));
 
     std.debug.assert(v1.eql(v2));
     std.debug.assert(v2.eql(v1));

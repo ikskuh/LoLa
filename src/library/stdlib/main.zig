@@ -484,4 +484,18 @@ const sync_functions = struct {
 
         return lola.Value.fromString(lola.String.initFromOwned(allocator, str));
     }
+
+    // fn HasFunction(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    //     const allocator = context.get(std.mem.Allocator);
+    //     if (args.len != 2)
+    //         return error.InvalidArgs;
+
+    //     var obj = try args[0].toObject();
+    //     var name = try args[1].toString();
+
+    //     if (!env.objectPool.isObjectValid(obj))
+    //         return error.InvalidObject;
+
+    //     return env.objectPool.getMethod(obj, name) != null;
+    // }
 };

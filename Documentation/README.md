@@ -420,6 +420,7 @@ Possible panics are:
 - `TypeMismatch` (an operation or function expected one type, but got another)
 - `IndexOutOfBounds` (an array was indexed outside the boundaries of the array)
 - `InvalidArgs` (a wrong number of arguments was passed to a function)
+- `OutOfRange` (a numeric value wasn't in the allowed range)
 
 A panic may be caused by the LoLa virtual machine or any library functions.
 

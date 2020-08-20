@@ -196,12 +196,25 @@ pub const Function = union(enum) {
     }
 };
 
+/// Non-owning interface to a abstract LoLa object.
+/// It is associated with a object handle in the `ObjectPool` and provides
+/// a way to get methods as well as destroy the object when it's garbage collected.
 pub const Object = iface.Interface(struct {
+    /// Returns a method named `name` or `null` if none exists.
+    /// The returned `Function` is non-owned and should have a `null` constructor,
+    /// as it is never called by the virtual machine!
     getMethod: fn (*iface.SelfType, name: []const u8) ?Function,
+
+    /// This is called when the object is removed from the associated object pool.
     destroyObject: fn (*iface.SelfType) void,
 }, iface.Storage.NonOwning);
 
-pub const ObjectHandle = u64;
+/// A opaque
+pub const ObjectHandle = enum(u64) {
+    const Self = @This();
+
+    _, // Just an non-exhaustive handle, no named members
+};
 
 pub const ObjectPool = struct {
     const Self = @This();
@@ -214,7 +227,7 @@ pub const ObjectPool = struct {
 
     const ObjectGetError = error{InvalidObject};
 
-    objectCounter: ObjectHandle,
+    objectCounter: u64,
     objects: std.AutoHashMap(ObjectHandle, ManagedObject),
 
     // Initializer API
@@ -235,15 +248,16 @@ pub const ObjectPool = struct {
 
     // Public API
 
-    /// Inserts a new object into the pool
+    /// Inserts a new object into the pool.
     pub fn createObject(self: *Self, object: Object) !ObjectHandle {
         self.objectCounter += 1;
-        try self.objects.putNoClobber(self.objectCounter, ManagedObject{
+        const handle = @intToEnum(ObjectHandle, self.objectCounter);
+        try self.objects.putNoClobber(handle, ManagedObject{
             .object = object,
             .refcount = 0,
             .manualRefcount = 0,
         });
-        return self.objectCounter;
+        return handle;
     }
 
     /// Keeps the object from beeing garbage collected.
@@ -278,9 +292,10 @@ pub const ObjectPool = struct {
     }
 
     /// Gets the method of an object or `null` if the method does not exist.
+    /// The returned `Function` is non-owned.
     pub fn getMethod(self: Self, object: ObjectHandle, name: []const u8) ObjectGetError!?Function {
-        if (self.objects.getEntry(object)) |obj| {
-            return obj.value.object.call("getMethod", .{name});
+        if (self.objects.get(object)) |obj| {
+            return obj.object.call("getMethod", .{name});
         } else {
             return error.InvalidObject;
         }
