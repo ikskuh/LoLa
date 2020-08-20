@@ -86,6 +86,36 @@ ExpectEqual(StringToNum(""), void);
 ExpectEqual(StringToNum("lol"), void);
 ExpectEqual(StringToNum("bla10bla"), void);
 
+ExpectEqual(Split("",      ","), [""]);
+ExpectEqual(Split("a",     ","), ["a"]);
+ExpectEqual(Split("a,b",   ","), ["a", "b"]);
+ExpectEqual(Split("a,b,c", ","), ["a", "b", "c"]);
+ExpectEqual(Split("a,,c",  ","), ["a", "", "c"]);
+
+ExpectEqual(Split("",      ",", false), [""]);
+ExpectEqual(Split("a",     ",", false), ["a"]);
+ExpectEqual(Split("a,b",   ",", false), ["a", "b"]);
+ExpectEqual(Split("a,b,c", ",", false), ["a", "b", "c"]);
+ExpectEqual(Split("a,,c",  ",", false), ["a", "", "c"]);
+
+ExpectEqual(Split("",      ",", true), []);
+ExpectEqual(Split("a",     ",", true), ["a"]);
+ExpectEqual(Split("a,b",   ",", true), ["a", "b"]);
+ExpectEqual(Split("a,b,c", ",", true), ["a", "b", "c"]);
+ExpectEqual(Split("a,,c",  ",", true), ["a", "c"]);
+
+
+ExpectEqual(Join([]), "");
+ExpectEqual(Join(["a"]), "a");
+ExpectEqual(Join(["a","b"]), "ab");
+ExpectEqual(Join(["a","b"], ""), "ab");
+ExpectEqual(Join(["a","b"], "|"), "a|b");
+ExpectEqual(Join(["a","b","c"], ""), "abc");
+ExpectEqual(Join(["a","b","c"], "|"), "a|b|c");
+ExpectEqual(Join(["a","b","c"], "->"), "a->b->c");
+
+ExpectEqual(Join(Split("a,b,c", ","), ";"), "a;b;c");
+
 /////////////////////////////////////////////////////////////////////
 // Array API
 

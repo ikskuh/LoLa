@@ -58,6 +58,12 @@ If the conversion fails, `void` is returned.
 
 If `base` is 16, `0x` is accepted as a prefix, and `h` as a postfix.
 
+### `Split(str, sep, [removeEmpty]): array`
+Splits the string `str` into chunks separated by `sep`. When `removeEmpty` is given and `true`, all empty entries will be removed.
+
+### `Join(array, [sep]): string`
+Joins all items in `array`, optionally separated by `sep`. Each item in `array` must be a `string`.
+
 ## Array API
 
 ### `Range(count): array`
@@ -149,11 +155,3 @@ Returns `true` if the current environment has a function called `name`, `false` 
 ### `HasFunction(object, name): boolean`
 
 Returns `true` if the `object` has a function called `name`, `false` otherwise.
-
-### `Call(functionName, args): any`
-
-Calls a function `functionName` with the given argument list `args`.
-
-### `Call(obj, methodName, args): any`
-
-Calls a method `methodName` on object `obj` with the given argument list `args`.

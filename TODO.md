@@ -1,5 +1,8 @@
 # NativeLola'2 TODO
 
+## Bugs
+- Script functions need a associated environment as when another execution environment is used as a object, the backing compile unit may change (as well as the environment)
+
 ## Compiler TODO
 - Add better error message handling and error messages.
   - Syntax errors yield unreadable messages atm
@@ -7,9 +10,6 @@
 - Improve code gen to emit debug symbols
 
 ## Runtime Implementations
-- Standard Library
-  - `HasFunction`
-  - `Call`
 - Runtime Library
 
 ## Missing features

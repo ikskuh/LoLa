@@ -283,9 +283,7 @@ const sync_functions = struct {
         const allocator = context.get(std.mem.Allocator);
         if (args.len < 1 or args.len > 2)
             return error.InvalidArgs;
-        if (args[0] != .string)
-            return error.TypeMismatch;
-        const str = args[0].string.contents;
+        const str = try args[0].toString();
 
         if (args.len == 2) {
             const base = try args[1].toInteger(u8);
@@ -306,6 +304,68 @@ const sync_functions = struct {
             const val = std.fmt.parseFloat(f64, str) catch return lola.Value.initVoid();
             return lola.Value.initNumber(val);
         }
+    }
+
+    fn Split(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+        const allocator = context.get(std.mem.Allocator);
+        if (args.len < 2 or args.len > 3)
+            return error.InvalidArgs;
+
+        const input = try args[0].toString();
+        const separator = try args[1].toString();
+        const removeEmpty = if (args.len == 3) try args[2].toBoolean() else false;
+
+        var items = std.ArrayList(lola.Value).init(allocator);
+        defer {
+            for (items.items) |*i| {
+                i.deinit();
+            }
+            items.deinit();
+        }
+
+        var iter = std.mem.split(input, separator);
+        while (iter.next()) |slice| {
+            if (!removeEmpty or slice.len > 0) {
+                var val = try lola.Value.initString(allocator, slice);
+                errdefer val.deinit();
+
+                try items.append(val);
+            }
+        }
+
+        return lola.Value.fromArray(lola.Array{
+            .allocator = allocator,
+            .contents = items.toOwnedSlice(),
+        });
+    }
+
+    fn Join(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+        const allocator = context.get(std.mem.Allocator);
+        if (args.len < 1 or args.len > 2)
+            return error.InvalidArgs;
+
+        const array = try args[0].toArray();
+        const separator = if (args.len == 2) try args[1].toString() else "";
+
+        for (array.contents) |item| {
+            if (item != .string)
+                return error.TypeMismatch;
+        }
+
+        var result = std.ArrayList(u8).init(allocator);
+        defer result.deinit();
+
+        for (array.contents) |item, i| {
+            if (i > 0) {
+                try result.appendSlice(separator);
+            }
+            try result.appendSlice(try item.toString());
+        }
+
+        return lola.Value.fromString(lola.String.initFromOwned(
+            allocator,
+            result.toOwnedSlice(),
+        ));
     }
 
     fn Range(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
