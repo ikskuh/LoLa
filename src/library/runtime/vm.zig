@@ -648,7 +648,7 @@ pub const VM = struct {
 
                 try self.readLocals(call, locals);
 
-                var result = try fun.call(fun.context, locals);
+                var result = try fun.call(self.environment, fun.context, locals);
                 errdefer result.deinit();
 
                 try self.push(result);

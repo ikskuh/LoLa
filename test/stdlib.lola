@@ -181,4 +181,9 @@ ExpectEqual(ToString([]), "[ ]");
 ExpectEqual(ToString([1,2]), "[ 1, 2 ]");
 ExpectEqual(ToString("\n\n"), "\"\n\n\"");
 
+ExpectEqual(HasFunction("Sin"), true);
+ExpectEqual(HasFunction("Cos"), true);
+ExpectEqual(HasFunction("Tan"), true);
+ExpectEqual(HasFunction("FooBar"), false);
+
 Print("Standard library test suite passed.");

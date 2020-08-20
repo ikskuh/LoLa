@@ -53,7 +53,7 @@ test "stdlib.install" {
     defer env.deinit();
 
     // TODO: Reinsert this
-    // try install(&env, std.testing.allocator);
+    try install(&env, std.testing.allocator);
 }
 
 const async_functions = struct {
@@ -99,7 +99,7 @@ const async_functions = struct {
 };
 
 const sync_functions = struct {
-    fn Length(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn Length(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len != 1)
             return error.InvalidArgs;
@@ -110,7 +110,7 @@ const sync_functions = struct {
         };
     }
 
-    fn SubString(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn SubString(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len < 2 or args.len > 3)
             return error.InvalidArgs;
@@ -133,7 +133,7 @@ const sync_functions = struct {
 
         return try lola.Value.initString(allocator, sliced);
     }
-    fn Trim(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn Trim(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len != 1)
             return error.InvalidArgs;
@@ -147,7 +147,7 @@ const sync_functions = struct {
         );
     }
 
-    fn TrimLeft(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn TrimLeft(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len != 1)
             return error.InvalidArgs;
@@ -161,7 +161,7 @@ const sync_functions = struct {
         );
     }
 
-    fn TrimRight(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn TrimRight(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len != 1)
             return error.InvalidArgs;
@@ -175,7 +175,7 @@ const sync_functions = struct {
         );
     }
 
-    fn IndexOf(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn IndexOf(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len != 2)
             return error.InvalidArgs;
@@ -201,7 +201,7 @@ const sync_functions = struct {
         }
     }
 
-    fn LastIndexOf(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn LastIndexOf(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len != 2)
             return error.InvalidArgs;
@@ -230,7 +230,7 @@ const sync_functions = struct {
         }
     }
 
-    fn Byte(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn Byte(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len != 1)
             return error.InvalidArgs;
@@ -243,7 +243,7 @@ const sync_functions = struct {
             return lola.Value.initVoid();
     }
 
-    fn Chr(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn Chr(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len != 1)
             return error.InvalidArgs;
@@ -255,7 +255,7 @@ const sync_functions = struct {
         );
     }
 
-    fn NumToString(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn NumToString(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len < 1 or args.len > 2)
             return error.InvalidArgs;
@@ -279,7 +279,7 @@ const sync_functions = struct {
         return try lola.Value.initString(allocator, slice);
     }
 
-    fn StringToNum(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn StringToNum(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len < 1 or args.len > 2)
             return error.InvalidArgs;
@@ -308,7 +308,7 @@ const sync_functions = struct {
         }
     }
 
-    fn Range(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn Range(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len < 1 or args.len > 2)
             return error.InvalidArgs;
@@ -332,7 +332,7 @@ const sync_functions = struct {
         }
     }
 
-    fn Slice(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn Slice(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len != 3)
             return error.InvalidArgs;
@@ -357,7 +357,7 @@ const sync_functions = struct {
         return lola.Value.fromArray(arr);
     }
 
-    fn DeltaEqual(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn DeltaEqual(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len != 3)
             return error.InvalidArgs;
@@ -367,28 +367,28 @@ const sync_functions = struct {
         return lola.Value.initBoolean(std.math.fabs(a - b) < delta);
     }
 
-    fn Sin(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn Sin(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len != 1)
             return error.InvalidArgs;
         return lola.Value.initNumber(std.math.sin(try args[0].toNumber()));
     }
 
-    fn Cos(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn Cos(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len != 1)
             return error.InvalidArgs;
         return lola.Value.initNumber(std.math.cos(try args[0].toNumber()));
     }
 
-    fn Tan(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn Tan(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len != 1)
             return error.InvalidArgs;
         return lola.Value.initNumber(std.math.tan(try args[0].toNumber()));
     }
 
-    fn Atan(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn Atan(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len == 1) {
             return lola.Value.initNumber(
@@ -405,14 +405,14 @@ const sync_functions = struct {
         }
     }
 
-    fn Sqrt(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn Sqrt(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len != 1)
             return error.InvalidArgs;
         return lola.Value.initNumber(std.math.sqrt(try args[0].toNumber()));
     }
 
-    fn Pow(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn Pow(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len != 2)
             return error.InvalidArgs;
@@ -423,7 +423,7 @@ const sync_functions = struct {
         ));
     }
 
-    fn Log(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn Log(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len == 1) {
             return lola.Value.initNumber(
@@ -440,21 +440,21 @@ const sync_functions = struct {
         }
     }
 
-    fn Exp(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn Exp(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len != 1)
             return error.InvalidArgs;
         return lola.Value.initNumber(std.math.exp(try args[0].toNumber()));
     }
 
-    fn Timestamp(context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn Timestamp(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len != 0)
             return error.InvalidArgs;
         return lola.Value.initNumber(@intToFloat(f64, std.time.milliTimestamp()) / 1000.0);
     }
 
-    fn TypeOf(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn TypeOf(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len != 1)
             return error.InvalidArgs;
@@ -469,7 +469,7 @@ const sync_functions = struct {
         });
     }
 
-    fn ToString(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn ToString(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         if (args.len != 1)
             return error.InvalidArgs;
@@ -479,7 +479,7 @@ const sync_functions = struct {
         return lola.Value.fromString(lola.String.initFromOwned(allocator, str));
     }
 
-    fn HasFunction(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+    fn HasFunction(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
         const allocator = context.get(std.mem.Allocator);
         switch (args.len) {
             1 => {
@@ -490,10 +490,8 @@ const sync_functions = struct {
                 var obj = try args[0].toObject();
                 var name = try args[1].toString();
 
-                if (!env.objectPool.isObjectValid(obj))
-                    return error.InvalidObject;
-
-                return lola.Value.initBoolean(env.objectPool.getMethod(obj, name) != null);
+                const maybe_method = try env.objectPool.getMethod(obj, name);
+                return lola.Value.initBoolean(maybe_method != null);
             },
             else => return error.InvalidArgs,
         }

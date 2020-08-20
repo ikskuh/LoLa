@@ -20,7 +20,7 @@ pub const ScriptFunction = struct {
 };
 
 const UserFunctionCall = fn (
-    // env: *Environment, // REINSERT THIS
+    environment: *const Environment,
     context: Context,
     args: []const Value,
 ) anyerror!Value;
@@ -183,7 +183,7 @@ pub const Function = union(enum) {
     /// An asynchronous function that will yield the VM execution.
     asyncUser: AsyncUserFunction,
 
-    pub fn initSimpleUser(fun: fn (context: Context, args: []const Value) anyerror!Value) Function {
+    pub fn initSimpleUser(fun: fn (env: *const Environment, context: Context, args: []const Value) anyerror!Value) Function {
         return Self{
             .syncUser = UserFunction{
                 .context = Context.initVoid(),
@@ -205,15 +205,51 @@ pub const Function = union(enum) {
 /// Non-owning interface to a abstract LoLa object.
 /// It is associated with a object handle in the `ObjectPool` and provides
 /// a way to get methods as well as destroy the object when it's garbage collected.
-pub const Object = iface.Interface(struct {
+pub const Object = struct {
+    const Self = @This();
+    const ErasedSelf = @Type(.Opaque);
+
+    /// Type-erased self-pointer that was passed to `init()`.
+    erased_self: *ErasedSelf,
+
     /// Returns a method named `name` or `null` if none exists.
     /// The returned `Function` is non-owned and should have a `null` constructor,
     /// as it is never called by the virtual machine!
-    getMethod: fn (*iface.SelfType, name: []const u8) ?Function,
+    getMethodFn: fn (*ErasedSelf, name: []const u8) ?Function,
 
     /// This is called when the object is removed from the associated object pool.
-    destroyObject: fn (*iface.SelfType) void,
-}, iface.Storage.NonOwning);
+    destroyObjectFn: fn (*ErasedSelf) void,
+
+    pub fn init(ref: anytype) Self {
+        const PtrType = @TypeOf(ref);
+        std.debug.assert(@typeInfo(PtrType) == .Pointer);
+
+        const Impl = struct {
+            fn getMethod(eself: *ErasedSelf, name: []const u8) ?Function {
+                return @ptrCast(PtrType, eself).getMethod(name);
+            }
+
+            fn destroyObject(eself: *ErasedSelf) void {
+                @ptrCast(PtrType, eself).destroyObject();
+            }
+        };
+
+        return Self{
+            .erased_self = @ptrCast(*ErasedSelf, ref),
+            .getMethodFn = Impl.getMethod,
+            .destroyObjectFn = Impl.destroyObject,
+        };
+    }
+
+    pub fn getMethod(self: Self, name: []const u8) ?Function {
+        return self.getMethodFn(self.erased_self, name);
+    }
+
+    pub fn destroyObject(self: *Self) void {
+        self.destroyObjectFn(self.erased_self);
+        self.* = undefined;
+    }
+};
 
 /// A opaque
 pub const ObjectHandle = enum(u64) {
@@ -247,7 +283,7 @@ pub const ObjectPool = struct {
     pub fn deinit(self: *Self) void {
         var iter = self.objects.iterator();
         while (iter.next()) |obj| {
-            obj.value.object.call("destroyObject", .{});
+            obj.value.object.destroyObject();
         }
         self.objects.deinit();
     }
@@ -301,7 +337,7 @@ pub const ObjectPool = struct {
     /// The returned `Function` is non-owned.
     pub fn getMethod(self: Self, object: ObjectHandle, name: []const u8) ObjectGetError!?Function {
         if (self.objects.get(object)) |obj| {
-            return obj.object.call("getMethod", .{name});
+            return obj.object.getMethod(name);
         } else {
             return error.InvalidObject;
         }
@@ -361,7 +397,8 @@ pub const ObjectPool = struct {
         while (iter.next()) |obj| {
             if (obj.value.refcount == 0 and obj.value.manualRefcount == 0) {
                 if (self.objects.remove(obj.key)) |kv| {
-                    kv.value.object.call("destroyObject", .{});
+                    var temp_obj = kv.value.object;
+                    temp_obj.destroyObject();
                 } else {
                     unreachable;
                 }
