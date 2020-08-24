@@ -20,8 +20,14 @@ pub fn build(b: *Builder) void {
     const target = b.standardTargetOptions(.{
         .default_target = if (std.builtin.os.tag == .windows)
             std.zig.CrossTarget.parse(.{ .arch_os_abi = "native-native-gnu" }) catch unreachable
-        else // we have build errors in the CI otherwise
-            std.zig.CrossTarget.parse(.{ .arch_os_abi = "native-native-musl" }) catch unreachable,
+        else if (std.builtin.os.tag == .linux)
+            std.zig.CrossTarget.fromTarget(.{
+                .cpu = std.builtin.cpu,
+                .os = std.builtin.os,
+                .abi = .musl,
+            })
+        else
+            std.zig.CrossTarget{},
     });
 
     const precompileGrammar = b.addSystemCommand(&[_][]const u8{
