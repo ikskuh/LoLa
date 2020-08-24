@@ -81,7 +81,7 @@ Removes all items from the list.
 Returns a new object that implements a key-value store.
 
 #### `dict.Get(key): any`
-Returns the value associated with `key` or returns `void`.
+Returns the value associated with `key` or returns `void` if `key` does not have a associated value.
 
 #### `dict.Set(key, value): void`
 Sets the associated value for `key` to `value`. If `value` is `void`, the key will be removed.
@@ -100,6 +100,9 @@ Returns an array with all values stored in the dictionary.
 
 #### `dict.Clear(): void`
 Removes all values from the dictionary.
+
+#### `dict.GetCount(): number`
+Returns the number of keys currently stored in the list.
 
 ## Remote Procedure Calls
 

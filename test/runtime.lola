@@ -32,74 +32,156 @@ Print("hello");
 // ExpectEqual(ReadLine(), void);
 
 // Testing CreateList()
+{
+  var list = CreateList();
+  ExpectEqual(TypeOf(list), "object");
 
-var list = CreateList();
-ExpectEqual(TypeOf(list), "object");
+  Expect(HasFunction(list, "Add"));
+  Expect(HasFunction(list, "Remove"));
+  Expect(HasFunction(list, "RemoveAt"));
+  Expect(HasFunction(list, "GetCount"));
+  Expect(HasFunction(list, "GetItem"));
+  Expect(HasFunction(list, "SetItem"));
+  Expect(HasFunction(list, "ToArray"));
+  Expect(HasFunction(list, "IndexOf"));
+  Expect(HasFunction(list, "Resize"));
+  Expect(HasFunction(list, "Clear"));
 
-Expect(HasFunction(list, "Add"));
-Expect(HasFunction(list, "Remove"));
-Expect(HasFunction(list, "RemoveAt"));
-Expect(HasFunction(list, "GetCount"));
-Expect(HasFunction(list, "GetItem"));
-Expect(HasFunction(list, "SetItem"));
-Expect(HasFunction(list, "ToArray"));
-Expect(HasFunction(list, "IndexOf"));
-Expect(HasFunction(list, "Resize"));
-Expect(HasFunction(list, "Clear"));
+  // testing here is done with arrays to check for any memory allocation failures
 
-// testing here is done with arrays to check for any memory allocation failures
+  ExpectEqual(list.GetCount(), 0);
+  ExpectEqual(list.ToArray(), [ ]);
 
-ExpectEqual(list.GetCount(), 0);
-ExpectEqual(list.ToArray(), [ ]);
+  list.Add([1]);
+  ExpectEqual(list.GetCount(), 1);
+  ExpectEqual(list.GetItem(0), [1]);
+  ExpectEqual(list.ToArray(), [ [1] ]);
 
-list.Add([1]);
-ExpectEqual(list.GetCount(), 1);
-ExpectEqual(list.GetItem(0), [1]);
-ExpectEqual(list.ToArray(), [ [1] ]);
+  list.Add([2]);
+  ExpectEqual(list.GetCount(), 2);
+  ExpectEqual(list.GetItem(0), [1]);
+  ExpectEqual(list.GetItem(1), [2]);
+  ExpectEqual(list.ToArray(), [ [1], [2] ]);
 
-list.Add([2]);
-ExpectEqual(list.GetCount(), 2);
-ExpectEqual(list.GetItem(0), [1]);
-ExpectEqual(list.GetItem(1), [2]);
-ExpectEqual(list.ToArray(), [ [1], [2] ]);
+  list.Add([3]);
+  ExpectEqual(list.GetCount(), 3);
+  ExpectEqual(list.GetItem(0), [1]);
+  ExpectEqual(list.GetItem(1), [2]);
+  ExpectEqual(list.GetItem(2), [3]);
+  ExpectEqual(list.ToArray(), [ [1], [2], [3] ]);
 
-list.Add([3]);
-ExpectEqual(list.GetCount(), 3);
-ExpectEqual(list.GetItem(0), [1]);
-ExpectEqual(list.GetItem(1), [2]);
-ExpectEqual(list.GetItem(2), [3]);
-ExpectEqual(list.ToArray(), [ [1], [2], [3] ]);
+  list.SetItem(1, ["2"]);
+  ExpectEqual(list.GetCount(), 3);
+  ExpectEqual(list.GetItem(0), [1]);
+  ExpectEqual(list.GetItem(1), ["2"]);
+  ExpectEqual(list.GetItem(2), [3]);
+  ExpectEqual(list.ToArray(), [ [1], ["2"], [3] ]);
+  ExpectEqual(list.IndexOf([1]), 0);
+  ExpectEqual(list.IndexOf(["2"]), 1);
+  ExpectEqual(list.IndexOf([3]), 2);
+  ExpectEqual(list.IndexOf("ad"), void);
 
-list.SetItem(1, ["2"]);
-ExpectEqual(list.GetCount(), 3);
-ExpectEqual(list.GetItem(0), [1]);
-ExpectEqual(list.GetItem(1), ["2"]);
-ExpectEqual(list.GetItem(2), [3]);
-ExpectEqual(list.ToArray(), [ [1], ["2"], [3] ]);
-ExpectEqual(list.IndexOf([1]), 0);
-ExpectEqual(list.IndexOf(["2"]), 1);
-ExpectEqual(list.IndexOf([3]), 2);
-ExpectEqual(list.IndexOf("ad"), void);
+  list.Resize(2);
+  ExpectEqual(list.GetCount(), 2);
+  ExpectEqual(list.ToArray(), [ [1], ["2"] ]);
 
-list.Resize(2);
-ExpectEqual(list.GetCount(), 2);
-ExpectEqual(list.ToArray(), [ [1], ["2"] ]);
+  list.Clear();
+  ExpectEqual(list.GetCount(), 0);
+  ExpectEqual(list.ToArray(), [ ]);
 
-list.Clear();
-ExpectEqual(list.GetCount(), 0);
-ExpectEqual(list.ToArray(), [ ]);
+  list.Resize(3);
+  ExpectEqual(list.GetCount(), 3);
+  ExpectEqual(list.ToArray(), [ void, void, void ]);
 
-list.Resize(3);
-ExpectEqual(list.GetCount(), 3);
-ExpectEqual(list.ToArray(), [ void, void, void ]);
+  list = CreateList(["1","1","2","3","4","5","1"]);
+  ExpectEqual(list.ToArray(), [ "1","1","2","3","4","5","1" ]);
+  list.RemoveAt(3);
+  ExpectEqual(list.ToArray(), [ "1","1","2","4","5","1" ]);
+  list.Remove("1");
+  ExpectEqual(list.ToArray(), [ "2","4","5" ]);
+}
 
-list = CreateList(["1","1","2","3","4","5","1"]);
-ExpectEqual(list.ToArray(), [ "1","1","2","3","4","5","1" ]);
-list.RemoveAt(3);
-ExpectEqual(list.ToArray(), [ "1","1","2","4","5","1" ]);
-list.Remove("1");
-ExpectEqual(list.ToArray(), [ "2","4","5" ]);
+// Testing CreateDictionary:
+{
+  var dict = CreateDictionary();
+  ExpectEqual(TypeOf(dict), "object");
 
+  Expect(HasFunction(dict, "Get"));
+  Expect(HasFunction(dict, "Set"));
+  Expect(HasFunction(dict, "Remove"));
+  Expect(HasFunction(dict, "Contains"));
+  Expect(HasFunction(dict, "GetKeys"));
+  Expect(HasFunction(dict, "GetValues"));
+  Expect(HasFunction(dict, "Clear"));
+  Expect(HasFunction(dict, "GetCount"));
+
+  // NOTE:
+  // This test uses knowledge about the implementation of `GetKeys()` and
+  // `GetValues()`!
+  // The functions are not guaranteed to return the values in insertion order,
+  // but the current implementation does this.
+
+  ExpectEqual(dict.GetCount(), 0);
+  ExpectEqual(dict.GetKeys(), [ ]);
+  ExpectEqual(dict.GetValues(), [ ]);
+
+  dict.Set("key", "value");
+  ExpectEqual(dict.GetCount(), 1);
+  ExpectEqual(dict.GetKeys(), [ "key" ]);
+  ExpectEqual(dict.GetValues(), [ "value" ]);
+
+  dict.Set(1, "1");
+  ExpectEqual(dict.GetCount(), 2);
+  ExpectEqual(dict.GetKeys(), [ "key", 1 ]);
+  ExpectEqual(dict.GetValues(), [ "value", "1" ]);
+
+  dict.Set(2, "2");
+  ExpectEqual(dict.GetCount(), 3);
+  ExpectEqual(dict.GetKeys(), [ "key", 1, 2 ]);
+  ExpectEqual(dict.GetValues(), [ "value", "1", "2" ]);
+
+  dict.Set("3", 3);
+  ExpectEqual(dict.GetCount(), 4);
+  ExpectEqual(dict.GetKeys(), [ "key", 1, 2, "3" ]);
+  ExpectEqual(dict.GetValues(), [ "value", "1", "2", 3 ]);
+
+  ExpectEqual(dict.Get("key"), "value");
+  ExpectEqual(dict.Get(1), "1");
+  ExpectEqual(dict.Get(2), "2");
+  ExpectEqual(dict.Get("3"), 3);
+  ExpectEqual(dict.Get("non_existing"), void);
+
+  ExpectEqual(dict.Contains("key"), true);
+  ExpectEqual(dict.Contains(1), true);
+  ExpectEqual(dict.Contains(2), true);
+  ExpectEqual(dict.Contains("3"), true);
+  ExpectEqual(dict.Contains("non_existing"), false);
+
+  ExpectEqual(dict.GetCount(), 4);
+
+  ExpectEqual(dict.Remove("key"), true);
+  ExpectEqual(dict.Remove("key"), false);
+  ExpectEqual(dict.Remove("key"), false);
+
+  ExpectEqual(dict.GetCount(), 3);
+
+  dict.Clear();
+
+  ExpectEqual(dict.GetCount(), 0);
+
+  ExpectEqual(dict.Contains("key"), false);
+  ExpectEqual(dict.Contains(1), false);
+  ExpectEqual(dict.Contains(2), false);
+  ExpectEqual(dict.Contains("3"), false);
+  ExpectEqual(dict.Contains("non_existing"), false);
+
+  dict.Set("key", 1);
+  ExpectEqual(dict.GetCount(), 1);
+  
+  dict.Set("key", void); // this is equivalent to Remove("key")
+  ExpectEqual(dict.GetCount(), 0);
+  
+}
 
 Print("Runtime library test suite passed.");
 Exit(123);

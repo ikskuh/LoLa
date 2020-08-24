@@ -190,6 +190,24 @@ const sync_functions = struct {
             try environment.objectPool.createObject(lola.Object.init(list)),
         );
     }
+
+    fn CreateDictionary(environment: *lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+        const allocator = context.get(std.mem.Allocator);
+        if (args.len != 0)
+            return error.InvalidArgs;
+
+        const list = try allocator.create(LoLaDictionary);
+        errdefer allocator.destroy(list);
+
+        list.* = LoLaDictionary{
+            .allocator = allocator,
+            .data = std.ArrayList(LoLaDictionary.KV).init(allocator),
+        };
+
+        return lola.Value.initObject(
+            try environment.objectPool.createObject(lola.Object.init(list)),
+        );
+    }
 };
 
 const LoLaList = struct {
@@ -391,6 +409,176 @@ const LoLaList = struct {
             list.data.shrink(0);
 
             return .void;
+        }
+    };
+};
+
+const LoLaDictionary = struct {
+    const Self = @This();
+
+    const KV = struct {
+        key: lola.Value,
+        value: lola.Value,
+
+        fn deinit(self: *KV) void {
+            self.key.deinit();
+            self.value.deinit();
+            self.* = undefined;
+        }
+    };
+
+    allocator: *std.mem.Allocator,
+    data: std.ArrayList(KV),
+
+    pub fn getMethod(self: *Self, name: []const u8) ?lola.Function {
+        inline for (std.meta.declarations(funcs)) |decl| {
+            if (std.mem.eql(u8, name, decl.name)) {
+                return lola.Function{
+                    .syncUser = .{
+                        .context = lola.Context.init(Self, self),
+                        .call = @field(funcs, decl.name),
+                        .destructor = null,
+                    },
+                };
+            }
+        }
+        return null;
+    }
+
+    pub fn destroyObject(self: *Self) void {
+        for (self.data.items) |*item| {
+            item.deinit();
+        }
+        self.data.deinit();
+        self.allocator.destroy(self);
+    }
+
+    const funcs = struct {
+        fn Set(environment: *const lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+            const dict = context.get(Self);
+            if (args.len != 2)
+                return error.InvalidArgs;
+
+            if (args[1] == .void) {
+                // short-circuit a argument `void` to a call to `Remove(key)`
+                var result = try Remove(environment, context, args[0..1]);
+                result.deinit();
+                return .void;
+            }
+
+            var value = try args[1].clone();
+            errdefer value.deinit();
+
+            for (dict.data.items) |*item| {
+                if (item.key.eql(args[0])) {
+                    item.value.replaceWith(value);
+                    return .void;
+                }
+            }
+
+            var key = try args[0].clone();
+            errdefer key.deinit();
+
+            try dict.data.append(KV{
+                .key = key,
+                .value = value,
+            });
+
+            return .void;
+        }
+
+        fn Get(environment: *const lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+            const dict = context.get(Self);
+            if (args.len != 1)
+                return error.InvalidArgs;
+
+            for (dict.data.items) |item| {
+                if (item.key.eql(args[0])) {
+                    return try item.value.clone();
+                }
+            }
+
+            return .void;
+        }
+
+        fn Contains(environment: *const lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+            const dict = context.get(Self);
+            if (args.len != 1)
+                return error.InvalidArgs;
+
+            for (dict.data.items) |item| {
+                if (item.key.eql(args[0])) {
+                    return lola.Value.initBoolean(true);
+                }
+            }
+
+            return lola.Value.initBoolean(false);
+        }
+
+        fn Remove(environment: *const lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+            const dict = context.get(Self);
+            if (args.len != 1)
+                return error.InvalidArgs;
+
+            for (dict.data.items) |*item, index| {
+                if (item.key.eql(args[0])) {
+
+                    // use a fast swap-remove here
+                    item.deinit();
+                    const last_index = dict.data.items.len - 1;
+                    dict.data.items[index] = dict.data.items[last_index];
+                    dict.data.shrink(last_index);
+
+                    return lola.Value.initBoolean(true);
+                }
+            }
+            return lola.Value.initBoolean(false);
+        }
+
+        fn Clear(environment: *const lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+            const dict = context.get(Self);
+            if (args.len != 0)
+                return error.InvalidArgs;
+            for (dict.data.items) |*item, index| {
+                item.deinit();
+            }
+            dict.data.shrink(0);
+            return .void;
+        }
+
+        fn GetCount(environment: *const lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+            const dict = context.get(Self);
+            if (args.len != 0)
+                return error.InvalidArgs;
+            return lola.Value.initInteger(usize, dict.data.items.len);
+        }
+
+        fn GetKeys(environment: *const lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+            const dict = context.get(Self);
+            if (args.len != 0)
+                return error.InvalidArgs;
+            var arr = try lola.Array.init(dict.allocator, dict.data.items.len);
+            errdefer arr.deinit();
+
+            for (dict.data.items) |item, index| {
+                arr.contents[index].replaceWith(try item.key.clone());
+            }
+
+            return lola.Value.fromArray(arr);
+        }
+
+        fn GetValues(environment: *const lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+            const dict = context.get(Self);
+            if (args.len != 0)
+                return error.InvalidArgs;
+            var arr = try lola.Array.init(dict.allocator, dict.data.items.len);
+            errdefer arr.deinit();
+
+            for (dict.data.items) |item, index| {
+                arr.contents[index].replaceWith(try item.value.clone());
+            }
+
+            return lola.Value.fromArray(arr);
         }
     };
 };
