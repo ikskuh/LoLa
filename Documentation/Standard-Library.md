@@ -155,3 +155,14 @@ Returns `true` if the current environment has a function called `name`, `false` 
 ### `HasFunction(object, name): boolean`
 
 Returns `true` if the `object` has a function called `name`, `false` otherwise.
+
+### `Serialize(value, [allowObjects]): string`
+Serializes any `value` into a binary representation. This representation can later be loaded by via `Deserialize` and return the exact same value again.
+
+By default, `Serialize` does not allow serializing object references, but when `allowObjects` is given and is `true`, the serialization will allow serialization of object references, which is implementation defined. Serialized values might not be possible to be deserialized by a later call to `Deserialize`, even in the same script host.
+
+### `Deserialize(string): any`
+Deserializes a previously serialized value. If the deserialization fails, a panic will occurr.
+
+### `Yield(): void`
+This function will yield control back to the host, pausing the current execution. This can be inserted in loops to reduce CPU usage.

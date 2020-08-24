@@ -12,9 +12,13 @@
 
 ## Runtime Implementations
 - Runtime Library
+  - `Compile` (returns object that exports all functions passed to the arg)
+  - `Evaluate` (Runs the "<main>" function of a compiled script)
+  - Networking
 - Standard Library
   - `Serialize`
   - `Deserialize`
+  - `Yield`
 
 ## Missing features
 - Add `string` index operators?
