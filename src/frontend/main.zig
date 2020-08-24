@@ -1,8 +1,8 @@
 const std = @import("std");
 const lola = @import("lola");
 const argsParser = @import("args");
+const runtime = @import("runtime.zig");
 
-// lola compile foo.lola -o foo.lm
 pub fn main() !u8 {
     var args = std.process.args();
 
@@ -236,7 +236,8 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
         return 1;
     }
 
-    const allocator = std.heap.c_allocator;
+    var gpa_state = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = &gpa_state.allocator;
 
     var cu = autoLoadModule(allocator, options, files[0]) catch |err| {
         const stderr = std.io.getStdErr().writer();
@@ -268,19 +269,9 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
     }
 
     if (!options.@"no-runtime") {
-        try env.installFunction("Print", lola.Function.initSimpleUser(struct {
-            fn call(environment: *const lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
-                var stdout = std.io.getStdOut().writer();
-                for (args) |value, i| {
-                    switch (value) {
-                        .string => |str| try stdout.writeAll(str.contents),
-                        else => try stdout.print("{}", .{value}),
-                    }
-                }
-                try stdout.writeAll("\n");
-                return lola.Value.initVoid();
-            }
-        }.call));
+        try runtime.install(&env, allocator);
+
+        // Move these two to a test runner
 
         try env.installFunction("Expect", lola.Function.initSimpleUser(struct {
             fn call(environment: *const lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
@@ -305,16 +296,6 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
                 }
 
                 return lola.Value.initVoid();
-            }
-        }.call));
-
-        try env.installFunction("Exit", lola.Function.initSimpleUser(struct {
-            fn call(environment: *const lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
-                if (args.len != 1)
-                    return error.InvalidArgs;
-
-                const status = try args[0].toInteger(u8);
-                std.process.exit(status);
             }
         }.call));
     }

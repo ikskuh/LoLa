@@ -118,6 +118,34 @@ pub fn build(b: *Builder) void {
         stdib_test.addArg(prefix ++ "stdlib.lola");
         test_step.dependOn(&stdib_test.step);
 
+        {
+            const runlib_test = exe.run();
+
+            // execute in the zig-cache directory so we have a "safe" playfield
+            // for file I/O
+            runlib_test.cwd = "zig-cache/tmp";
+
+            // `Exit(123)` is the last call in the runtime suite
+            runlib_test.expected_exit_code = 123;
+
+            runlib_test.expectStdOutEqual(
+                \\
+                \\1
+                \\1.2
+                \\[ ]
+                \\[ 1, 2 ]
+                \\truefalse
+                \\hello
+                \\Runtime library test suite passed.
+                \\
+            );
+
+            runlib_test.addArg("run");
+            runlib_test.addArg("../../" ++ prefix ++ "runtime.lola");
+
+            test_step.dependOn(&runlib_test.step);
+        }
+
         const emptyfile_test = exe.run();
         emptyfile_test.addArg("run");
         emptyfile_test.addArg(prefix ++ "empty.lola");

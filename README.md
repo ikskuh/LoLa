@@ -26,6 +26,11 @@ When you want to contribute to the compiler, check out the following documents:
 - [Flex Tokenizer](src/library/compiler/yy.l)
 - [TODO List](TODO.md)
 
+## Visual Studio Code Extension
+If you want syntax highlighting in VSCode, you can install the [`lola-vscode`](https://github.com/MasterQ32/lola-vscode) extension.
+
+Right now, it's not published in the gallery, so to install the extension, you have to sideload it. [See the VSCode documentation for this](https://vscode-docs.readthedocs.io/en/stable/extensions/install-extension/).
+
 ## Building
 
 ![CI](https://github.com/MasterQ32/LoLa-native/workflows/CI/badge.svg?branch=master)

@@ -25,6 +25,11 @@ pub const Value = union(enum) {
         return Self{ .number = val };
     }
 
+    pub fn initInteger(comptime T: type, val: T) Self {
+        comptime std.debug.assert(@typeInfo(T) == .Int);
+        return Self{ .number = @intToFloat(f64, val) };
+    }
+
     pub fn initObject(id: envsrc.ObjectHandle) Self {
         return Self{ .object = id };
     }

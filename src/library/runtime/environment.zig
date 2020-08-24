@@ -20,7 +20,7 @@ pub const ScriptFunction = struct {
 };
 
 const UserFunctionCall = fn (
-    environment: *const Environment,
+    environment: *Environment,
     context: Context,
     args: []const Value,
 ) anyerror!Value;
@@ -183,7 +183,7 @@ pub const Function = union(enum) {
     /// An asynchronous function that will yield the VM execution.
     asyncUser: AsyncUserFunction,
 
-    pub fn initSimpleUser(fun: fn (env: *const Environment, context: Context, args: []const Value) anyerror!Value) Function {
+    pub fn initSimpleUser(fun: fn (env: *Environment, context: Context, args: []const Value) anyerror!Value) Function {
         return Self{
             .syncUser = UserFunction{
                 .context = Context.initVoid(),
@@ -222,15 +222,16 @@ pub const Object = struct {
 
     pub fn init(ref: anytype) Self {
         const PtrType = @TypeOf(ref);
-        std.debug.assert(@typeInfo(PtrType) == .Pointer);
+        const info = @typeInfo(PtrType);
+        std.debug.assert(info == .Pointer);
 
         const Impl = struct {
             fn getMethod(eself: *ErasedSelf, name: []const u8) ?Function {
-                return @ptrCast(PtrType, eself).getMethod(name);
+                return @ptrCast(PtrType, @alignCast(info.Pointer.alignment, eself)).getMethod(name);
             }
 
             fn destroyObject(eself: *ErasedSelf) void {
-                @ptrCast(PtrType, eself).destroyObject();
+                @ptrCast(PtrType, @alignCast(info.Pointer.alignment, eself)).destroyObject();
             }
         };
 

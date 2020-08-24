@@ -1,0 +1,105 @@
+///
+// This file tests the implementation of the LoLa runtime library and is
+// intended to be run via the test suite.
+///
+
+// Test the File I/O block
+
+ExpectEqual(ReadFile("does not exist"), void);
+
+ExpectEqual(FileExists("does not exist"), false);
+
+WriteFile("demo.txt", "Hello, World!");
+
+ExpectEqual(ReadFile("demo.txt"), "Hello, World!");
+
+ExpectEqual(FileExists("demo.txt"), true);
+
+// Tests Console I/O block
+
+Print("");
+Print(1.0);
+Print(1.2);
+Print([]);
+Print([1,2]);
+Print(true, false);
+Print("hello");
+
+// TODO: Include ReadLine() code
+// ExpectEqual(ReadLine(), "abc");
+// ExpectEqual(ReadLine(), "   ");
+// ExpectEqual(ReadLine(), "");
+// ExpectEqual(ReadLine(), void);
+
+// Testing CreateList()
+
+var list = CreateList();
+ExpectEqual(TypeOf(list), "object");
+
+Expect(HasFunction(list, "Add"));
+Expect(HasFunction(list, "Remove"));
+Expect(HasFunction(list, "RemoveAt"));
+Expect(HasFunction(list, "GetCount"));
+Expect(HasFunction(list, "GetItem"));
+Expect(HasFunction(list, "SetItem"));
+Expect(HasFunction(list, "ToArray"));
+Expect(HasFunction(list, "IndexOf"));
+Expect(HasFunction(list, "Resize"));
+Expect(HasFunction(list, "Clear"));
+
+// testing here is done with arrays to check for any memory allocation failures
+
+ExpectEqual(list.GetCount(), 0);
+ExpectEqual(list.ToArray(), [ ]);
+
+list.Add([1]);
+ExpectEqual(list.GetCount(), 1);
+ExpectEqual(list.GetItem(0), [1]);
+ExpectEqual(list.ToArray(), [ [1] ]);
+
+list.Add([2]);
+ExpectEqual(list.GetCount(), 2);
+ExpectEqual(list.GetItem(0), [1]);
+ExpectEqual(list.GetItem(1), [2]);
+ExpectEqual(list.ToArray(), [ [1], [2] ]);
+
+list.Add([3]);
+ExpectEqual(list.GetCount(), 3);
+ExpectEqual(list.GetItem(0), [1]);
+ExpectEqual(list.GetItem(1), [2]);
+ExpectEqual(list.GetItem(2), [3]);
+ExpectEqual(list.ToArray(), [ [1], [2], [3] ]);
+
+list.SetItem(1, ["2"]);
+ExpectEqual(list.GetCount(), 3);
+ExpectEqual(list.GetItem(0), [1]);
+ExpectEqual(list.GetItem(1), ["2"]);
+ExpectEqual(list.GetItem(2), [3]);
+ExpectEqual(list.ToArray(), [ [1], ["2"], [3] ]);
+ExpectEqual(list.IndexOf([1]), 0);
+ExpectEqual(list.IndexOf(["2"]), 1);
+ExpectEqual(list.IndexOf([3]), 2);
+ExpectEqual(list.IndexOf("ad"), void);
+
+list.Resize(2);
+ExpectEqual(list.GetCount(), 2);
+ExpectEqual(list.ToArray(), [ [1], ["2"] ]);
+
+list.Clear();
+ExpectEqual(list.GetCount(), 0);
+ExpectEqual(list.ToArray(), [ ]);
+
+list.Resize(3);
+ExpectEqual(list.GetCount(), 3);
+ExpectEqual(list.ToArray(), [ void, void, void ]);
+
+list = CreateList(["1","1","2","3","4","5","1"]);
+ExpectEqual(list.ToArray(), [ "1","1","2","3","4","5","1" ]);
+list.RemoveAt(3);
+ExpectEqual(list.ToArray(), [ "1","1","2","4","5","1" ]);
+list.Remove("1");
+ExpectEqual(list.ToArray(), [ "2","4","5" ]);
+
+
+Print("Runtime library test suite passed.");
+Exit(123);

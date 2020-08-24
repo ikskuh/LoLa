@@ -4,17 +4,23 @@ This file documents the LoLa Runtime Library, a set of basic I/O routines to ena
 
 The API in this document is meant for the standalone LoLa interpreter and functions listed here are not necessarily available in embedded programs! 
 
+## Generic
+
+### `Exit(code: number): noreturn`
+
+This function will stop execution of the program and will return `code` to the OS.
+
 ## File I/O
 
-### `ReadFile(path): string|void`
+### `ReadFile(path: string): string|void`
 
 Reads in the contents of a file located at `path` as a `string` or returns `void` when the file does not exist or the given path is not a file.
 
-### `WriteFile(path, contents): void`
+### `WriteFile(path: string, contents: string): void`
 
 Writes `contents` to the file located at `path`. If the file does not exist, it will be created.
 
-### `FileExists(path): boolean`
+### `FileExists(path: string): boolean`
 
 Returns `true` if a file exists at the given `path`, `else` otherwise.
 
@@ -32,9 +38,13 @@ Reads a line of text from the standard input and returns it as a `string`. If th
 
 ## Standard Objects
 
-### `CreateList(): object`
+### `CreateList([init: array]): object`
 
-Returns a new object that implements a dynamic list. This list has the following API:
+Returns a new object that implements a dynamic list.
+
+If `init` is given, the list will be initialized with the contents of `init`.
+
+This list has the following API:
 
 #### `list.Add(item): void`
 Appends a new item to the back of the list.
@@ -43,13 +53,13 @@ Appends a new item to the back of the list.
 Removes all occurrances of `item` in the list.
 
 #### `list.RemoveAt(index): void`
-Removes the item at `index`. Indices start at `0`.
+Removes the item at `index`. Indices start at `0`. When the index is out of range, nothing will happen.
 
 #### `list.GetCount(): number`
 Returns the current number of elements in the list.
 
 #### `list.GetItem(index): any`
-Returns the item at `index` or `void` if the access is out of bounds.
+Returns the item at `index` or panics with `OutOfRange`;
 
 #### `list.SetItem(index, value): void`
 Replaces the item at `index` with `value`.
@@ -93,7 +103,7 @@ Removes all values from the dictionary.
 
 ## Remote Procedure Calls
 
-### `Connect(hostname, [port]): object|void`
+### `Connect(hostname: string, [port: number]): object|void`
 
 Tries to connect to a LoLa script running at `hostname`:`port`.
 If `port` is not given, *5317* is used.

@@ -40,13 +40,13 @@ pub const VM = struct {
     };
 
     allocator: *std.mem.Allocator,
-    environment: *const Environment,
+    environment: *Environment,
     stack: std.ArrayList(Value),
     calls: std.ArrayList(Context),
     currentAsynCall: ?AsyncFunctionCall,
 
     /// Initialize a new virtual machine that will run the given environment.
-    pub fn init(allocator: *std.mem.Allocator, environment: *const Environment) !Self {
+    pub fn init(allocator: *std.mem.Allocator, environment: *Environment) !Self {
         var vm = Self{
             .allocator = allocator,
             .environment = environment,
