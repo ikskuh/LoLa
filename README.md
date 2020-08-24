@@ -13,7 +13,7 @@ for(text in list) {
 You can find more examples in the [Examples](Examples/) folder.
 
 ## Why LoLa when there is *X*?
-LoLa isn't meant to be your next best day-to-day scripting language. Its design is focused on embeddeding the language in environments where the users want/need/should write some small scripts like games or scriptable applications. In most script languages, you as a script host don't have control over the execution time of the scripts your executing. LoLa protects you against programming errors like endless loops and such:
+LoLa isn't meant to be your next best day-to-day scripting language. Its design is focused on embeddeding the language in environments where the users want/need/should write some small scripts like games or scriptable applications. In most script languages, you as a script host don't have control over the execution time of the scripts you're executing. LoLa protects you against programming errors like endless loops and such:
 
 ### Controlled Execution Environment
 
