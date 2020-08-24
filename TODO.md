@@ -8,6 +8,7 @@
   - Syntax errors yield unreadable messages atm
 - Improve code gen to use chunk/file name
 - Improve code gen to emit debug symbols
+- Add character literals
 
 ## Runtime Implementations
 - Runtime Library
