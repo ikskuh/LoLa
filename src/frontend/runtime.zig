@@ -79,7 +79,7 @@ const async_functions = struct {
     //                 const ctx = exec_context.get(Context);
 
     //                 if (ctx.end_time < @intToFloat(f64, std.time.milliTimestamp())) {
-    //                     return lola.Value.initVoid();
+    //                     return .void;
     //                 } else {
     //                     return null;
     //                 }
@@ -100,7 +100,7 @@ const sync_functions = struct {
             }
         }
         try stdout.writeAll("\n");
-        return lola.Value.initVoid();
+        return .void;
     }
 
     fn Exit(environment: *const lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
@@ -118,7 +118,7 @@ const sync_functions = struct {
 
         const path = try args[0].toString();
 
-        var file = std.fs.cwd().openFile(path, .{ .read = true, .write = false }) catch return lola.Value.initVoid();
+        var file = std.fs.cwd().openFile(path, .{ .read = true, .write = false }) catch return .void;
         defer file.close();
 
         // 2 GB
@@ -153,7 +153,7 @@ const sync_functions = struct {
 
         try file.writeAll(value);
 
-        return lola.Value.initVoid();
+        return .void;
     }
 
     fn CreateList(environment: *lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
@@ -175,7 +175,7 @@ const sync_functions = struct {
             const array = args[0].toArray() catch unreachable;
             try list.data.resize(array.contents.len);
             for (list.data.items) |*item| {
-                item.* = lola.Value.initVoid();
+                item.* = .void;
             }
 
             errdefer for (list.data.items) |*item| {
@@ -232,7 +232,7 @@ const LoLaList = struct {
 
             try list.data.append(cloned);
 
-            return lola.Value.initVoid();
+            return .void;
         }
 
         fn Remove(environment: *const lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
@@ -273,7 +273,7 @@ const LoLaList = struct {
             // above, so they are "twice" in the list.
             list.data.shrink(dst_index);
 
-            return lola.Value.initVoid();
+            return .void;
         }
 
         fn RemoveAt(environment: *const lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
@@ -293,7 +293,7 @@ const LoLaList = struct {
                 list.data.shrink(list.data.items.len - 1);
             }
 
-            return lola.Value.initVoid();
+            return .void;
         }
 
         fn GetCount(environment: *const lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
@@ -326,7 +326,7 @@ const LoLaList = struct {
 
             list.data.items[index].replaceWith(cloned);
 
-            return lola.Value.initVoid();
+            return .void;
         }
 
         fn ToArray(environment: *const lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
@@ -354,7 +354,7 @@ const LoLaList = struct {
                     return lola.Value.initInteger(usize, index);
             }
 
-            return lola.Value.initVoid();
+            return .void;
         }
 
         fn Resize(environment: *const lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
@@ -373,11 +373,11 @@ const LoLaList = struct {
             } else if (new_size > old_size) {
                 try list.data.resize(new_size);
                 for (list.data.items[old_size..]) |*item| {
-                    item.* = lola.Value.initVoid();
+                    item.* = .void;
                 }
             }
 
-            return lola.Value.initVoid();
+            return .void;
         }
 
         fn Clear(environment: *const lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
@@ -390,7 +390,7 @@ const LoLaList = struct {
             }
             list.data.shrink(0);
 
-            return lola.Value.initVoid();
+            return .void;
         }
     };
 };

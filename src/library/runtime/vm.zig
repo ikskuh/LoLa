@@ -108,7 +108,7 @@ pub const VM = struct {
         ctx.decoder.offset = fun.entryPoint;
         ctx.locals = try self.allocator.alloc(Value, fun.localCount);
         for (ctx.locals) |*local| {
-            local.* = Value.initVoid();
+            local.* = .void;
         }
         return ctx;
     }
@@ -218,7 +218,7 @@ pub const VM = struct {
 
             .push_true => try self.push(Value.initBoolean(true)),
             .push_false => try self.push(Value.initBoolean(false)),
-            .push_void => try self.push(Value.initVoid()),
+            .push_void => try self.push(.void),
 
             // Memory Access Section:
 
@@ -379,7 +379,7 @@ pub const VM = struct {
                 if (self.calls.items.len == 0)
                     return .completed;
 
-                try self.push(Value.initVoid());
+                try self.push(.void);
             },
 
             .retval => {
@@ -637,7 +637,7 @@ pub const VM = struct {
             .syncUser => |fun| blk: {
                 var locals = try self.allocator.alloc(Value, call.argc);
                 for (locals) |*l| {
-                    l.* = Value.initVoid();
+                    l.* = .void;
                 }
                 defer {
                     for (locals) |*l| {
@@ -658,7 +658,7 @@ pub const VM = struct {
             .asyncUser => |fun| blk: {
                 var locals = try self.allocator.alloc(Value, call.argc);
                 for (locals) |*l| {
-                    l.* = Value.initVoid();
+                    l.* = .void;
                 }
                 defer {
                     for (locals) |*l| {

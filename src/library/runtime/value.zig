@@ -3,6 +3,8 @@ const std = @import("std");
 const envsrc = @import("environment.zig");
 
 pub const TypeId = @TagType(Value);
+
+/// A struct that represents any possible LoLa value.
 pub const Value = union(enum) {
     const Self = @This();
 
@@ -16,10 +18,6 @@ pub const Value = union(enum) {
     string: String,
     array: Array,
     enumerator: Enumerator,
-
-    pub fn initVoid() Self {
-        return Self{ .void = {} };
-    }
 
     pub fn initNumber(val: f64) Self {
         return Self{ .number = val };
@@ -263,8 +261,8 @@ test "Value.string (init)" {
 }
 
 test "Value.eql (void)" {
-    var v1 = Value.initVoid();
-    var v2 = Value.initVoid();
+    var v1: Value = .void;
+    var v2: Value = .void;
 
     std.debug.assert(v1.eql(v2));
 }
@@ -533,7 +531,7 @@ pub const Enumerator = struct {
     pub fn next(self: *Self) ?Value {
         if (self.index >= self.array.contents.len)
             return null;
-        var result = Value.initVoid();
+        var result: Value = .void;
         self.array.contents[self.index].exchangeWith(&result);
         self.index += 1;
         return result;

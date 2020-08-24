@@ -88,7 +88,7 @@ const async_functions = struct {
                     const ctx = exec_context.get(Context);
 
                     if (ctx.end_time < @intToFloat(f64, std.time.milliTimestamp())) {
-                        return lola.Value.initVoid();
+                        return .void;
                     } else {
                         return null;
                     }
@@ -188,14 +188,14 @@ const sync_functions = struct {
             return if (std.mem.indexOf(u8, haystack, needle)) |index|
                 lola.Value.initNumber(@intToFloat(f64, index))
             else
-                lola.Value.initVoid();
+                .void;
         } else if (args[0] == .array) {
             const haystack = args[0].array.contents;
             for (haystack) |val, i| {
                 if (val.eql(args[1]))
                     return lola.Value.initNumber(@intToFloat(f64, i));
             }
-            return lola.Value.initVoid();
+            return .void;
         } else {
             return error.TypeMismatch;
         }
@@ -214,7 +214,7 @@ const sync_functions = struct {
             return if (std.mem.lastIndexOf(u8, haystack, needle)) |index|
                 lola.Value.initNumber(@intToFloat(f64, index))
             else
-                lola.Value.initVoid();
+                .void;
         } else if (args[0] == .array) {
             const haystack = args[0].array.contents;
 
@@ -224,7 +224,7 @@ const sync_functions = struct {
                 if (haystack[i].eql(args[1]))
                     return lola.Value.initNumber(@intToFloat(f64, i));
             }
-            return lola.Value.initVoid();
+            return .void;
         } else {
             return error.TypeMismatch;
         }
@@ -240,7 +240,7 @@ const sync_functions = struct {
         if (value.len > 0)
             return lola.Value.initNumber(@intToFloat(f64, value[0]))
         else
-            return lola.Value.initVoid();
+            return .void;
     }
 
     fn Chr(env: *const lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
@@ -297,11 +297,11 @@ const sync_functions = struct {
                 break :blk tmp;
             } else str;
 
-            const val = try std.fmt.parseInt(isize, text, base); // return lola.Value.initVoid();
+            const val = try std.fmt.parseInt(isize, text, base); // return .void;
 
             return lola.Value.initNumber(@intToFloat(f64, val));
         } else {
-            const val = std.fmt.parseFloat(f64, str) catch return lola.Value.initVoid();
+            const val = std.fmt.parseFloat(f64, str) catch return .void;
             return lola.Value.initNumber(val);
         }
     }

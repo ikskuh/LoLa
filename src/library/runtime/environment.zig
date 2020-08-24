@@ -454,7 +454,7 @@ pub const Environment = struct {
         errdefer allocator.free(self.scriptGlobals);
 
         for (self.scriptGlobals) |*glob| {
-            glob.* = Value.initVoid();
+            glob.* = .void;
         }
 
         self.functions = std.StringHashMap(Function).init(allocator);

@@ -282,7 +282,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
                 if (!assertion)
                     return error.AssertionFailed;
 
-                return lola.Value.initVoid();
+                return .void;
             }
         }.call));
 
@@ -295,7 +295,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
                     return error.AssertionFailed;
                 }
 
-                return lola.Value.initVoid();
+                return .void;
             }
         }.call));
     }
@@ -478,7 +478,7 @@ fn loadModuleFromFile(allocator: *std.mem.Allocator, fileName: []const u8) !lola
 
 //                                     try obj_context.get(Self).contents.append(v);
 //                                 }
-//                                 return lola.Value.initVoid();
+//                                 return .void;
 //                             }
 //                         }.call,
 //                     },
@@ -494,7 +494,7 @@ fn loadModuleFromFile(allocator: *std.mem.Allocator, fileName: []const u8) !lola
 //                                 if (stack.contents.len > 0) {
 //                                     return stack.contents.pop();
 //                                 } else {
-//                                     return lola.Value.initVoid();
+//                                     return .void;
 //                                 }
 //                             }
 //                         }.call,
@@ -636,5 +636,5 @@ fn loadModuleFromFile(allocator: *std.mem.Allocator, fileName: []const u8) !lola
 //         std.debug.warn("[{}]\t= {}\n", .{ i, global });
 //     }
 
-//     // std.debug.assert(refValue.eql(lola.Value.initVoid()));
+//     // std.debug.assert(refValue.eql(.void));
 // }
