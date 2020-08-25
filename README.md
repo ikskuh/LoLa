@@ -169,7 +169,7 @@ When you want to contribute to the compiler, check out the following documents:
 - [Source Code](src/)
 - [Bison Grammar](src/library/compiler/grammar.yy)
 - [Flex Tokenizer](src/library/compiler/yy.l)
-- [TODO List](TODO.md)
+- [Issue List](https://github.com/MasterQ32/LoLa-native/issues)
 
 ## Visual Studio Code Extension
 If you want syntax highlighting in VSCode, you can install the [`lola-vscode`](https://github.com/MasterQ32/lola-vscode) extension.

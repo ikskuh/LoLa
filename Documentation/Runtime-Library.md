@@ -104,16 +104,3 @@ Removes all values from the dictionary.
 #### `dict.GetCount(): number`
 Returns the number of keys currently stored in the list.
 
-## Remote Procedure Calls
-
-### `Connect(hostname: string, [port: number]): object|void`
-
-Tries to connect to a LoLa script running at `hostname`:`port`.
-If `port` is not given, *5317* is used.
-
-When the connection has been established, a new object is returned that can be used to access the remote script and invoke functions there.
-The object will have all functions defined the remote script. 
-
-If no connection could be established, `void` is returned.
-
-Note that it's not possible to send/receive values of the type `object` as those are bound to the local script environment, all other values can be serialized and passed as arguments or received as return values.
