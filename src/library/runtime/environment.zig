@@ -437,7 +437,7 @@ pub const Environment = struct {
     scriptGlobals: []Value,
 
     /// Object interface to
-    objectPool: ObjectPool,
+    objectPool: *ObjectPool,
 
     /// Stores all available named globals.
     /// Globals will be contained in this unit and will be deinitialized,
@@ -449,11 +449,11 @@ pub const Environment = struct {
     /// the name must be kept alive until end of the environment.
     functions: std.StringHashMap(Function),
 
-    pub fn init(allocator: *std.mem.Allocator, compileUnit: *const CompileUnit) !Self {
+    pub fn init(allocator: *std.mem.Allocator, compileUnit: *const CompileUnit, object_pool: *ObjectPool) !Self {
         var self = Self{
             .allocator = allocator,
             .compileUnit = compileUnit,
-            .objectPool = ObjectPool.init(allocator),
+            .objectPool = object_pool,
             .scriptGlobals = undefined,
             .namedGlobals = undefined,
             .functions = undefined,
@@ -499,7 +499,6 @@ pub const Environment = struct {
         self.namedGlobals.deinit();
         self.functions.deinit();
         self.allocator.free(self.scriptGlobals);
-        self.objectPool.deinit();
 
         self.* = undefined;
     }
@@ -549,7 +548,10 @@ test "Environment" {
         .debugSymbols = &[0]CompileUnit.DebugSymbol{},
     };
 
-    var env = try Environment.init(std.testing.allocator, &cu);
+    var pool = ObjectPool.init(std.testing.allocator);
+    defer pool.deinit();
+
+    var env = try Environment.init(std.testing.allocator, &cu, &pool);
     defer env.deinit();
 
     std.debug.assert(env.scriptGlobals.len == 4);

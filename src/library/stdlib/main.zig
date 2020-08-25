@@ -49,7 +49,10 @@ const empty_compile_unit = lola.CompileUnit{
 };
 
 test "stdlib.install" {
-    var env = try lola.Environment.init(std.testing.allocator, &empty_compile_unit);
+    var pool = lola.ObjectPool.init(std.testing.allocator);
+    defer pool.deinit();
+
+    var env = try lola.Environment.init(std.testing.allocator, &empty_compile_unit, &pool);
     defer env.deinit();
 
     // TODO: Reinsert this
@@ -608,7 +611,7 @@ const sync_functions = struct {
         var string_buffer = std.ArrayList(u8).init(allocator);
         defer string_buffer.deinit();
 
-        try value.serialize(string_buffer.writer(), if (allow_objects) &env.objectPool else null);
+        try value.serialize(string_buffer.writer(), if (allow_objects) env.objectPool else null);
 
         return lola.Value.fromString(lola.String.initFromOwned(allocator, string_buffer.toOwnedSlice()));
     }
@@ -622,6 +625,6 @@ const sync_functions = struct {
 
         var stream = std.io.fixedBufferStream(serialized_string);
 
-        return try lola.Value.deserialize(stream.reader(), allocator, &env.objectPool);
+        return try lola.Value.deserialize(stream.reader(), allocator, env.objectPool);
     }
 };

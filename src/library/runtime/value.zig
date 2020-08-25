@@ -223,6 +223,7 @@ pub const Value = union(TypeId) {
         };
     }
 
+    /// Serializes the value into the given `writer`, optionally using the `object_pool` to serialize the objects.
     pub fn serialize(self: Self, writer: anytype, object_pool: ?*envsrc.ObjectPool) (@TypeOf(writer).Error || error{NotSupported})!void {
         try writer.writeByte(@enumToInt(@as(TypeId, self)));
         switch (self) {
@@ -247,6 +248,7 @@ pub const Value = union(TypeId) {
         }
     }
 
+    /// Deserializes a value from the `reader`, using `allocator` to allocate memory, and optionally `object_pool` to deserialize objects.
     pub fn deserialize(reader: anytype, allocator: *std.mem.Allocator, object_pool: ?*envsrc.ObjectPool) (@TypeOf(reader).Error || error{ OutOfMemory, InvalidEnumTag, EndOfStream, NotSupported })!Self {
         const type_id_src = try reader.readByte();
         const type_id = try std.meta.intToEnum(TypeId, type_id_src);
