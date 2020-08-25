@@ -9,6 +9,7 @@ usingnamespace @import("runtime/environment.zig");
 usingnamespace @import("runtime/vm.zig");
 usingnamespace @import("runtime/context.zig");
 usingnamespace @import("runtime/strings.zig");
+usingnamespace @import("runtime/objects.zig");
 
 // Export the stdlib as `lola.std`:
 pub const std = @import("stdlib/main.zig");

@@ -5,6 +5,7 @@ usingnamespace @import("compile_unit.zig");
 usingnamespace @import("decoder.zig");
 usingnamespace @import("named_global.zig");
 usingnamespace @import("environment.zig");
+usingnamespace @import("objects.zig");
 
 pub const ExecutionResult = enum {
     /// The vm instruction quota was exhausted and the execution was terminated.
