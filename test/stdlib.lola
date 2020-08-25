@@ -216,4 +216,7 @@ ExpectEqual(HasFunction("Cos"), true);
 ExpectEqual(HasFunction("Tan"), true);
 ExpectEqual(HasFunction("FooBar"), false);
 
+// This function yields and should keep the running
+ExpectEqual(Yield(), void);
+
 Print("Standard library test suite passed.");

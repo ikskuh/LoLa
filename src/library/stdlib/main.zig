@@ -96,6 +96,46 @@ const async_functions = struct {
             }.execute,
         };
     }
+
+    fn Yield(call_context: lola.Context, args: []const lola.Value) anyerror!lola.AsyncFunctionCall {
+        const allocator = call_context.get(std.mem.Allocator);
+
+        if (args.len != 0)
+            return error.InvalidArgs;
+
+        const Context = struct {
+            allocator: *std.mem.Allocator,
+            end: bool,
+        };
+
+        const ptr = try allocator.create(Context);
+        ptr.* = Context{
+            .allocator = allocator,
+            .end = false,
+        };
+
+        return lola.AsyncFunctionCall{
+            .context = lola.Context.init(Context, ptr),
+            .destructor = struct {
+                fn dtor(exec_context: lola.Context) void {
+                    const ctx = exec_context.get(Context);
+                    ctx.allocator.destroy(ctx);
+                }
+            }.dtor,
+            .execute = struct {
+                fn execute(exec_context: lola.Context) anyerror!?lola.Value {
+                    const ctx = exec_context.get(Context);
+
+                    if (ctx.end) {
+                        return .void;
+                    } else {
+                        ctx.end = true;
+                        return null;
+                    }
+                }
+            }.execute,
+        };
+    }
 };
 
 const sync_functions = struct {
