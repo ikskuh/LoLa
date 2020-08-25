@@ -596,4 +596,32 @@ const sync_functions = struct {
             else => return error.InvalidArgs,
         }
     }
+
+    fn Serialize(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+        const allocator = context.get(std.mem.Allocator);
+        if (args.len < 1 or args.len > 2)
+            return error.InvalidArgs;
+
+        const value = args[0];
+        const allow_objects = if (args.len > 1) try args[1].toBoolean() else false;
+
+        var string_buffer = std.ArrayList(u8).init(allocator);
+        defer string_buffer.deinit();
+
+        try value.serialize(string_buffer.writer(), if (allow_objects) &env.objectPool else null);
+
+        return lola.Value.fromString(lola.String.initFromOwned(allocator, string_buffer.toOwnedSlice()));
+    }
+
+    fn Deserialize(env: *lola.Environment, context: lola.Context, args: []const lola.Value) !lola.Value {
+        const allocator = context.get(std.mem.Allocator);
+        if (args.len != 1)
+            return error.InvalidArgs;
+
+        const serialized_string = try args[0].toString();
+
+        var stream = std.io.fixedBufferStream(serialized_string);
+
+        return try lola.Value.deserialize(stream.reader(), allocator, &env.objectPool);
+    }
 };

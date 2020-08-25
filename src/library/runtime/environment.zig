@@ -291,6 +291,15 @@ pub const ObjectPool = struct {
 
     // Public API
 
+    /// Serializes a object handle
+    pub fn serialize(self: Self, stream: anytype, object: ObjectHandle) !void {
+        @panic("not implemented yet!");
+    }
+
+    pub fn deserialize(self: Self, stream: anytype) !ObjectHandle {
+        @panic("not implemented yet!");
+    }
+
     /// Inserts a new object into the pool.
     pub fn createObject(self: *Self, object: Object) !ObjectHandle {
         self.objectCounter += 1;

@@ -2,10 +2,18 @@ const std = @import("std");
 
 const envsrc = @import("environment.zig");
 
-pub const TypeId = @TagType(Value);
+pub const TypeId = enum(u8) {
+    void = 0,
+    number = 1,
+    object = 2,
+    boolean = 3,
+    string = 4,
+    array = 5,
+    enumerator = 6,
+};
 
 /// A struct that represents any possible LoLa value.
-pub const Value = union(enum) {
+pub const Value = union(TypeId) {
     const Self = @This();
 
     // non-allocating
@@ -212,6 +220,72 @@ pub const Value = union(enum) {
             .enumerator => |e| {
                 try stream.print("enumerator({}/{})", .{ e.index, e.array.contents.len });
             },
+        };
+    }
+
+    pub fn serialize(self: Self, writer: anytype, object_pool: ?*envsrc.ObjectPool) (@TypeOf(writer).Error || error{NotSupported})!void {
+        try writer.writeByte(@enumToInt(@as(TypeId, self)));
+        switch (self) {
+            .void => return, // void values are empty \o/
+            .number => |val| try writer.writeAll(std.mem.asBytes(&val)),
+            .object => |val| if (object_pool) |pool|
+                try pool.serialize(writer, val)
+            else
+                return error.NotSupported,
+            .boolean => |val| try writer.writeByte(if (val) @as(u8, 1) else 0),
+            .string => |val| {
+                try writer.writeIntLittle(u64, val.contents.len);
+                try writer.writeAll(val.contents);
+            },
+            .array => |arr| {
+                try writer.writeIntLittle(u64, arr.contents.len);
+                for (arr.contents) |item| {
+                    try item.serialize(writer, object_pool);
+                }
+            },
+            .enumerator => return error.NotSupported,
+        }
+    }
+
+    pub fn deserialize(reader: anytype, allocator: *std.mem.Allocator, object_pool: ?*envsrc.ObjectPool) (@TypeOf(reader).Error || error{ OutOfMemory, InvalidEnumTag, EndOfStream, NotSupported })!Self {
+        const type_id_src = try reader.readByte();
+        const type_id = try std.meta.intToEnum(TypeId, type_id_src);
+        return switch (type_id) {
+            .void => .void,
+            .number => blk: {
+                var buffer: [@sizeOf(f64)]u8 align(@alignOf(f64)) = undefined;
+
+                try reader.readNoEof(&buffer);
+
+                break :blk initNumber(@bitCast(f64, buffer));
+            },
+            .object => if (object_pool) |pool|
+                initObject(try pool.deserialize(reader))
+            else
+                return error.NotSupported,
+            .boolean => initBoolean((try reader.readByte()) != 0),
+            .string => blk: {
+                const size = try reader.readIntLittle(u64);
+
+                const buffer = try allocator.alloc(u8, size);
+                errdefer allocator.free(buffer);
+
+                try reader.readNoEof(buffer);
+
+                break :blk fromString(String.initFromOwned(allocator, buffer));
+            },
+            .array => blk: {
+                const size = try reader.readIntLittle(u64);
+                var array = try Array.init(allocator, size);
+                errdefer array.deinit();
+
+                for (array.contents) |*item| {
+                    item.* = try deserialize(reader, allocator, object_pool);
+                }
+
+                break :blk fromArray(array);
+            },
+            .enumerator => return error.NotSupported,
         };
     }
 };

@@ -219,4 +219,18 @@ ExpectEqual(HasFunction("FooBar"), false);
 // This function yields and should keep the running
 ExpectEqual(Yield(), void);
 
+for(original in [
+  void,
+  true, false,
+  1.0, 1.45, 
+  "", "hello", 
+  [], [ 1, 2 ], [ "void", void, 0 ]
+])
+{
+  var serialized = Serialize(original);
+  ExpectEqual(TypeOf(serialized), "string");
+  var deserialized = Deserialize(serialized);
+  ExpectEqual(deserialized, original);
+}
+
 Print("Standard library test suite passed.");
