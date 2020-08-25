@@ -13,7 +13,7 @@ for(text in list) {
 You can find more examples in the [Examples](Examples/) folder.
 
 ## Why LoLa when there is *X*?
-LoLa isn't meant to be your next best day-to-day scripting language. Its design is focused on embeddeding the language in environments where the users want/need/should write some small scripts like games or scriptable applications. In most script languages, you as a script host don't have control over the execution time of the scripts you're executing. LoLa protects you against programming errors like endless loops and such:
+LoLa isn't meant to be your next best day-to-day scripting language. Its design is focused on embedding the language in environments where the users want/need/should write some small scripts like games or scriptable applications. In most script languages, you as a script host don't have control over the execution time of the scripts you're executing. LoLa protects you against programming errors like endless loops and such:
 
 ### Controlled Execution Environment
 
@@ -74,6 +74,65 @@ buffer.Set("Hello, World!");
 // GetBuffer() returns a object referencing a environment for "script a"
 var buffer = GetBuffer(); 
 Print("Buffer contains: ", buffer.Get());
+```
+
+With a fitting network stack and library, this can even be utilized cross-computer.
+
+This example implements a small chat client and server that could work with LoLa RPC capabilities:
+```js
+// Chat client implementation:
+var server = Connect("lola-rpc://random-projects.net/chat");
+if(server == void) {
+	Print("Could not connect to chat server!");
+	Exit(1);
+}
+
+while(true) {
+	var list = server.GetMessages(GetUser());
+	for(msg in list) {
+		Print("< ", msg);
+	}
+	
+	Print("> ");
+	var msg = ReadLine();
+	if(msg == void)
+		break;
+	if(msg == "")
+		continue;
+	server.Send(GetUser(), msg);
+}
+```
+
+```js
+// Chat server implementation
+var messages = CreateDictionary();
+
+function Send(user, msg)
+{
+	for(other in messages.GetKeys())
+	{
+		if(other != user) {
+			var log = messages.Get(other);
+			if(log != void) {
+				log = log ++ [ user + ": " + msg ];
+			} else {
+				log = [];
+			}
+			messages.Set(other, log);
+		}
+	}
+}
+
+function GetMessages(user)
+{
+	var log = messages.Get(user);
+	if(log != void) {
+		messages.Set(user, []);
+		return log;
+	} else {
+		return [];
+	}
+}
 ```
 
 ### Serializable State

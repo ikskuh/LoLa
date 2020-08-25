@@ -1,0 +1,7 @@
+///
+// This file tests if the implementation can handle returns from the global
+// scope and is intended to be run via the test suite.
+///
+
+// Don't die when returning from the main script
+return 10;

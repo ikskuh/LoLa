@@ -395,11 +395,14 @@ pub const VM = struct {
                     item.deinit();
                 }
 
-                try self.push(value);
-
                 // No more context to execute: we have completed execution
-                if (self.calls.items.len == 0)
+                if (self.calls.items.len == 0) {
+                    // TODO: How to handle returns from the main scrip?
+                    value.deinit();
                     return .completed;
+                } else {
+                    try self.push(value);
+                }
             },
 
             .jmp => |target| {
