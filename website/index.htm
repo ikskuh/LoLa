@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+
+<head>
+  <title>LoLa Programming Language</title>
+  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+</head>
+
+<body>
+  <nav id="index" class="toprow">
+    <h1><a href="#index">The LoLa Programming Language</a></h1>
+    <ul>
+      <li><a href="#documentation">Documentation</a></li>
+      <li><a href="#releases">Releases</a></li>
+      <li><a href="#community">Community</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+  </nav>
+  <div class="teaser"><img class="logo" src="img/stub-animu-gurl.png" />
+    <p>LoLa is a embeddable programming language for game scripting. Its primary design focus is an easy-to-understand
+      feature set and an implementation that allows perfect control of the script host.
+    </p>
+    <p>The language runtime and compiler are cross-platform and are <a href="#releases">available for MacOS, Windows
+        and Linux.</a> The compiler and runtime itself are platform independent and will work on any platform.</p>
+
+  </div>
+  <div class="features">
+    <div class="preview float-left"><code><pre><span class="kw">var</span> list = [ <span class="string">"Hello"</span>, <span class="string">"World"</span> ];
+<span class="kw">for</span>(text <span class="kw">in</span> list) {
+  Print(text);
+}</pre></code></div>
+    <h3>Easy-to-learn syntax</h3>
+    The syntax of the LoLa language is similar to languages like C# or JavaScript and is familiar to programmers.
+    Non-programmers can easily learn the block-oriented syntax with less than 20 keywords and only 20 operators.
+    <hr />
+    <div class="preview float-right"><code><pre><span class="kw">var</span> i = 0;
+<span class="kw">while</span>(<span class="kw">true</span>) {
+  i += 1;
+}</pre></code></div>
+    <h3>Protection against bad code</h3>
+    The LoLa runtime protects the host application from misbehaving user code by slicing code execution in controllable
+    chunks. Even endless loops will eventually return to the host! Out-of-memory problem will be catched by the use of
+    host-controlled allocators.
+    <hr />
+    <div class="preview float-left"><code><pre><span class="kw">while</span>(<span class="kw">true</span>) {
+  <span class="kw">var</span> input = WaitForKey();
+  <span class="kw">if</span>(input == <span class="string">" "</span>) {
+    Print(<span class="string">"Space was pressed!"</span>);
+  }
+}</pre></code></div>
+    <h3>Asynchronous execution</h3>
+    LoLa code is designed to suspend at any time and return control back to the host. In this example,
+    <code>WaitForKey</code> will immediate return control to the host, eating no CPU time until the host decides that
+    the script should continue. Most other scripting languages don't allow that behaviour, enforcing multithreading or
+    other workarounds.
+    <hr />
+    <div class="preview float-right">None</div>
+    <h3>Fully serializable state</h3>
+    The LoLa runtime is designed to be saved to disk at any point not executing any code. This means that you can let
+    your script execute for 1000 instructions, save the runtime state to disk and resume execution a week later on
+    another computer, not having any problems with script resumption. This is especially useful for games which often
+    want to embed the state of their scripts into the save games.
+  </div>
+  <div class="content">
+
+    <h2 id="documentation">Documentation</h2>
+
+    <p>
+      The following documents are available:
+    </p>
+    <ul>
+      <li><a href="language.htm">Language Documentation</a></li>
+      <li><a href="standard-library.htm">Standard Library Documentation</a></li>
+      <li><a href="runtime-library.htm">Runtime Library Documentation</a></li>
+      <li><a href="docs/">Library Code Documentation</a></li>
+    </ul>
+
+    <h2 id="releases">Releases</h2>
+
+    <p>
+      LoLa currently has no binary releases. Source code can be gathered at<br />
+      <a href="//github.com/MasterQ32/LoLa-native">github.com/MasterQ32/LoLa-native</a> <img
+        src="https://github.com/MasterQ32/LoLa-native/workflows/CI/badge.svg" />
+    </p>
+
+    <h2 id="community">Community</h2>
+
+    <p>
+      IRC<br />
+      <a href="irc://irc.freenode.net:6667/#lola-lang">irc.freenode.net/#lola-lang</a>
+    </p>
+
+    <h2 id="contact">Contact</h2>
+    <p>
+      <a href="mailto:lola-lang@random-projects.net">lola-lang@random-projects.net</a>
+    </p>
+    <p>&nbsp;</p>
+  </div>
+</body>
+
+</html>

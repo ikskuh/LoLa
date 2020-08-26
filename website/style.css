@@ -1,0 +1,134 @@
+* {
+  box-sizing: border-box;
+}
+
+html {
+  margin: 0;
+  padding: 0;
+  font-family: sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  max-width: 60em;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+nav {
+  position: sticky;
+  top: 0;
+  background-color: lightpink;
+  padding: 0;
+  margin: 0;
+}
+
+nav a {
+  text-decoration: none;
+  color: black;
+}
+
+nav a:hover {
+  text-decoration: underline;
+  color: blue;
+}
+
+nav h1 {
+  display: inline-block;
+  margin: 0;
+  padding: 1em;
+}
+
+nav ul {
+  display: inline-block;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+nav ul li {
+  display: inline-block;
+  padding-left: 0.25em;
+  padding-right: 0.25em;
+  height: 100%;
+}
+
+.teaser, .features, .content {
+  padding-left: 2em;
+  padding-right: 2em;
+}
+
+.teaser {
+  background-color: firebrick;
+  font-size: 1.2em;
+  padding-top: 3em;
+  padding-bottom: 3em;
+}
+
+.teaser .logo {
+  float: right;
+  width: 10em;
+  height: 10em;
+}
+
+.features {
+  background-color: cornflowerblue;
+  padding-top: 1em;
+  padding-bottom: 1em;
+}
+
+.features h3 {
+  margin: 0;
+  margin-bottom: 0.5em;
+}
+
+.features p img {
+  vertical-align: bottom;
+  height: 1em;
+}
+
+.features .preview {
+  border: 1px solid black;
+  display: block;
+  width: 40%;
+  min-width: 20em;
+  padding: 0.5em;
+  background-color: white;
+}
+
+.features .preview pre {
+  margin: 0;
+}
+
+.features .float-left {
+  float: left;
+  margin-right: 1em;
+}
+
+.features .float-right {
+  float: right;
+  margin-left: 1em;
+}
+
+.features hr {
+  clear: both;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+.content p {
+  margin-left: 1em;
+}
+
+code .kw {
+  color: blue;
+}
+
+code .string {
+  color: darkred;
+}
+
+code .comment {
+  color: blue;
+}
