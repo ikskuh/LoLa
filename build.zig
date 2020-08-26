@@ -1,14 +1,6 @@
 const std = @import("std");
 const Builder = std.build.Builder;
 
-// clang++ -std=c++17 -c -fno-use-cxa-atexit -o hello.o hello.cpp
-// zig build-exe -target x86_64-linux-gnu --bundle-compiler-rt --object hello.o --name hello -L /usr/lib -lc -lstdc++
-
-const interfacePkg = std.build.Pkg{
-    .name = "interface",
-    .path = "libs/interface.zig/interface.zig",
-    .dependencies = &[0]std.build.Pkg{},
-};
 const argsPkg = std.build.Pkg{
     .name = "args",
     .path = "libs/args/args.zig",
@@ -59,10 +51,9 @@ pub fn build(b: *Builder) void {
         "src/library/compiler/grammar.tab.cpp",
     };
 
-    const lib = b.addStaticLibrary("liblola", "./src/library/main.zig");
+    const lib = b.addStaticLibrary("lola", "./src/library/main.zig");
     lib.setBuildMode(mode);
     lib.setTarget(target);
-    lib.addPackage(interfacePkg);
     lib.addIncludeDir("./libs/flex");
     lib.linkLibC();
     lib.linkSystemLibrary("c++");
@@ -80,13 +71,9 @@ pub fn build(b: *Builder) void {
     exe.setBuildMode(mode);
     exe.setTarget(target);
     exe.addPackage(argsPkg);
-    exe.addPackage(interfacePkg);
     exe.addPackage(std.build.Pkg{
         .name = "lola",
         .path = "./src/library/main.zig",
-        .dependencies = &[_]std.build.Pkg{
-            interfacePkg,
-        },
     });
 
     exe.addCSourceFile("src/frontend/compile_lola_source.cpp", &[_][]const u8{
@@ -100,11 +87,22 @@ pub fn build(b: *Builder) void {
     exe.install();
 
     var main_tests = b.addTest("src/library/main.zig");
-    main_tests.addPackage(interfacePkg);
     main_tests.setBuildMode(mode);
 
     const test_step = b.step("test", "Run test suite");
     test_step.dependOn(&main_tests.step);
+
+    // TODO: Figure out how to emit docs into the right directory
+    // var gen_docs_runner = b.addTest("src/library/main.zig");
+    // gen_docs_runner.emit_asm = false;
+    // gen_docs_runner.emit_bin = false;
+    // gen_docs_runner.emit_docs = true;
+    // gen_docs_runner.emit_h = false;
+    // gen_docs_runner.emit_llvm_ir = false;
+    // gen_docs_runner.setBuildMode(mode);
+
+    // const gen_docs_step = b.step("docs", "Generate the code documentation");
+    // gen_docs_step.dependOn(&gen_docs_runner.step);
 
     // Run compiler test suites
     {

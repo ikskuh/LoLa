@@ -22,6 +22,12 @@ pub const Object = struct {
     /// This is called when the object is removed from the associated object pool.
     destroyObjectFn: fn (*ErasedSelf) void,
 
+    /// Creates a new reference to any kind of object.
+    /// Pass in a pointer to a struct/union/enum that implements both
+    /// `pub fn getMethod(self: Self, name: []const u8) ?Function` and
+    /// `pub fn destroyObject(self: *Self) void` and receive a type-erased
+    /// interface object which allows you passing your pointers into
+    /// an object pool and thus the virtual machine environment.
     pub fn init(ref: anytype) Self {
         const PtrType = @TypeOf(ref);
         const info = @typeInfo(PtrType);
@@ -44,10 +50,16 @@ pub const Object = struct {
         };
     }
 
+    /// Gets a method called `name` for this object. If the object has no such method,
+    /// `null` is returned.
     pub fn getMethod(self: Self, name: []const u8) ?Function {
         return self.getMethodFn(self.erased_self, name);
     }
 
+    /// Destroys the object when it's garbage collected.
+    /// What this function does is implementation-specific per object,
+    /// but the object should be considered to be invalid after a call to this
+    /// function and must not be used anymore.
     pub fn destroyObject(self: *Self) void {
         self.destroyObjectFn(self.erased_self);
         self.* = undefined;
@@ -87,10 +99,14 @@ pub const ObjectPool = struct {
 
     const ObjectGetError = error{InvalidObject};
 
+    /// ever-increasing number which is used to allocate new object handles.
     objectCounter: u64,
+
+    /// stores all alive objects. Removing elements from this
+    /// requires to call `.object.destroyObject()`!
     objects: std.AutoHashMap(ObjectHandle, ManagedObject),
 
-    // Initializer API
+    /// Creates a new object pool, using `allocator` to handle hashmap allocations.
     pub fn init(allocator: *std.mem.Allocator) Self {
         return Self{
             .objectCounter = 0,
@@ -98,22 +114,28 @@ pub const ObjectPool = struct {
         };
     }
 
+    /// Destroys all objects in the pool, then releases all associated memory.
+    /// Do not use the ObjectPool afterwards!
     pub fn deinit(self: *Self) void {
         var iter = self.objects.iterator();
         while (iter.next()) |obj| {
             obj.value.object.destroyObject();
         }
         self.objects.deinit();
+        self.* = undefined;
     }
 
     // Public API
 
-    /// Serializes a object handle
+    /// Serializes a object handle into the `stream` or returns a error.NotSupported.
     pub fn serialize(self: Self, stream: anytype, object: ObjectHandle) !void {
         // TODO: Implement object serialization/deserialization API
         @panic("not implemented yet!");
     }
 
+    /// Deserializes a new object from `steam` and returns its object handle.
+    /// May return `error.NotSupported` when the ObjectPool does not support
+    /// object serialization/deserialization.
     pub fn deserialize(self: Self, stream: anytype) !ObjectHandle {
         // TODO: Implement object serialization/deserialization API
         @panic("not implemented yet!");
