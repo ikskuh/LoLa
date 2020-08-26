@@ -92,18 +92,6 @@ pub fn build(b: *Builder) void {
     const test_step = b.step("test", "Run test suite");
     test_step.dependOn(&main_tests.step);
 
-    // TODO: Figure out how to emit docs into the right directory
-    // var gen_docs_runner = b.addTest("src/library/main.zig");
-    // gen_docs_runner.emit_asm = false;
-    // gen_docs_runner.emit_bin = false;
-    // gen_docs_runner.emit_docs = true;
-    // gen_docs_runner.emit_h = false;
-    // gen_docs_runner.emit_llvm_ir = false;
-    // gen_docs_runner.setBuildMode(mode);
-
-    // const gen_docs_step = b.step("docs", "Generate the code documentation");
-    // gen_docs_step.dependOn(&gen_docs_runner.step);
-
     // Run compiler test suites
     {
         const prefix = if (std.builtin.os.tag == .windows)
@@ -194,4 +182,32 @@ pub fn build(b: *Builder) void {
     const refresh_step = b.step("refresh", "Recompiles flex/bison grammar files");
     refresh_step.dependOn(&precompileLexer.step);
     refresh_step.dependOn(&precompileGrammar.step);
+
+    /////////////////////////////////////////////////////////////////////////
+    // Documentation and Website generation:
+
+    // TODO: Figure out how to emit docs into the right directory
+    // var gen_docs_runner = b.addTest("src/library/main.zig");
+    // gen_docs_runner.emit_bin = false;
+    // gen_docs_runner.emit_docs = true;
+    // gen_docs_runner.setOutputDir("./website");
+    // gen_docs_runner.setBuildMode(mode);
+
+    const gen_docs_runner = b.addSystemCommand(&[_][]const u8{
+        "zig",
+        "test",
+        "src/library/main.zig",
+        "-femit-docs",
+        "-fno-emit-bin",
+        "--output-dir",
+        "website/",
+    });
+
+    // Only  generates documentation
+    const gen_docs_step = b.step("docs", "Generate the code documentation");
+    gen_docs_step.dependOn(&gen_docs_runner.step);
+
+    // Generates documentation and future files.
+    const gen_website_step = b.step("website", "Generates the website and all required resources.");
+    gen_website_step.dependOn(&gen_docs_runner.step);
 }
