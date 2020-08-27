@@ -1,0 +1,32 @@
+name: Render Website
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'true'
+
+    - name: Setup Zig
+      uses: goto-bus-stop/setup-zig@v1.2.3
+      with:
+        version: master
+    
+    - name: Render website
+      run: |
+        zig build website
+
+    - name: Deploy to Server
+      uses: easingthemes/ssh-deploy@v2.1.1
+      env:
+          SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_PRIVKEY }}
+          ARGS: "-rltgoDzvO --delete"
+          SOURCE: "website/"
+          REMOTE_HOST: ${{ secrets.WEBSITE_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.WEBSITE_DEPLOY_USER }}
+          TARGET: ${{ secrets.WEBSITE_DEPLOY_FOLDER }}
