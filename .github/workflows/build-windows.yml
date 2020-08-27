@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+
+    - name: Setup Zig
+      uses: goto-bus-stop/setup-zig@v1.2.3
+      with:
+        version: master
+    
+    - name: Build toolchain
+      run: |
+        zig build
+  
+    - name: Build test suite
+      run: |
+        zig build test
