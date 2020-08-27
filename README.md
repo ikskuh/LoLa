@@ -204,4 +204,4 @@ When you change things in the compiler or VM implementation, run the test suite:
 zig build test
 ```
 
-This will execute all zig tests, and also runs a set of predefined tests within the [`test/`](test/) folder. These tests will verify that the compiler and language runtime behave correctly.
+This will execute all zig tests, and also runs a set of predefined tests within the [`src/test/`](src/test/) folder. These tests will verify that the compiler and language runtime behave correctly.

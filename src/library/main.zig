@@ -16,4 +16,7 @@ pub const std = @import("stdlib/main.zig");
 
 comptime {
     _ = std;
+
+    _ = @import("compiler/diagnostics.zig");
+    _ = @import("compiler/tokenizer.zig");
 }

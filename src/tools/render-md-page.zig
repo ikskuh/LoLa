@@ -43,10 +43,13 @@ pub fn main() !u8 {
     const output_file_name = try (args.next(&gpa.allocator) orelse return 1);
     defer gpa.allocator.free(output_file_name);
 
-    var options = koino.Options{};
-    options.extensions.table = true;
-    options.extensions.autolink = true;
-    options.extensions.strikethrough = true;
+    const options = koino.Options{
+        .extensions = .{
+            .table = true,
+            .autolink = true,
+            .strikethrough = true,
+        },
+    };
 
     var infile = try std.fs.cwd().openFile(input_file_name, .{});
     defer infile.close();
@@ -70,6 +73,7 @@ pub fn main() !u8 {
 fn markdownToHtmlInternal(resultAllocator: *std.mem.Allocator, internalAllocator: *std.mem.Allocator, options: koino.Options, markdown: []const u8) ![]u8 {
     var p = try koino.parser.Parser.init(internalAllocator, options);
     try p.feed(markdown);
+
     var doc = try p.finish();
     p.deinit();
 

@@ -108,9 +108,9 @@ pub fn build(b: *Builder) !void {
     // Run compiler test suites
     {
         const prefix = if (std.builtin.os.tag == .windows)
-            "test\\" // TODO: Fix when .\ works on windows again
+            "src\\test\\" // TODO: Fix when .\ works on windows again
         else
-            "./test/";
+            "./src/test/";
 
         const behaviour_tests = exe.run();
         behaviour_tests.addArg("run");
