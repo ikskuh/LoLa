@@ -16,12 +16,22 @@ body {
   margin-right: auto;
 }
 
+a.anchor {
+  display: block;
+  position: relative;
+  top: -9em;
+  visibility: hidden;
+}
+
 nav {
   position: sticky;
   top: 0;
-  background-color: lightpink;
+  background-color: white;
   padding: 0;
   margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 nav a {
@@ -38,6 +48,7 @@ nav h1 {
   display: inline-block;
   margin: 0;
   padding: 1em;
+  align-self: center;
 }
 
 nav ul {
@@ -45,6 +56,7 @@ nav ul {
   list-style: none;
   padding: 0;
   margin: 0;
+  align-self: center;
 }
 
 nav ul li {
@@ -60,22 +72,38 @@ nav ul li {
 }
 
 .teaser {
-  background-color: firebrick;
+  background: linear-gradient(10deg, cornflowerblue, #EEF);
   font-size: 1.2em;
   padding-top: 3em;
   padding-bottom: 3em;
+  display: flex;
+  flex-wrap: wrap-reverse;
+  justify-content: center;
+}
+
+.teaser .text {
+  flex: 1;
 }
 
 .teaser .logo {
-  float: right;
   width: 10em;
   height: 10em;
 }
 
 .features {
-  background-color: cornflowerblue;
+  background-color: whitesmoke;
   padding-top: 1em;
   padding-bottom: 1em;
+}
+
+.features .group {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.features .group:nth-of-type(even) {
+  flex-wrap: wrap-reverse;
 }
 
 .features h3 {
@@ -88,10 +116,19 @@ nav ul li {
   height: 1em;
 }
 
-.features .preview {
+.features .group .text, .features .group .preview {
+  margin: 0.5em;
+}
+
+.features .group .text {
+  flex: 1;
+  max-width: 50em;
+}
+
+.features .group .preview {
   border: 1px solid black;
   display: block;
-  width: 40%;
+  width: 30%;
   min-width: 20em;
   padding: 0.5em;
   background-color: white;
