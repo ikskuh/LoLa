@@ -6,4 +6,4 @@ The project is structured into two major parts:
     - [`library/compiler`](library/compiler/) is the compiler which translates LoLa source code into LoLa byte code
     - [`library/runtime`](library/runtime) is the virtual machine implementation that allows running LoLa byte code
     - [`library/stdlib`](library/stdlib) is the implementation of the LoLa standard library and builds on the runtime
-    
+- [`tools`](tools/) contains small tools that are used in this repo, but have no relevance to LoLa itself. One example is the markdown renderer for the website.

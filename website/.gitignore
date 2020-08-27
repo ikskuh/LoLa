@@ -1,2 +1,7 @@
 # This is generated automatically via "zig build website"
-docs/
+docs/*
+intermediate-language.htm
+language.htm
+module-binary.htm
+runtime-library.htm
+standard-library.htm

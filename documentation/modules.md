@@ -13,8 +13,8 @@ Some fields are commented with C++ style comments, introduced by a `//`.
 ```rust
 // Structure of the whole file
 File {
-	header: FileHeader,  // contains the module header
-	globalCount: u16,    // number of global script variables
+  header: FileHeader,  // contains the module header
+  globalCount: u16,    // number of global script variables
   temporaryCount: u16, // number of temporary variables (global)
   functionCount: u16,  // number of declared functions
   codeSize: u32,       // size of the intermediate code in bytes
@@ -31,9 +31,9 @@ FileHeader {
 }
 
 Function {
-	name: [128]u8,   // zero-terminated function name
-	entryPoint: u32, // start of the function in the intermediate code
-	localCount: u16, // number of local variable slots.
+  name: [128]u8,   // zero-terminated function name
+  entryPoint: u32, // start of the function in the intermediate code
+  localCount: u16, // number of local variable slots.
 }
 
 DebugSymbol {

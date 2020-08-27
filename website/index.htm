@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="en">
 
 <head>
   <title>LoLa Programming Language</title>
@@ -20,20 +20,23 @@
   </nav>
   <div class="teaser">
     <div class="text">
-      <p>LoLa is a embeddable programming language for game scripting. Its primary design focus is an easy-to-understand
+      <p>LoLa is an embeddable programming language for game scripting. Its primary design focus is an
+        easy-to-understand
         feature set and an implementation that allows perfect control of the script execution.
       </p>
       <p>The language runtime and compiler are cross-platform and are <a href="#releases">available for MacOS, Windows
           and Linux.</a> The compiler and runtime itself are platform independent and will work on any platform.</p>
     </div>
-    <img class="logo" src="img/stub-animu-gurl.png" />
+    <img class="logo" alt="Language Logo" src="img/stub-animu-gurl.png" />
   </div>
   <div class="features">
     <div class="group">
-      <div class="preview"><code><pre><span class="kw">var</span> list = [ <span class="string">"Hello"</span>, <span class="string">"World"</span> ];
+      <div class="preview">
+        <pre><code><span class="kw">var</span> list = [ <span class="string">"Hello"</span>, <span class="string">"World"</span> ];
 <span class="kw">for</span>(text <span class="kw">in</span> list) {
   Print(text);
-}</pre></code></div>
+}</code></pre>
+      </div>
       <div class="text">
         <h3>Easy-to-learn syntax</h3>
         The syntax of the LoLa language is similar to languages like C# or JavaScript and is familiar to programmers.
@@ -50,23 +53,27 @@
         of
         host-controlled allocators.
       </div>
-      <div class="preview"><code><pre><span class="kw">var</span> i = 0;
+      <div class="preview">
+        <pre><code><span class="kw">var</span> i = 0;
 <span class="kw">while</span>(<span class="kw">true</span>) {
   i += 1;
-}</pre></code></div>
+}</code></pre>
+      </div>
     </div>
     <hr />
     <div class="group">
-      <div class="preview"><code><pre><span class="kw">while</span>(<span class="kw">true</span>) {
+      <div class="preview">
+        <pre><code><span class="kw">while</span>(<span class="kw">true</span>) {
   <span class="kw">var</span> input = WaitForKey();
   <span class="kw">if</span>(input == <span class="string">" "</span>) {
     Print(<span class="string">"Space was pressed!"</span>);
   }
-}</pre></code></div>
+}</code></pre>
+      </div>
       <div class="text">
         <h3>Asynchronous execution</h3>
         LoLa code is designed to suspend at any time and return control back to the host. In this example,
-        <code>WaitForKey</code> will immediate return control to the host, eating no CPU time until the host decides
+        <code>WaitForKey</code> will immediately return control to the host, eating no CPU time until the host decides
         that
         the script should continue. Most other scripting languages don't allow that behaviour, enforcing multithreading
         or
@@ -99,6 +106,8 @@
       <li><a href="standard-library.htm">Standard Library Documentation</a></li>
       <li><a href="runtime-library.htm">Runtime Library Documentation</a></li>
       <li><a href="docs/">Library Code Documentation</a></li>
+      <li><a href="intermediate-language.htm">Intermediate Language Description</a></li>
+      <li><a href="module-binary.htm">LoLa Binary Module Format (<code>.lm</code>)</a></li>
     </ul>
 
     <a class="anchor" id="releases"></a>
@@ -106,7 +115,7 @@
 
     <p>
       LoLa currently has no binary releases. Source code can be gathered at<br />
-      <a href="//github.com/MasterQ32/LoLa-native">github.com/MasterQ32/LoLa-native</a> <img
+      <a href="//github.com/MasterQ32/LoLa-native">github.com/MasterQ32/LoLa-native</a> <img alt="CI status"
         src="https://github.com/MasterQ32/LoLa-native/workflows/CI/badge.svg" />
     </p>
 

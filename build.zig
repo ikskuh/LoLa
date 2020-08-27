@@ -1,13 +1,26 @@
 const std = @import("std");
 const Builder = std.build.Builder;
 
+const linkPcre = @import("libs/koino/vendor/libpcre.zig/build.zig").linkPcre;
+
 const argsPkg = std.build.Pkg{
     .name = "args",
     .path = "libs/args/args.zig",
     .dependencies = &[0]std.build.Pkg{},
 };
 
-pub fn build(b: *Builder) void {
+const koino = std.build.Pkg{
+    .name = "koino",
+    .path = "libs/koino/src/koino.zig",
+    .dependencies = &[_]std.build.Pkg{
+        std.build.Pkg{ .name = "libpcre", .path = "libs/koino/vendor/libpcre.zig/src/main.zig" },
+        std.build.Pkg{ .name = "htmlentities", .path = "libs/koino/vendor/htmlentities.zig/src/main.zig" },
+        std.build.Pkg{ .name = "clap", .path = "libs/koino/vendor/zig-clap/clap.zig" },
+        std.build.Pkg{ .name = "zunicode", .path = "libs/koino/vendor/zunicode/src/zunicode.zig" },
+    },
+};
+
+pub fn build(b: *Builder) !void {
     const mode = b.standardReleaseOptions();
     const target = b.standardTargetOptions(.{
         .default_target = if (std.builtin.os.tag == .windows)
@@ -185,29 +198,51 @@ pub fn build(b: *Builder) void {
 
     /////////////////////////////////////////////////////////////////////////
     // Documentation and Website generation:
+    {
+        // Generates documentation and future files.
+        const gen_website_step = b.step("website", "Generates the website and all required resources.");
 
-    // TODO: Figure out how to emit docs into the right directory
-    // var gen_docs_runner = b.addTest("src/library/main.zig");
-    // gen_docs_runner.emit_bin = false;
-    // gen_docs_runner.emit_docs = true;
-    // gen_docs_runner.setOutputDir("./website");
-    // gen_docs_runner.setBuildMode(mode);
+        // TODO: Figure out how to emit docs into the right directory
+        // var gen_docs_runner = b.addTest("src/library/main.zig");
+        // gen_docs_runner.emit_bin = false;
+        // gen_docs_runner.emit_docs = true;
+        // gen_docs_runner.setOutputDir("./website");
+        // gen_docs_runner.setBuildMode(mode);
+        const gen_docs_runner = b.addSystemCommand(&[_][]const u8{
+            "zig",
+            "test",
+            "src/library/main.zig",
+            "-femit-docs",
+            "-fno-emit-bin",
+            "--output-dir",
+            "website/",
+        });
 
-    const gen_docs_runner = b.addSystemCommand(&[_][]const u8{
-        "zig",
-        "test",
-        "src/library/main.zig",
-        "-femit-docs",
-        "-fno-emit-bin",
-        "--output-dir",
-        "website/",
-    });
+        // Only  generates documentation
+        const gen_docs_step = b.step("docs", "Generate the code documentation");
+        gen_docs_step.dependOn(&gen_docs_runner.step);
+        gen_website_step.dependOn(&gen_docs_runner.step);
 
-    // Only  generates documentation
-    const gen_docs_step = b.step("docs", "Generate the code documentation");
-    gen_docs_step.dependOn(&gen_docs_runner.step);
+        const md_renderer = b.addExecutable("markdown-md-page", "src/tools/render-md-page.zig");
+        md_renderer.addPackage(koino);
+        try linkPcre(md_renderer);
 
-    // Generates documentation and future files.
-    const gen_website_step = b.step("website", "Generates the website and all required resources.");
-    gen_website_step.dependOn(&gen_docs_runner.step);
+        const MdInOut = struct {
+            src: []const u8,
+            dst: []const u8,
+        };
+
+        const sources = [_]MdInOut{
+            .{ .src = "documentation/README.md", .dst = "website/language.htm" },
+            .{ .src = "documentation/standard-library.md", .dst = "website/standard-library.htm" },
+            .{ .src = "documentation/runtime-library.md", .dst = "website/runtime-library.htm" },
+            .{ .src = "documentation/ir.md", .dst = "website/intermediate-language.htm" },
+            .{ .src = "documentation/modules.md", .dst = "website/module-binary.htm" },
+        };
+        for (sources) |cfg| {
+            const render = md_renderer.run();
+            render.addArgs(&[_][]const u8{ cfg.src, cfg.dst });
+            gen_website_step.dependOn(&render.step);
+        }
+    }
 }
