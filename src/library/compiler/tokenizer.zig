@@ -1,7 +1,5 @@
 const std = @import("std");
 
-const diag = @import("diagnostics.zig");
-
 const TokenType = enum {
     const Self = @This();
 
@@ -78,24 +76,7 @@ const keywords = [_][]const u8{
     "not",
 };
 
-/// A location in a chunk of text. Can be used to locate tokens and AST structures.
-pub const Location = struct {
-    /// the name of the file/chunk this location is relative to
-    chunk: []const u8,
-
-    /// source line, starting at 1
-    line: u32,
-
-    /// source column, starting at 1
-    column: u32,
-
-    /// number of characters this token takes
-    length: usize,
-
-    pub fn format(self: @This(), comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
-        try writer.print("{}:{}:{}", .{ self.chunk, self.line, self.column });
-    }
-};
+pub const Location = @import("location.zig").Location;
 
 /// A single, recognized piece of text in the source file.
 pub const Token = struct {
@@ -111,6 +92,13 @@ pub const Token = struct {
 
 pub const Tokenizer = struct {
     const Self = @This();
+
+    /// Result from a tokenization process
+    const Result = union(enum) {
+        token: Token,
+        end_of_file: void,
+        invalid_sequence: []const u8,
+    };
 
     source: []const u8,
     offset: usize,
@@ -129,9 +117,12 @@ pub const Tokenizer = struct {
         };
     }
 
-    pub fn next(self: *Self) ?Token {
+    pub fn next(self: *Self) Result {
         while (true) {
             const start = self.offset;
+            if (start >= self.source.len)
+                return .end_of_file;
+
             if (nextInternal(self)) |token_type| {
                 const end = self.offset;
                 std.debug.assert(end > start); // tokens may never be empty!
@@ -163,9 +154,11 @@ pub const Tokenizer = struct {
                 }
 
                 if (token.type.isEmitted())
-                    return token;
+                    return Result{ .token = token };
             } else {
-                return null;
+                while (self.accept(invalid_char_class)) {}
+                const end = self.offset;
+                return Result{ .invalid_sequence = self.source[start..end] };
             }
         }
     }
@@ -209,6 +202,7 @@ pub const Tokenizer = struct {
         }.pred;
     }
 
+    const invalid_char_class = noneOf(" \r\n\tABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789+-*/%={}()[]<>\".,;!");
     const whitespace_class = anyOf(" \r\n\t");
     const comment_class = noneOf("\n");
     const identifier_class = anyOf("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_");
@@ -217,8 +211,7 @@ pub const Tokenizer = struct {
     const string_char_class = noneOf("\"\\");
 
     fn nextInternal(self: *Self) ?TokenType {
-        if (self.isEndOfStream())
-            return null;
+        std.debug.assert(self.offset < self.source.len);
 
         // copy for shorter code
         const source = self.source;
@@ -335,40 +328,51 @@ pub const Tokenizer = struct {
             else => return null,
         }
     }
-
-    pub fn emitUnrecognizedCharacter(self: *Self, diagnostics: *diag.Diagnostics) !void {
-        unreachable;
-    }
-
-    /// Returns true when the stream is at the end.
-    pub fn isEndOfStream(self: Self) bool {
-        return (self.offset >= self.source.len);
-    }
 };
 
 test "Tokenizer empty string" {
     var tokenizer = Tokenizer.init("??", "");
-    std.testing.expectEqual(true, tokenizer.isEndOfStream());
-    std.testing.expectEqual(@as(?Token, null), tokenizer.next());
+    std.testing.expectEqual(@TagType(Tokenizer.Result).end_of_file, tokenizer.next());
+}
+
+test "Tokenizer invalid bytes" {
+    var tokenizer = Tokenizer.init("??", "\\``?`a##§");
+    {
+        const item = tokenizer.next();
+        std.testing.expectEqual(@TagType(Tokenizer.Result).invalid_sequence, item);
+        std.testing.expectEqualStrings("\\``?`", item.invalid_sequence);
+    }
+    {
+        const item = tokenizer.next();
+        std.testing.expectEqual(@TagType(Tokenizer.Result).token, item);
+        std.testing.expectEqualStrings("a", item.token.text);
+    }
+    {
+        const item = tokenizer.next();
+        std.testing.expectEqual(@TagType(Tokenizer.Result).invalid_sequence, item);
+        std.testing.expectEqualStrings("##§", item.invalid_sequence);
+    }
 }
 
 test "Tokenizer (tokenize compiler test suite)" {
     var tokenizer = Tokenizer.init("src/test/compiler.lola", @embedFile("../../test/compiler.lola"));
-    std.testing.expectEqual(false, tokenizer.isEndOfStream());
 
     while (true) {
-        if (tokenizer.next()) |tok| {
-            // Use this for manual validation:
-            // std.debug.print("token: {}\n", .{tok});
-        } else if (tokenizer.isEndOfStream()) {
-            break;
-        } else {
-            std.debug.print("failed to parse test file at '{}'!\n", .{
-                tokenizer.source[tokenizer.offset..],
-            });
-            // this test should never reach this state, as the test file
-            // is validated by hand
-            unreachable;
+        switch (tokenizer.next()) {
+            .token => {
+
+                // Use this for manual validation:
+                // std.debug.print("token: {}\n", .{tok});
+            },
+            .end_of_file => break,
+            .invalid_sequence => |seq| {
+                std.debug.print("failed to parse test file at '{}'!\n", .{
+                    seq,
+                });
+                // this test should never reach this state, as the test file
+                // is validated by hand
+                unreachable;
+            },
         }
     }
 }

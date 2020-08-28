@@ -1,3 +1,9 @@
 
 
-return 10;
+
+WriteFile(
+  "binary.bin",
+  Serialize(
+    [ 1, 2, "Hello", 3.14 ]
+  )
+);

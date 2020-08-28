@@ -224,7 +224,7 @@ pub const Value = union(TypeId) {
     }
 
     /// Serializes the value into the given `writer`, optionally using the `object_pool` to serialize the objects.
-    pub fn serialize(self: Self, writer: anytype, object_pool: ?*envsrc.ObjectPool) (@TypeOf(writer).Error || error{NotSupported})!void {
+    pub fn serialize(self: Self, writer: anytype, object_pool: ?*envsrc.ObjectPool) (@TypeOf(writer).Error || error{ NotSupported, ObjectTooLarge })!void {
         try writer.writeByte(@enumToInt(@as(TypeId, self)));
         switch (self) {
             .void => return, // void values are empty \o/
@@ -235,11 +235,11 @@ pub const Value = union(TypeId) {
                 return error.NotSupported,
             .boolean => |val| try writer.writeByte(if (val) @as(u8, 1) else 0),
             .string => |val| {
-                try writer.writeIntLittle(u64, val.contents.len);
+                try writer.writeIntLittle(u32, std.math.cast(u32, val.contents.len) catch return error.ObjectTooLarge);
                 try writer.writeAll(val.contents);
             },
             .array => |arr| {
-                try writer.writeIntLittle(u64, arr.contents.len);
+                try writer.writeIntLittle(u32, std.math.cast(u32, arr.contents.len) catch return error.ObjectTooLarge);
                 for (arr.contents) |item| {
                     try item.serialize(writer, object_pool);
                 }
@@ -267,7 +267,7 @@ pub const Value = union(TypeId) {
                 return error.NotSupported,
             .boolean => initBoolean((try reader.readByte()) != 0),
             .string => blk: {
-                const size = try reader.readIntLittle(u64);
+                const size = try reader.readIntLittle(u32);
 
                 const buffer = try allocator.alloc(u8, size);
                 errdefer allocator.free(buffer);
@@ -277,7 +277,7 @@ pub const Value = union(TypeId) {
                 break :blk fromString(String.initFromOwned(allocator, buffer));
             },
             .array => blk: {
-                const size = try reader.readIntLittle(u64);
+                const size = try reader.readIntLittle(u32);
                 var array = try Array.init(allocator, size);
                 errdefer array.deinit();
 
