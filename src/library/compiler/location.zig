@@ -27,7 +27,7 @@ pub const Location = struct {
 
     pub fn merge(a: Location, b: Location) Location {
         // Should emitted from the same chunk
-        std.debug.assert(a.chunk == b.chunk);
+        std.debug.assert(a.chunk.ptr == b.chunk.ptr);
 
         const min = if (a.offset_start < b.offset_start)
             a

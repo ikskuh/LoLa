@@ -50,6 +50,14 @@ pub fn parse(
             self.index = state.index;
         }
 
+        fn moveToHeap(self: *Self, value: anytype) !*@TypeOf(value) {
+            const T = @TypeOf(value);
+            std.debug.assert(@typeInfo(T) != .Pointer);
+            const ptr = try self.allocator.create(T);
+            ptr.* = value;
+            return ptr;
+        }
+
         fn is(comptime kind: lexer.TokenType) Predicate {
             return struct {
                 fn pred(token: lexer.Token) bool {
@@ -67,6 +75,12 @@ pub fn parse(
                     } else false;
                 }
             }.pred;
+        }
+
+        fn peek(self: Self) AcceptError!lexer.Token {
+            if (self.index >= self.sequence.len)
+                return error.SyntaxError;
+            return self.sequence[self.index];
         }
 
         fn accept(self: *Self, predicate: Predicate) AcceptError!lexer.Token {
@@ -146,39 +160,199 @@ pub fn parse(
             const state = self.saveState();
             errdefer self.restoreState(state);
 
-            const start = try self.accept(oneOf(.{
-                .@";",
-                .@"{",
-                .@"while",
-                .@"if",
-            }));
+            const start = try self.peek();
 
             switch (start.type) {
-                .@";" => return ast.Statement{
-                    .location = start.location,
-                    .type = .empty,
+                .@";" => {
+                    _ = try self.accept(is(.@";"));
+                    return ast.Statement{
+                        .location = start.location,
+                        .type = .empty,
+                    };
+                },
+                .@"break" => {
+                    _ = try self.accept(is(.@"break"));
+                    _ = try self.accept(is(.@";"));
+                    return ast.Statement{
+                        .location = start.location,
+                        .type = .@"break",
+                    };
+                },
+                .@"continue" => {
+                    _ = try self.accept(is(.@"continue"));
+                    _ = try self.accept(is(.@";"));
+                    return ast.Statement{
+                        .location = start.location,
+                        .type = .@"continue",
+                    };
                 },
                 .@"{" => {
-                    // this is a block. Rewind and call block parser:
-                    self.restoreState(state);
                     return try self.acceptBlock();
                 },
                 .@"while" => {
-                    unreachable;
+                    _ = try self.accept(is(.@"while"));
+                    _ = try self.accept(is(.@"("));
+                    const condition = try self.acceptExpression();
+                    _ = try self.accept(is(.@")"));
+
+                    const body = try self.acceptBlock();
+
+                    return ast.Statement{
+                        .location = start.location,
+                        .type = .{
+                            .while_loop = .{
+                                .condition = condition,
+                                .body = try self.moveToHeap(body),
+                            },
+                        },
+                    };
                 },
                 .@"if" => {
-                    unreachable;
+                    _ = try self.accept(is(.@"if"));
+                    _ = try self.accept(is(.@"("));
+
+                    const condition = try self.acceptExpression();
+
+                    _ = try self.accept(is(.@")"));
+
+                    const true_body = try self.acceptStatement();
+
+                    if (self.accept(is(.@"else"))) |_| {
+                        const false_body = try self.acceptStatement();
+                        return ast.Statement{
+                            .location = start.location,
+                            .type = .{
+                                .if_statement = .{
+                                    .condition = condition,
+                                    .true_body = try self.moveToHeap(true_body),
+                                    .false_body = try self.moveToHeap(false_body),
+                                },
+                            },
+                        };
+                    } else |_| {
+                        return ast.Statement{
+                            .location = start.location,
+                            .type = .{
+                                .if_statement = .{
+                                    .condition = condition,
+                                    .true_body = try self.moveToHeap(true_body),
+                                    .false_body = null,
+                                },
+                            },
+                        };
+                    }
                 },
-                else => unreachable,
+                .@"for" => {
+                    _ = try self.accept(is(.@"for"));
+                    _ = try self.accept(is(.@"("));
+                    const name = try self.accept(is(.identifier));
+
+                    _ = try self.accept(is(.in));
+
+                    const source = try self.acceptExpression();
+
+                    _ = try self.accept(is(.@")"));
+
+                    const body = try self.acceptBlock();
+
+                    return ast.Statement{
+                        .location = start.location,
+                        .type = .{
+                            .for_loop = .{
+                                .variable = name.text,
+                                .source = source,
+                                .body = try self.moveToHeap(body),
+                            },
+                        },
+                    };
+                },
+
+                .@"return" => {
+                    _ = try self.accept(is(.@"return"));
+
+                    if (self.accept(is(.@";"))) |_| {
+                        return ast.Statement{
+                            .location = start.location,
+                            .type = .return_void,
+                        };
+                    } else |_| {
+                        const value = try self.acceptExpression();
+
+                        _ = try self.accept(is(.@";"));
+
+                        return ast.Statement{
+                            .location = start.location,
+                            .type = .{
+                                .return_expr = value,
+                            },
+                        };
+                    }
+                },
+
+                .@"extern" => {
+                    _ = try self.accept(is(.@"extern"));
+                    const name = try self.accept(is(.identifier));
+                    _ = try self.accept(is(.@";"));
+
+                    return ast.Statement{
+                        .location = start.location.merge(name.location),
+                        .type = .{
+                            .extern_variable = name.text,
+                        },
+                    };
+                },
+
+                .@"var" => {
+                    _ = try self.accept(is(.@"var"));
+                    const name = try self.accept(is(.identifier));
+                    const decider = try self.accept(oneOf(.{ .@";", .@"=" }));
+
+                    var stmt = ast.Statement{
+                        .location = start.location.merge(name.location),
+                        .type = .{
+                            .declaration = .{
+                                .variable = name.text,
+                                .initial_value = null,
+                            },
+                        },
+                    };
+
+                    if (decider.type == .@"=") {
+                        const value = try self.acceptExpression();
+
+                        _ = try self.accept(is(.@";"));
+
+                        stmt.type.declaration.initial_value = value;
+                    }
+
+                    return stmt;
+                },
+
+                else => {
+                    const expr = try self.acceptExpression();
+                    _ = try self.accept(is(.@";"));
+
+                    if ((expr.type == .function_call) or (expr.type == .method_call)) {
+                        return ast.Statement{
+                            .location = expr.location,
+                            .type = .{
+                                .discard_value = expr,
+                            },
+                        };
+                    } else {
+                        return error.SyntaxError;
+                    }
+                    // else if(expr.type ==
+                },
             }
         }
 
         fn acceptExpression(self: *Self) ParseError!ast.Expression {
-            const expr = self.accept(is(.number));
+            const expr = try self.accept(is(.number));
             return ast.Expression{
                 .location = expr.location,
                 .type = .{
-                    .number = 3.1415,
+                    .number_literal = 3.1415,
                 },
             };
         }
@@ -261,7 +435,7 @@ test "parse single top level statement" {
     std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
     std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
 
-    std.testing.expectEqual(ast.Statement.StatementType.empty, pgm.root_script[0].type);
+    std.testing.expectEqual(ast.Statement.Type.empty, pgm.root_script[0].type);
 }
 
 test "parse single empty function" {
@@ -276,7 +450,7 @@ test "parse single empty function" {
         const fun = pgm.functions[0];
 
         std.testing.expectEqualStrings("empty", fun.name);
-        std.testing.expectEqual(ast.Statement.StatementType.block, fun.body.type);
+        std.testing.expectEqual(ast.Statement.Type.block, fun.body.type);
         std.testing.expectEqual(@as(usize, 0), fun.body.type.block.len);
         std.testing.expectEqual(@as(usize, 0), fun.parameters.len);
     }
@@ -292,7 +466,7 @@ test "parse single empty function" {
         const fun = pgm.functions[0];
 
         std.testing.expectEqualStrings("empty", fun.name);
-        std.testing.expectEqual(ast.Statement.StatementType.block, fun.body.type);
+        std.testing.expectEqual(ast.Statement.Type.block, fun.body.type);
         std.testing.expectEqual(@as(usize, 0), fun.body.type.block.len);
         std.testing.expectEqual(@as(usize, 1), fun.parameters.len);
         std.testing.expectEqualStrings("p0", fun.parameters[0]);
@@ -309,7 +483,7 @@ test "parse single empty function" {
         const fun = pgm.functions[0];
 
         std.testing.expectEqualStrings("empty", fun.name);
-        std.testing.expectEqual(ast.Statement.StatementType.block, fun.body.type);
+        std.testing.expectEqual(ast.Statement.Type.block, fun.body.type);
         std.testing.expectEqual(@as(usize, 0), fun.body.type.block.len);
         std.testing.expectEqual(@as(usize, 3), fun.parameters.len);
         std.testing.expectEqualStrings("p0", fun.parameters[0]);
@@ -327,9 +501,9 @@ test "parse multiple top level statements" {
     std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
     std.testing.expectEqual(@as(usize, 3), pgm.root_script.len);
 
-    std.testing.expectEqual(ast.Statement.StatementType.empty, pgm.root_script[0].type);
-    std.testing.expectEqual(ast.Statement.StatementType.empty, pgm.root_script[1].type);
-    std.testing.expectEqual(ast.Statement.StatementType.empty, pgm.root_script[2].type);
+    std.testing.expectEqual(ast.Statement.Type.empty, pgm.root_script[0].type);
+    std.testing.expectEqual(ast.Statement.Type.empty, pgm.root_script[1].type);
+    std.testing.expectEqual(ast.Statement.Type.empty, pgm.root_script[2].type);
 }
 
 test "parse mixed function and top level statement" {
@@ -339,15 +513,218 @@ test "parse mixed function and top level statement" {
     std.testing.expectEqual(@as(usize, 1), pgm.functions.len);
     std.testing.expectEqual(@as(usize, 2), pgm.root_script.len);
 
-    std.testing.expectEqual(ast.Statement.StatementType.empty, pgm.root_script[0].type);
-    std.testing.expectEqual(ast.Statement.StatementType.empty, pgm.root_script[1].type);
+    std.testing.expectEqual(ast.Statement.Type.empty, pgm.root_script[0].type);
+    std.testing.expectEqual(ast.Statement.Type.empty, pgm.root_script[1].type);
 
     const fun = pgm.functions[0];
 
     std.testing.expectEqualStrings("n", fun.name);
-    std.testing.expectEqual(ast.Statement.StatementType.block, fun.body.type);
+    std.testing.expectEqual(ast.Statement.Type.block, fun.body.type);
     std.testing.expectEqual(@as(usize, 0), fun.body.type.block.len);
     std.testing.expectEqual(@as(usize, 0), fun.parameters.len);
+}
+
+test "nested blocks" {
+    var pgm = try parseTest(
+        \\{ }
+        \\{
+        \\  { ; } 
+        \\  { ; ; }
+        \\  ;
+        \\}
+        \\{ }
+    );
+    defer pgm.deinit();
+
+    std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
+    std.testing.expectEqual(@as(usize, 3), pgm.root_script.len);
+
+    std.testing.expectEqual(ast.Statement.Type.block, pgm.root_script[0].type);
+    std.testing.expectEqual(ast.Statement.Type.block, pgm.root_script[1].type);
+    std.testing.expectEqual(ast.Statement.Type.block, pgm.root_script[2].type);
+
+    std.testing.expectEqual(@as(usize, 0), pgm.root_script[0].type.block.len);
+    std.testing.expectEqual(@as(usize, 3), pgm.root_script[1].type.block.len);
+    std.testing.expectEqual(@as(usize, 0), pgm.root_script[2].type.block.len);
+
+    std.testing.expectEqual(ast.Statement.Type.block, pgm.root_script[1].type.block[0].type);
+    std.testing.expectEqual(ast.Statement.Type.block, pgm.root_script[1].type.block[1].type);
+    std.testing.expectEqual(ast.Statement.Type.empty, pgm.root_script[1].type.block[2].type);
+
+    std.testing.expectEqual(@as(usize, 1), pgm.root_script[1].type.block[0].type.block.len);
+    std.testing.expectEqual(@as(usize, 2), pgm.root_script[1].type.block[1].type.block.len);
+
+    std.testing.expectEqual(ast.Statement.Type.empty, pgm.root_script[1].type.block[1].type.block[0].type);
+    std.testing.expectEqual(ast.Statement.Type.empty, pgm.root_script[1].type.block[1].type.block[0].type);
+}
+
+test "nested blocks in functions" {
+    var pgm = try parseTest(
+        \\function foo() {
+        \\  { }
+        \\  {
+        \\    { ; } 
+        \\    { ; ; }
+        \\    ;
+        \\  }
+        \\  { }
+        \\}
+    );
+    defer pgm.deinit();
+
+    std.testing.expectEqual(@as(usize, 1), pgm.functions.len);
+    std.testing.expectEqual(@as(usize, 0), pgm.root_script.len);
+
+    const fun = pgm.functions[0];
+
+    std.testing.expectEqual(ast.Statement.Type.block, fun.body.type);
+
+    const items = fun.body.type.block;
+
+    std.testing.expectEqual(ast.Statement.Type.block, items[0].type);
+    std.testing.expectEqual(ast.Statement.Type.block, items[1].type);
+    std.testing.expectEqual(ast.Statement.Type.block, items[2].type);
+
+    std.testing.expectEqual(@as(usize, 0), items[0].type.block.len);
+    std.testing.expectEqual(@as(usize, 3), items[1].type.block.len);
+    std.testing.expectEqual(@as(usize, 0), items[2].type.block.len);
+
+    std.testing.expectEqual(ast.Statement.Type.block, items[1].type.block[0].type);
+    std.testing.expectEqual(ast.Statement.Type.block, items[1].type.block[1].type);
+    std.testing.expectEqual(ast.Statement.Type.empty, items[1].type.block[2].type);
+
+    std.testing.expectEqual(@as(usize, 1), items[1].type.block[0].type.block.len);
+    std.testing.expectEqual(@as(usize, 2), items[1].type.block[1].type.block.len);
+
+    std.testing.expectEqual(ast.Statement.Type.empty, items[1].type.block[1].type.block[0].type);
+    std.testing.expectEqual(ast.Statement.Type.empty, items[1].type.block[1].type.block[0].type);
+}
+
+test "parsing break" {
+    var pgm = try parseTest("break;");
+    defer pgm.deinit();
+
+    std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
+    std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+
+    std.testing.expectEqual(ast.Statement.Type.@"break", pgm.root_script[0].type);
+}
+
+test "parsing continue" {
+    var pgm = try parseTest("continue;");
+    defer pgm.deinit();
+
+    std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
+    std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+
+    std.testing.expectEqual(ast.Statement.Type.@"continue", pgm.root_script[0].type);
+}
+
+test "parsing while" {
+    var pgm = try parseTest("while(1) { }");
+    defer pgm.deinit();
+
+    std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
+    std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+
+    std.testing.expectEqual(ast.Statement.Type.while_loop, pgm.root_script[0].type);
+    std.testing.expectEqual(ast.Statement.Type.block, pgm.root_script[0].type.while_loop.body.type);
+    std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.while_loop.condition.type);
+}
+
+test "parsing for" {
+    var pgm = try parseTest("for(name in 1) { }");
+    defer pgm.deinit();
+
+    std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
+    std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+
+    std.testing.expectEqual(ast.Statement.Type.for_loop, pgm.root_script[0].type);
+    std.testing.expectEqualStrings("name", pgm.root_script[0].type.for_loop.variable);
+    std.testing.expectEqual(ast.Statement.Type.block, pgm.root_script[0].type.for_loop.body.type);
+    std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.for_loop.source.type);
+}
+
+test "parsing single if" {
+    var pgm = try parseTest("if(1) { }");
+    defer pgm.deinit();
+
+    std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
+    std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+
+    std.testing.expectEqual(ast.Statement.Type.if_statement, pgm.root_script[0].type);
+    std.testing.expectEqual(ast.Statement.Type.block, pgm.root_script[0].type.if_statement.true_body.type);
+    std.testing.expectEqual(@as(?*ast.Statement, null), pgm.root_script[0].type.if_statement.false_body);
+    std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.if_statement.condition.type);
+}
+
+test "parsing if-else" {
+    var pgm = try parseTest("if(1) { } else ;");
+    defer pgm.deinit();
+
+    std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
+    std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+
+    std.testing.expectEqual(ast.Statement.Type.if_statement, pgm.root_script[0].type);
+    std.testing.expectEqual(ast.Statement.Type.block, pgm.root_script[0].type.if_statement.true_body.type);
+    std.testing.expectEqual(ast.Statement.Type.empty, pgm.root_script[0].type.if_statement.false_body.?.type);
+    std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.if_statement.condition.type);
+}
+
+test "parsing return (void)" {
+    var pgm = try parseTest("return;");
+    defer pgm.deinit();
+
+    std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
+    std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+
+    std.testing.expectEqual(ast.Statement.Type.return_void, pgm.root_script[0].type);
+}
+
+test "parsing return (value)" {
+    var pgm = try parseTest("return 1;");
+    defer pgm.deinit();
+
+    std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
+    std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+
+    std.testing.expectEqual(ast.Statement.Type.return_expr, pgm.root_script[0].type);
+    std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.return_expr.type);
+}
+
+test "parsing extern declaration" {
+    var pgm = try parseTest("extern name;");
+    defer pgm.deinit();
+
+    std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
+    std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+
+    std.testing.expectEqual(ast.Statement.Type.extern_variable, pgm.root_script[0].type);
+    std.testing.expectEqualStrings("name", pgm.root_script[0].type.extern_variable);
+}
+
+test "parsing declaration (no value)" {
+    var pgm = try parseTest("var name;");
+    defer pgm.deinit();
+
+    std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
+    std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+
+    std.testing.expectEqual(ast.Statement.Type.declaration, pgm.root_script[0].type);
+    std.testing.expectEqualStrings("name", pgm.root_script[0].type.declaration.variable);
+    std.testing.expectEqual(@as(?ast.Expression, null), pgm.root_script[0].type.declaration.initial_value);
+}
+
+test "parsing declaration (initial value)" {
+    var pgm = try parseTest("var name = 1;");
+    defer pgm.deinit();
+
+    std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
+    std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+
+    std.testing.expectEqual(ast.Statement.Type.declaration, pgm.root_script[0].type);
+    std.testing.expectEqualStrings("name", pgm.root_script[0].type.declaration.variable);
+    std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.declaration.initial_value.?.type);
 }
 
 test "full suite parsing" {

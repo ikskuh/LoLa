@@ -24,7 +24,7 @@ pub const BinaryOperator = enum {
 };
 
 pub const Expression = struct {
-    pub const ExpressionType = @TagType(ExprValue);
+    pub const Type = @TagType(ExprValue);
 
     /// Starting location of the statement
     location: Location,
@@ -64,7 +64,7 @@ pub const Expression = struct {
 };
 
 pub const Statement = struct {
-    pub const StatementType = @TagType(StmtValue);
+    pub const Type = @TagType(StmtValue);
 
     /// Starting location of the statement
     location: Location,
@@ -76,30 +76,35 @@ pub const Statement = struct {
 
     const StmtValue = union(enum) {
         empty: void, // Just a single, flat ';'
+
+        /// Top level assignment as in `lvalue = value`.
         assignment: struct {
-            target: *Expression,
-            value: *Expression,
+            target: Expression,
+            value: Expression,
         },
+
+        /// Top-level function call like `Foo()`
+        discard_value: Expression,
+
         return_void: void,
-        return_expr: *Expression,
+        return_expr: Expression,
         while_loop: struct {
-            condition: *Expression,
+            condition: Expression,
             body: *Statement,
         },
         for_loop: struct {
             variable: []const u8,
-            source: *Expression,
+            source: Expression,
             body: *Statement,
         },
         if_statement: struct {
-            condition: *Expression,
+            condition: Expression,
             true_body: *Statement,
             false_body: ?*Statement,
         },
-        discard_value: *Expression,
         declaration: struct {
             variable: []const u8,
-            initial_value: ?*Expression,
+            initial_value: ?Expression,
         },
         extern_variable: []const u8,
         block: []Statement,
