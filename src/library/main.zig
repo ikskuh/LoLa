@@ -19,4 +19,6 @@ comptime {
 
     _ = @import("compiler/diagnostics.zig");
     _ = @import("compiler/tokenizer.zig");
+    _ = @import("compiler/parser.zig");
+    _ = @import("compiler/ast.zig");
 }

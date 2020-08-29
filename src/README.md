@@ -7,3 +7,4 @@ The project is structured into two major parts:
     - [`library/runtime`](library/runtime) is the virtual machine implementation that allows running LoLa byte code
     - [`library/stdlib`](library/stdlib) is the implementation of the LoLa standard library and builds on the runtime
 - [`tools`](tools/) contains small tools that are used in this repo, but have no relevance to LoLa itself. One example is the markdown renderer for the website.
+- [`test`](test/) contains source files that are used to test the compiler and runtime implementation. See `build.zig` and the source files in `library` for the use of those. Each file in this folder has a header that explains its usage.

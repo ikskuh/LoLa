@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const TokenType = enum {
+pub const TokenType = enum {
     const Self = @This();
 
     number,
@@ -112,7 +112,8 @@ pub const Tokenizer = struct {
                 .line = 1,
                 .column = 1,
                 .chunk = chunk_name,
-                .length = undefined,
+                .offset_start = undefined,
+                .offset_end = undefined,
             },
         };
     }
@@ -142,7 +143,8 @@ pub const Tokenizer = struct {
                     }
                 }
 
-                token.location.length = end - start;
+                token.location.offset_start = start;
+                token.location.offset_end = end;
 
                 for (token.text) |c| {
                     if (c == '\n') {
@@ -205,7 +207,7 @@ pub const Tokenizer = struct {
     const invalid_char_class = noneOf(" \r\n\tABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789+-*/%={}()[]<>\".,;!");
     const whitespace_class = anyOf(" \r\n\t");
     const comment_class = noneOf("\n");
-    const identifier_class = anyOf("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_");
+    const identifier_class = anyOf("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789");
     const digit_class = anyOf("0123456789");
     const hexdigit_class = anyOf("0123456789abcdefABCDEF");
     const string_char_class = noneOf("\"\\");

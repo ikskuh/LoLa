@@ -11,10 +11,35 @@ pub const Location = struct {
     /// source column, starting at 1
     column: u32,
 
-    /// number of characters this token takes
-    length: usize,
+    /// Offset to the start of the location
+    offset_start: usize,
+
+    /// Offset to the end of the location
+    offset_end: usize,
+
+    pub fn getLength(self: @This()) usize {
+        return self.offset_end - self.offset_start;
+    }
 
     pub fn format(self: @This(), comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
         try writer.print("{}:{}:{}", .{ self.chunk, self.line, self.column });
+    }
+
+    pub fn merge(a: Location, b: Location) Location {
+        // Should emitted from the same chunk
+        std.debug.assert(a.chunk == b.chunk);
+
+        const min = if (a.offset_start < b.offset_start)
+            a
+        else
+            b;
+
+        return Location{
+            .chunk = a.chunk,
+            .line = min.line,
+            .column = min.column,
+            .offset_start = std.math.min(a.offset_start, b.offset_start),
+            .offset_end = std.math.max(a.offset_end, b.offset_end),
+        };
     }
 };
