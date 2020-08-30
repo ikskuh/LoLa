@@ -24,6 +24,8 @@ pub const BinaryOperator = enum {
 };
 
 pub const Expression = struct {
+    const Self = @This();
+
     pub const Type = @TagType(ExprValue);
 
     /// Starting location of the statement
@@ -32,6 +34,15 @@ pub const Expression = struct {
     /// kind of the expression as well as associated child nodes.
     /// child expressions memory is stored in the `Program` structure.
     type: ExprValue,
+
+    /// Returns true when the expression allows an assignment similar to
+    /// Cs `lvalue`.
+    fn isAssignable(self: Self) bool {
+        return switch (self) {
+            .array_indexer, .variable_expr => true,
+            else => false,
+        };
+    }
 
     const ExprValue = union(enum) {
         array_indexer: struct {
@@ -64,6 +75,8 @@ pub const Expression = struct {
 };
 
 pub const Statement = struct {
+    const Self = @This();
+
     pub const Type = @TagType(StmtValue);
 
     /// Starting location of the statement

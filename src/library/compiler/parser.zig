@@ -330,9 +330,10 @@ pub fn parse(
 
                 else => {
                     const expr = try self.acceptExpression();
-                    _ = try self.accept(is(.@";"));
 
                     if ((expr.type == .function_call) or (expr.type == .method_call)) {
+                        _ = try self.accept(is(.@";"));
+
                         return ast.Statement{
                             .location = expr.location,
                             .type = .{
@@ -340,21 +341,234 @@ pub fn parse(
                             },
                         };
                     } else {
-                        return error.SyntaxError;
+                        _ = try self.accept(is(.@"="));
+
+                        const value = try self.acceptExpression();
+
+                        _ = try self.accept(is(.@";"));
+
+                        return ast.Statement{
+                            .location = expr.location,
+                            .type = .{
+                                .assignment = .{
+                                    .target = expr,
+                                    .value = value,
+                                },
+                            },
+                        };
                     }
-                    // else if(expr.type ==
                 },
             }
         }
 
         fn acceptExpression(self: *Self) ParseError!ast.Expression {
-            const expr = try self.accept(is(.number));
-            return ast.Expression{
-                .location = expr.location,
-                .type = .{
-                    .number_literal = 3.1415,
+            return try self.acceptLogicCombinatorExpression();
+        }
+
+        fn acceptLogicCombinatorExpression(self: *Self) ParseError!ast.Expression {
+            var expr = try self.acceptComparisonExpression();
+            while (true) {
+                var and_or = self.accept(oneOf(.{ .@"and", .@"or" })) catch break;
+                var rhs = try self.acceptComparisonExpression();
+
+                expr = ast.Expression{
+                    .location = expr.location.merge(and_or.location).merge(rhs.location),
+                    .type = .{
+                        .binary_operator = .{
+                            .operator = switch (and_or.type) {
+                                .@"and" => .boolean_and,
+                                .@"or" => .boolean_or,
+                                else => unreachable,
+                            },
+                            .lhs = try self.moveToHeap(expr),
+                            .rhs = try self.moveToHeap(rhs),
+                        },
+                    },
+                };
+            }
+            return expr;
+        }
+
+        fn acceptComparisonExpression(self: *Self) ParseError!ast.Expression {
+            var expr = try self.acceptSumExpression();
+            while (true) {
+                var and_or = self.accept(oneOf(.{
+                    .@"<=",
+                    .@">=",
+                    .@">",
+                    .@"<",
+                    .@"==",
+                    .@"!=",
+                })) catch break;
+                var rhs = try self.acceptSumExpression();
+
+                expr = ast.Expression{
+                    .location = expr.location.merge(and_or.location).merge(rhs.location),
+                    .type = .{
+                        .binary_operator = .{
+                            .operator = switch (and_or.type) {
+                                .@"<=" => .less_or_equal_than,
+                                .@">=" => .greater_or_equal_than,
+                                .@">" => .greater_than,
+                                .@"<" => .less_than,
+                                .@"==" => .equal,
+                                .@"!=" => .different,
+                                else => unreachable,
+                            },
+                            .lhs = try self.moveToHeap(expr),
+                            .rhs = try self.moveToHeap(rhs),
+                        },
+                    },
+                };
+            }
+            return expr;
+        }
+
+        fn acceptSumExpression(self: *Self) ParseError!ast.Expression {
+            var expr = try self.acceptMulExpression();
+            while (true) {
+                var and_or = self.accept(oneOf(.{
+                    .@"+",
+                    .@"-",
+                })) catch break;
+                var rhs = try self.acceptMulExpression();
+
+                expr = ast.Expression{
+                    .location = expr.location.merge(and_or.location).merge(rhs.location),
+                    .type = .{
+                        .binary_operator = .{
+                            .operator = switch (and_or.type) {
+                                .@"+" => .add,
+                                .@"-" => .subtract,
+                                else => unreachable,
+                            },
+                            .lhs = try self.moveToHeap(expr),
+                            .rhs = try self.moveToHeap(rhs),
+                        },
+                    },
+                };
+            }
+            return expr;
+        }
+
+        fn acceptMulExpression(self: *Self) ParseError!ast.Expression {
+            var expr = try self.acceptUnaryPrefixOperatorExpression();
+            while (true) {
+                var and_or = self.accept(oneOf(.{
+                    .@"*",
+                    .@"/",
+                    .@"%",
+                })) catch break;
+                var rhs = try self.acceptUnaryPrefixOperatorExpression();
+
+                expr = ast.Expression{
+                    .location = expr.location.merge(and_or.location).merge(rhs.location),
+                    .type = .{
+                        .binary_operator = .{
+                            .operator = switch (and_or.type) {
+                                .@"*" => .multiply,
+                                .@"/" => .divide,
+                                .@"%" => .modulus,
+                                else => unreachable,
+                            },
+                            .lhs = try self.moveToHeap(expr),
+                            .rhs = try self.moveToHeap(rhs),
+                        },
+                    },
+                };
+            }
+            return expr;
+        }
+
+        fn acceptUnaryPrefixOperatorExpression(self: *Self) ParseError!ast.Expression {
+            if (self.accept(oneOf(.{ .@"not", .@"-" }))) |prefix| {
+                // this must directly recurse as we can write `not not x`
+                const value = try self.acceptUnaryPrefixOperatorExpression();
+                return ast.Expression{
+                    .location = prefix.location.merge(value.location),
+                    .type = .{
+                        .unary_operator = .{
+                            .operator = switch (prefix.type) {
+                                .@"not" => .boolean_not,
+                                .@"-" => .boolean_not,
+                                else => unreachable,
+                            },
+                            .value = try self.moveToHeap(value),
+                        },
+                    },
+                };
+            } else |_| {
+                return try self.acceptIndexingExpression();
+            }
+        }
+
+        fn acceptIndexingExpression(self: *Self) ParseError!ast.Expression {
+            const value = try self.acceptValueExpression();
+
+            // TODO: This is broken right now, it prevents use
+            // of `a[x][y]`.
+
+            if (self.accept(is(.@"["))) |_| {
+                const index = try self.acceptValueExpression();
+
+                _ = try self.accept(is(.@"]"));
+
+                return ast.Expression{
+                    .location = value.location.merge(index.location),
+                    .type = .{
+                        .array_indexer = .{
+                            .value = try self.moveToHeap(value),
+                            .index = try self.moveToHeap(index),
+                        },
+                    },
+                };
+            } else |_| {
+                return value;
+            }
+        }
+
+        fn acceptValueExpression(self: *Self) ParseError!ast.Expression {
+            const token = try self.accept(oneOf(.{
+                .@"(",
+                .@"[",
+                .number_literal,
+                .string_literal,
+                .identifier,
+            }));
+            switch (token.type) {
+                .@"(" => {
+                    const value = try self.acceptExpression();
+                    _ = try self.accept(is(.@")"));
+                    return value;
                 },
-            };
+                .@"[" => @panic("TODO: Implement array literals"),
+                .number_literal => {
+                    const val = std.fmt.parseFloat(f64, token.text) catch return error.SyntaxError;
+                    return ast.Expression{
+                        .location = token.location,
+                        .type = .{
+                            .number_literal = val,
+                        },
+                    };
+                },
+                .string_literal => {
+                    // TODO: Escape string here!
+                    std.debug.print("TODO: Apply string escapes here!\n", .{});
+                    return ast.Expression{
+                        .location = token.location,
+                        .type = .{
+                            .string_literal = token.text,
+                        },
+                    };
+                },
+                .identifier => return ast.Expression{
+                    .location = token.location,
+                    .type = .{
+                        .variable_expr = token.text,
+                    },
+                },
+                else => unreachable,
+            }
         }
     };
 
@@ -725,6 +939,81 @@ test "parsing declaration (initial value)" {
     std.testing.expectEqual(ast.Statement.Type.declaration, pgm.root_script[0].type);
     std.testing.expectEqualStrings("name", pgm.root_script[0].type.declaration.variable);
     std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.declaration.initial_value.?.type);
+}
+
+test "parsing assignment" {
+    var pgm = try parseTest("1 = 1;");
+    defer pgm.deinit();
+
+    std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
+    std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+
+    std.testing.expectEqual(ast.Statement.Type.assignment, pgm.root_script[0].type);
+    std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.target.type);
+    std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.value.type);
+}
+
+test "parsing operator-assignment" {
+    var pgm = try parseTest("1 = 1;");
+    defer pgm.deinit();
+
+    std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
+    std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+
+    std.testing.expectEqual(ast.Statement.Type.assignment, pgm.root_script[0].type);
+    std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.target.type);
+    std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.value.type);
+}
+
+/// Parse a program with `1 = $(EXPR)`, will return `$(EXPR)`
+fn getTestExpr(pgm: ast.Program) ast.Expression {
+    std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
+    std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+    std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.target.type);
+    return pgm.root_script[0].type.assignment.value;
+}
+
+test "number literal" {
+    var pgm = try parseTest("1 = 1;");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.number_literal, expr.type);
+    std.testing.expectWithinEpsilon(@as(f64, 1), expr.type.number_literal, 0.000001);
+}
+
+test "addition literal" {
+    var pgm = try parseTest("1 = 1 + 1;");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    std.testing.expectEqual(ast.BinaryOperator.add, expr.type.binary_operator.operator);
+}
+
+test "mutiplication literal" {
+    var pgm = try parseTest("1 = 1 * 1;");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    std.testing.expectEqual(ast.BinaryOperator.multiply, expr.type.binary_operator.operator);
+}
+
+test "operator precedence literal" {
+    var pgm = try parseTest("1 = 1 + 1 * 1;");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    std.testing.expectEqual(ast.BinaryOperator.add, expr.type.binary_operator.operator);
+
+    std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type.binary_operator.rhs.type);
+    std.testing.expectEqual(ast.BinaryOperator.multiply, expr.type.binary_operator.rhs.type.binary_operator.operator);
 }
 
 test "full suite parsing" {

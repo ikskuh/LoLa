@@ -3,7 +3,7 @@ const std = @import("std");
 pub const TokenType = enum {
     const Self = @This();
 
-    number,
+    number_literal,
     string_literal,
     identifier,
     comment,
@@ -292,12 +292,12 @@ pub const Tokenizer = struct {
                 while (self.accept(digit_class)) {}
                 if (self.accept(anyOf("xX"))) {
                     while (self.accept(hexdigit_class)) {}
-                    return .number;
+                    return .number_literal;
                 } else if (self.accept(anyOf("."))) {
                     while (self.accept(digit_class)) {}
-                    return .number;
+                    return .number_literal;
                 }
-                return .number;
+                return .number_literal;
             },
 
             // parse identifiers
