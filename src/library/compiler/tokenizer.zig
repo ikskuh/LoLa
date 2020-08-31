@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const Diagnostics = @import("diagnostics.zig").Diagnostics;
+
 pub const TokenType = enum {
     const Self = @This();
 
@@ -160,6 +162,10 @@ pub const Tokenizer = struct {
             } else {
                 while (self.accept(invalid_char_class)) {}
                 const end = self.offset;
+
+                self.current_location.offset_start = start;
+                self.current_location.offset_end = end;
+
                 return Result{ .invalid_sequence = self.source[start..end] };
             }
         }
@@ -332,6 +338,24 @@ pub const Tokenizer = struct {
     }
 };
 
+pub fn tokenize(allocator: *std.mem.Allocator, diagnostics: *Diagnostics, chunk_name: []const u8, source: []const u8) ![]Token {
+    var result = std.ArrayList(Token).init(allocator);
+    var tokenizer = Tokenizer.init(chunk_name, source);
+
+    while (true) {
+        switch (tokenizer.next()) {
+            .end_of_file => return result.toOwnedSlice(),
+            .invalid_sequence => |seq| {
+                try diagnostics.emit(.@"error", "{}: error: invalid byte sequence: {X}", .{
+                    tokenizer.current_location,
+                    seq,
+                });
+            },
+            .token => |token| try result.append(token),
+        }
+    }
+}
+
 test "Tokenizer empty string" {
     var tokenizer = Tokenizer.init("??", "");
     std.testing.expectEqual(@TagType(Tokenizer.Result).end_of_file, tokenizer.next());
@@ -377,4 +401,9 @@ test "Tokenizer (tokenize compiler test suite)" {
             },
         }
     }
+}
+
+test "tokenize" {
+    // TODO: Implement meaningful test
+    _ = tokenize;
 }

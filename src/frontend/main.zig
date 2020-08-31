@@ -359,6 +359,23 @@ fn compileFileToUnit(allocator: *std.mem.Allocator, fileName: []const u8) !lola.
     };
     defer std.heap.page_allocator.free(source);
 
+    // Testing new compiler
+    {
+        var diag = lola.compiler.Diagnostics.init(allocator);
+        defer {
+            for (diag.messages.items) |msg| {
+                std.debug.print("{}\n", .{msg.message});
+            }
+            diag.deinit();
+        }
+
+        const seq = try lola.compiler.tokenizer.tokenize(allocator, &diag, fileName, source);
+        defer allocator.free(seq);
+
+        var pgm = try lola.compiler.parser.parse(std.testing.allocator, &diag, seq);
+        defer pgm.deinit();
+    }
+
     var module: ModuleBuffer = undefined;
 
     if (!compile_lola_source(source.ptr, source.len, &module))

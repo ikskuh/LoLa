@@ -14,9 +14,16 @@ usingnamespace @import("runtime/objects.zig");
 // Export the stdlib as `lola.std`:
 pub const std = @import("stdlib/main.zig");
 
-comptime {
-    _ = std;
+pub const compiler = struct {
+    pub const Diagnostics = @import("compiler/diagnostics.zig").Diagnostics;
+    pub const tokenizer = @import("compiler/tokenizer.zig");
+    pub const parser = @import("compiler/parser.zig");
+    pub const ast = @import("compiler/ast.zig");
+};
 
+comptime {
+    // include tests
+    _ = @import("compiler/string-escaping.zig");
     _ = @import("compiler/diagnostics.zig");
     _ = @import("compiler/tokenizer.zig");
     _ = @import("compiler/parser.zig");

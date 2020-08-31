@@ -4,9 +4,12 @@ const lexer = @import("tokenizer.zig");
 const ast = @import("ast.zig");
 const diag = @import("diagnostics.zig");
 
+const Location = @import("location.zig").Location;
 const EscapedStringIterator = @import("string-escaping.zig").EscapedStringIterator;
 
 /// Parses a sequence of tokens into an abstract syntax tree.
+/// Returns either a successfully parsed tree or puts all found
+/// syntax errors into `diagnostics`.
 pub fn parse(
     allocator: *std.mem.Allocator,
     diagnostics: *diag.Diagnostics,
@@ -36,6 +39,10 @@ pub fn parse(
         allocator: *std.mem.Allocator,
         sequence: []const lexer.Token,
         index: usize = 0,
+
+        fn getCurrentLocation(self: Self) Location {
+            return self.sequence[self.index].location;
+        }
 
         /// Applies all known string escape codes
         fn escapeString(self: Self, input: []const u8) ![]u8 {
@@ -83,6 +90,10 @@ pub fn parse(
             std.debug.assert(std.meta.eql(ptr.*, value));
 
             return ptr;
+        }
+
+        fn any(token: lexer.Token) bool {
+            return true;
         }
 
         fn is(comptime kind: lexer.TokenType) Predicate {
@@ -737,7 +748,11 @@ pub fn parse(
                     };
                 },
                 .number_literal => {
-                    const val = std.fmt.parseFloat(f64, token.text) catch return error.SyntaxError;
+                    const val = if (std.mem.startsWith(u8, token.text, "0x"))
+                        @intToFloat(f64, std.fmt.parseInt(i54, token.text[2..], 16) catch return error.SyntaxError)
+                    else
+                        std.fmt.parseFloat(f64, token.text) catch return error.SyntaxError;
+
                     return ast.Expression{
                         .location = token.location,
                         .type = .{
@@ -783,7 +798,32 @@ pub fn parse(
             try functions.append(fun);
         } else |_| {
             // no need to unaccept here as we didn't accept in the first place
-            const stmt = try parser.acceptStatement();
+            const stmt = parser.acceptStatement() catch |err| switch (err) {
+                error.SyntaxError => {
+                    // Do some recovery here:
+                    try diagnostics.emit(.@"error", "{}: error: syntax error!", .{
+                        parser.getCurrentLocation(),
+                    });
+
+                    while (parser.index < parser.sequence.len) {
+                        const recovery_state = parser.saveState();
+                        const tok = try parser.accept(Parser.any);
+                        if (tok.type == .@";")
+                            break;
+
+                        // We want to be able to parse the next function properly
+                        // even if we have syntax errors.
+                        if (tok.type == .function) {
+                            parser.restoreState(recovery_state);
+                            break;
+                        }
+                    }
+
+                    continue;
+                },
+
+                else => |e| return e,
+            };
             try root_script.append(stmt);
         }
     }
@@ -1222,8 +1262,28 @@ fn getTestExpr(pgm: ast.Program) ast.Expression {
     return expr;
 }
 
-test "number literal" {
+test "integer literal" {
     var pgm = try parseTest("1 = 1;");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.number_literal, expr.type);
+    std.testing.expectWithinEpsilon(@as(f64, 1), expr.type.number_literal, 0.000001);
+}
+
+test "decimal literal" {
+    var pgm = try parseTest("1 = 1.0;");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.number_literal, expr.type);
+    std.testing.expectWithinEpsilon(@as(f64, 1), expr.type.number_literal, 0.000001);
+}
+
+test "hexadecimal literal" {
+    var pgm = try parseTest("1 = 0x1;");
     defer pgm.deinit();
 
     const expr = getTestExpr(pgm);
