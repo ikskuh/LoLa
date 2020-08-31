@@ -4,6 +4,8 @@ const lexer = @import("tokenizer.zig");
 const ast = @import("ast.zig");
 const diag = @import("diagnostics.zig");
 
+const EscapedStringIterator = @import("string-escaping.zig").EscapedStringIterator;
+
 /// Parses a sequence of tokens into an abstract syntax tree.
 pub fn parse(
     allocator: *std.mem.Allocator,
@@ -34,6 +36,28 @@ pub fn parse(
         allocator: *std.mem.Allocator,
         sequence: []const lexer.Token,
         index: usize = 0,
+
+        /// Applies all known string escape codes
+        fn escapeString(self: Self, input: []const u8) ![]u8 {
+            var iterator = EscapedStringIterator.init(input);
+
+            var len: usize = 0;
+            while (try iterator.next()) |_| {
+                len += 1;
+            }
+
+            iterator = EscapedStringIterator.init(input);
+
+            const result = try self.allocator.alloc(u8, len);
+            var i: usize = 0;
+            while (iterator.next() catch unreachable) |c| {
+                result[i] = c;
+                i += 1;
+            }
+            std.debug.assert(i == len);
+
+            return result;
+        }
 
         /// Create a save state that allows rewinding the parser process.
         /// This should be used when a parsing function calls accept mulitple
@@ -400,10 +424,16 @@ pub fn parse(
         }
 
         fn acceptExpression(self: *Self) ParseError!ast.Expression {
+            const state = self.saveState();
+            errdefer self.restoreState(state);
+
             return try self.acceptLogicCombinatorExpression();
         }
 
         fn acceptLogicCombinatorExpression(self: *Self) ParseError!ast.Expression {
+            const state = self.saveState();
+            errdefer self.restoreState(state);
+
             var expr = try self.acceptComparisonExpression();
             while (true) {
                 var and_or = self.accept(oneOf(.{ .@"and", .@"or" })) catch break;
@@ -429,6 +459,9 @@ pub fn parse(
         }
 
         fn acceptComparisonExpression(self: *Self) ParseError!ast.Expression {
+            const state = self.saveState();
+            errdefer self.restoreState(state);
+
             var expr = try self.acceptSumExpression();
             while (true) {
                 var and_or = self.accept(oneOf(.{
@@ -465,6 +498,9 @@ pub fn parse(
         }
 
         fn acceptSumExpression(self: *Self) ParseError!ast.Expression {
+            const state = self.saveState();
+            errdefer self.restoreState(state);
+
             var expr = try self.acceptMulExpression();
             while (true) {
                 var and_or = self.accept(oneOf(.{
@@ -493,6 +529,9 @@ pub fn parse(
         }
 
         fn acceptMulExpression(self: *Self) ParseError!ast.Expression {
+            const state = self.saveState();
+            errdefer self.restoreState(state);
+
             var expr = try self.acceptUnaryPrefixOperatorExpression();
             while (true) {
                 var and_or = self.accept(oneOf(.{
@@ -523,6 +562,9 @@ pub fn parse(
         }
 
         fn acceptUnaryPrefixOperatorExpression(self: *Self) ParseError!ast.Expression {
+            const state = self.saveState();
+            errdefer self.restoreState(state);
+
             if (self.accept(oneOf(.{ .@"not", .@"-" }))) |prefix| {
                 // this must directly recurse as we can write `not not x`
                 const value = try self.acceptUnaryPrefixOperatorExpression();
@@ -545,6 +587,9 @@ pub fn parse(
         }
 
         fn acceptIndexingExpression(self: *Self) ParseError!ast.Expression {
+            const state = self.saveState();
+            errdefer self.restoreState(state);
+
             var value = try self.acceptCallExpression();
 
             while (self.accept(is(.@"["))) |_| {
@@ -568,6 +613,9 @@ pub fn parse(
         }
 
         fn acceptCallExpression(self: *Self) ParseError!ast.Expression {
+            const state = self.saveState();
+            errdefer self.restoreState(state);
+
             var value = try self.acceptValueExpression();
 
             while (self.accept(oneOf(.{ .@"(", .@"." }))) |sym| {
@@ -648,6 +696,9 @@ pub fn parse(
         }
 
         fn acceptValueExpression(self: *Self) ParseError!ast.Expression {
+            const state = self.saveState();
+            errdefer self.restoreState(state);
+
             const token = try self.accept(oneOf(.{
                 .@"(",
                 .@"[",
@@ -695,13 +746,11 @@ pub fn parse(
                     };
                 },
                 .string_literal => {
-                    // TODO: Escape string here!
-                    std.debug.print("TODO: Apply string escapes here!\n", .{});
                     std.debug.assert(token.text.len >= 2);
                     return ast.Expression{
                         .location = token.location,
                         .type = .{
-                            .string_literal = token.text[1 .. token.text.len - 1],
+                            .string_literal = self.escapeString(token.text[1 .. token.text.len - 1]) catch return error.SyntaxError,
                         },
                     };
                 },
@@ -1191,6 +1240,16 @@ test "string literal" {
 
     std.testing.expectEqual(ast.Expression.Type.string_literal, expr.type);
     std.testing.expectEqualStrings("string content", expr.type.string_literal);
+}
+
+test "escaped string literal" {
+    var pgm = try parseTest("1 = \"\\\"content\\\"\";");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.string_literal, expr.type);
+    std.testing.expectEqualStrings("\"content\"", expr.type.string_literal);
 }
 
 test "variable reference" {
