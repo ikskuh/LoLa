@@ -344,20 +344,55 @@ pub fn parse(
                             },
                         };
                     } else {
-                        _ = try self.accept(is(.@"="));
+                        const mode = try self.accept(oneOf(.{
+                            .@"=",
+                            .@"+=",
+                            .@"-=",
+                            .@"*=",
+                            .@"/=",
+                            .@"%=",
+                        }));
 
                         const value = try self.acceptExpression();
 
                         _ = try self.accept(is(.@";"));
 
-                        return ast.Statement{
-                            .location = expr.location,
-                            .type = .{
-                                .assignment = .{
-                                    .target = expr,
-                                    .value = value,
+                        return switch (mode.type) {
+                            .@"+=", .@"-=", .@"*=", .@"/=", .@"%=" => ast.Statement{
+                                .location = expr.location,
+                                .type = .{
+                                    .assignment = .{
+                                        .target = expr,
+                                        .value = ast.Expression{
+                                            .location = expr.location,
+                                            .type = .{
+                                                .binary_operator = .{
+                                                    .operator = switch (mode.type) {
+                                                        .@"+=" => .add,
+                                                        .@"-=" => .subtract,
+                                                        .@"*=" => .multiply,
+                                                        .@"/=" => .divide,
+                                                        .@"%=" => .modulus,
+                                                        else => unreachable,
+                                                    },
+                                                    .lhs = try self.moveToHeap(expr),
+                                                    .rhs = try self.moveToHeap(value),
+                                                },
+                                            },
+                                        },
+                                    },
                                 },
                             },
+                            .@"=" => ast.Statement{
+                                .location = expr.location,
+                                .type = .{
+                                    .assignment = .{
+                                        .target = expr,
+                                        .value = value,
+                                    },
+                                },
+                            },
+                            else => unreachable,
                         };
                     }
                 },
@@ -510,17 +545,14 @@ pub fn parse(
         }
 
         fn acceptIndexingExpression(self: *Self) ParseError!ast.Expression {
-            const value = try self.acceptValueExpression();
+            var value = try self.acceptCallExpression();
 
-            // TODO: This is broken right now, it prevents use
-            // of `a[x][y]`.
-
-            if (self.accept(is(.@"["))) |_| {
-                const index = try self.acceptValueExpression();
+            while (self.accept(is(.@"["))) |_| {
+                const index = try self.acceptExpression();
 
                 _ = try self.accept(is(.@"]"));
 
-                return ast.Expression{
+                var new_value = ast.Expression{
                     .location = value.location.merge(index.location),
                     .type = .{
                         .array_indexer = .{
@@ -529,9 +561,90 @@ pub fn parse(
                         },
                     },
                 };
-            } else |_| {
-                return value;
-            }
+                value = new_value;
+            } else |_| {}
+
+            return value;
+        }
+
+        fn acceptCallExpression(self: *Self) ParseError!ast.Expression {
+            var value = try self.acceptValueExpression();
+
+            while (self.accept(oneOf(.{ .@"(", .@"." }))) |sym| {
+                var new_value = switch (sym.type) {
+                    // call
+                    .@"(" => blk: {
+                        var args = std.ArrayList(ast.Expression).init(self.allocator);
+                        defer args.deinit();
+
+                        var loc = value.location;
+
+                        if (self.accept(is(.@")"))) |_| {
+                            // this is the end of the argument list
+                        } else |_| {
+                            while (true) {
+                                const arg = try self.acceptExpression();
+                                try args.append(arg);
+                                const terminator = try self.accept(oneOf(.{ .@")", .@"," }));
+                                loc = terminator.location.merge(loc);
+                                if (terminator.type == .@")")
+                                    break;
+                            }
+                        }
+
+                        break :blk ast.Expression{
+                            .location = loc,
+                            .type = .{
+                                .function_call = .{
+                                    .function = try self.moveToHeap(value),
+                                    .arguments = args.toOwnedSlice(),
+                                },
+                            },
+                        };
+                    },
+
+                    // method call
+                    .@"." => blk: {
+                        const method_name = try self.accept(is(.identifier));
+
+                        _ = try self.accept(is(.@"("));
+
+                        var args = std.ArrayList(ast.Expression).init(self.allocator);
+                        defer args.deinit();
+
+                        var loc = value.location;
+
+                        if (self.accept(is(.@")"))) |_| {
+                            // this is the end of the argument list
+                        } else |_| {
+                            while (true) {
+                                const arg = try self.acceptExpression();
+                                try args.append(arg);
+                                const terminator = try self.accept(oneOf(.{ .@")", .@"," }));
+                                loc = terminator.location.merge(loc);
+                                if (terminator.type == .@")")
+                                    break;
+                            }
+                        }
+
+                        break :blk ast.Expression{
+                            .location = loc,
+                            .type = .{
+                                .method_call = .{
+                                    .object = try self.moveToHeap(value),
+                                    .name = method_name.text,
+                                    .arguments = args.toOwnedSlice(),
+                                },
+                            },
+                        };
+                    },
+
+                    else => unreachable,
+                };
+                value = new_value;
+            } else |_| {}
+
+            return value;
         }
 
         fn acceptValueExpression(self: *Self) ParseError!ast.Expression {
@@ -984,8 +1097,8 @@ test "parsing assignment" {
     std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.value.type);
 }
 
-test "parsing operator-assignment" {
-    var pgm = try parseTest("1 = 1;");
+test "parsing operator-assignment addition" {
+    var pgm = try parseTest("1 += 1;");
     defer pgm.deinit();
 
     std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
@@ -993,7 +1106,60 @@ test "parsing operator-assignment" {
 
     std.testing.expectEqual(ast.Statement.Type.assignment, pgm.root_script[0].type);
     std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.target.type);
-    std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.value.type);
+    std.testing.expectEqual(ast.Expression.Type.binary_operator, pgm.root_script[0].type.assignment.value.type);
+    std.testing.expectEqual(ast.BinaryOperator.add, pgm.root_script[0].type.assignment.value.type.binary_operator.operator);
+}
+
+test "parsing operator-assignment subtraction" {
+    var pgm = try parseTest("1 -= 1;");
+    defer pgm.deinit();
+
+    std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
+    std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+
+    std.testing.expectEqual(ast.Statement.Type.assignment, pgm.root_script[0].type);
+    std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.target.type);
+    std.testing.expectEqual(ast.Expression.Type.binary_operator, pgm.root_script[0].type.assignment.value.type);
+    std.testing.expectEqual(ast.BinaryOperator.subtract, pgm.root_script[0].type.assignment.value.type.binary_operator.operator);
+}
+
+test "parsing operator-assignment multiplication" {
+    var pgm = try parseTest("1 *= 1;");
+    defer pgm.deinit();
+
+    std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
+    std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+
+    std.testing.expectEqual(ast.Statement.Type.assignment, pgm.root_script[0].type);
+    std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.target.type);
+    std.testing.expectEqual(ast.Expression.Type.binary_operator, pgm.root_script[0].type.assignment.value.type);
+    std.testing.expectEqual(ast.BinaryOperator.multiply, pgm.root_script[0].type.assignment.value.type.binary_operator.operator);
+}
+
+test "parsing operator-assignment division" {
+    var pgm = try parseTest("1 /= 1;");
+    defer pgm.deinit();
+
+    std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
+    std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+
+    std.testing.expectEqual(ast.Statement.Type.assignment, pgm.root_script[0].type);
+    std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.target.type);
+    std.testing.expectEqual(ast.Expression.Type.binary_operator, pgm.root_script[0].type.assignment.value.type);
+    std.testing.expectEqual(ast.BinaryOperator.divide, pgm.root_script[0].type.assignment.value.type.binary_operator.operator);
+}
+
+test "parsing operator-assignment modulus" {
+    var pgm = try parseTest("1 %= 1;");
+    defer pgm.deinit();
+
+    std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
+    std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+
+    std.testing.expectEqual(ast.Statement.Type.assignment, pgm.root_script[0].type);
+    std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.target.type);
+    std.testing.expectEqual(ast.Expression.Type.binary_operator, pgm.root_script[0].type.assignment.value.type);
+    std.testing.expectEqual(ast.BinaryOperator.modulus, pgm.root_script[0].type.assignment.value.type.binary_operator.operator);
 }
 
 /// Parse a program with `1 = $(EXPR)`, will return `$(EXPR)`
@@ -1226,23 +1392,135 @@ test "unary not expression" {
     std.testing.expectEqual(ast.UnaryOperator.boolean_not, expr.type.unary_operator.operator);
 }
 
+test "single array indexing expression" {
+    var pgm = try parseTest("1 = 1[\"\"];");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.array_indexer, expr.type);
+    std.testing.expectEqual(ast.Expression.Type.number_literal, expr.type.array_indexer.value.type);
+    std.testing.expectEqual(ast.Expression.Type.string_literal, expr.type.array_indexer.index.type);
+}
+
+test "multiple array indexing expressions" {
+    var pgm = try parseTest("1 = a[b][c];");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.array_indexer, expr.type);
+    std.testing.expectEqual(ast.Expression.Type.array_indexer, expr.type.array_indexer.value.type);
+    std.testing.expectEqual(ast.Expression.Type.variable_expr, expr.type.array_indexer.index.type);
+    std.testing.expectEqualStrings("c", expr.type.array_indexer.index.type.variable_expr);
+
+    std.testing.expectEqual(ast.Expression.Type.variable_expr, expr.type.array_indexer.value.type.array_indexer.value.type);
+    std.testing.expectEqual(ast.Expression.Type.variable_expr, expr.type.array_indexer.value.type.array_indexer.index.type);
+
+    std.testing.expectEqualStrings("a", expr.type.array_indexer.value.type.array_indexer.value.type.variable_expr);
+    std.testing.expectEqualStrings("b", expr.type.array_indexer.value.type.array_indexer.index.type.variable_expr);
+}
+
+test "zero parameter function call expression" {
+    var pgm = try parseTest("1 = foo();");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.function_call, expr.type);
+    std.testing.expectEqual(ast.Expression.Type.variable_expr, expr.type.function_call.function.type);
+    std.testing.expectEqual(@as(usize, 0), expr.type.function_call.arguments.len);
+}
+
+test "one parameter function call expression" {
+    var pgm = try parseTest("1 = foo(a);");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.function_call, expr.type);
+    std.testing.expectEqual(ast.Expression.Type.variable_expr, expr.type.function_call.function.type);
+    std.testing.expectEqual(@as(usize, 1), expr.type.function_call.arguments.len);
+
+    std.testing.expectEqualStrings("a", expr.type.function_call.arguments[0].type.variable_expr);
+}
+
+test "4 parameter function call expression" {
+    var pgm = try parseTest("1 = foo(a,b,c,d);");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.function_call, expr.type);
+    std.testing.expectEqual(ast.Expression.Type.variable_expr, expr.type.function_call.function.type);
+    std.testing.expectEqual(@as(usize, 4), expr.type.function_call.arguments.len);
+
+    std.testing.expectEqualStrings("a", expr.type.function_call.arguments[0].type.variable_expr);
+    std.testing.expectEqualStrings("b", expr.type.function_call.arguments[1].type.variable_expr);
+    std.testing.expectEqualStrings("c", expr.type.function_call.arguments[2].type.variable_expr);
+    std.testing.expectEqualStrings("d", expr.type.function_call.arguments[3].type.variable_expr);
+}
+
+test "zero parameter method call expression" {
+    var pgm = try parseTest("1 = a.foo();");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.method_call, expr.type);
+
+    std.testing.expectEqualStrings("foo", expr.type.method_call.name);
+    std.testing.expectEqual(ast.Expression.Type.variable_expr, expr.type.method_call.object.type);
+    std.testing.expectEqual(@as(usize, 0), expr.type.method_call.arguments.len);
+}
+
+test "one parameter method call expression" {
+    var pgm = try parseTest("1 = a.foo(a);");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.method_call, expr.type);
+
+    std.testing.expectEqualStrings("foo", expr.type.method_call.name);
+    std.testing.expectEqual(ast.Expression.Type.variable_expr, expr.type.method_call.object.type);
+    std.testing.expectEqual(@as(usize, 1), expr.type.method_call.arguments.len);
+
+    std.testing.expectEqualStrings("a", expr.type.method_call.arguments[0].type.variable_expr);
+}
+
+test "4 parameter method call expression" {
+    var pgm = try parseTest("1 = a.foo(a,b,c,d);");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.method_call, expr.type);
+
+    std.testing.expectEqualStrings("foo", expr.type.method_call.name);
+    std.testing.expectEqual(ast.Expression.Type.variable_expr, expr.type.method_call.object.type);
+    std.testing.expectEqual(@as(usize, 4), expr.type.method_call.arguments.len);
+
+    std.testing.expectEqualStrings("a", expr.type.method_call.arguments[0].type.variable_expr);
+    std.testing.expectEqualStrings("b", expr.type.method_call.arguments[1].type.variable_expr);
+    std.testing.expectEqualStrings("c", expr.type.method_call.arguments[2].type.variable_expr);
+    std.testing.expectEqualStrings("d", expr.type.method_call.arguments[3].type.variable_expr);
+}
+
 test "full suite parsing" {
-    return error.SkipZigTest;
+    const seq = try testTokenize(@embedFile("../../test/compiler.lola"));
+    defer std.testing.allocator.free(seq);
 
-    // TODO: Reinclude this test when the parser is done.
-    // const seq = try testTokenize(@embedFile("../../test/compiler.lola"));
-    // defer std.testing.allocator.free(seq);
+    var diagnostics = diag.Diagnostics.init(std.testing.allocator);
+    defer diagnostics.deinit();
 
-    // var diagnostics = diag.Diagnostics.init(std.testing.allocator);
-    // defer diagnostics.deinit();
+    var pgm = try parse(std.testing.allocator, &diagnostics, seq);
+    defer pgm.deinit();
 
-    // var pgm = try parse(std.testing.allocator, &diagnostics, seq);
-    // defer pgm.deinit();
+    // assert that we don't have an empty AST
+    std.testing.expect(pgm.root_script.len > 0);
+    std.testing.expect(pgm.functions.len > 0);
 
-    // // assert that we don't have an empty AST
-    // std.testing.expect(pgm.root_script.len > 0);
-    // std.testing.expect(pgm.functions.len > 0);
-
-    // // assert that we didn't encounter syntax errors
-    // std.testing.expectEqual(@as(usize, 0), diagnostics.messages.items.len);
+    // assert that we didn't encounter syntax errors
+    std.testing.expectEqual(@as(usize, 0), diagnostics.messages.items.len);
 }

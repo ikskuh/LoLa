@@ -52,7 +52,8 @@ pub const Expression = struct {
         variable_expr: []const u8,
         array_literal: []Expression,
         function_call: struct {
-            name: []const u8,
+            // this must be a expression of type `variable_expr`
+            function: *Expression,
             arguments: []Expression,
         },
         method_call: struct {
