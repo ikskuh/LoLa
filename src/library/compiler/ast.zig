@@ -156,3 +156,59 @@ pub const Program = struct {
         self.* = undefined;
     }
 };
+
+pub fn dumpExpression(writer: anytype, expr: Expression) @TypeOf(writer).Error!void {
+    switch (expr.type) {
+        .array_indexer => |val| {
+            try dumpExpression(writer, val.value.*);
+            try writer.writeAll("[");
+            try dumpExpression(writer, val.index.*);
+            try writer.writeAll("]");
+        },
+        .variable_expr => |val| try writer.writeAll(val),
+        .array_literal => |val| {
+            try writer.writeAll("[ ");
+            for (val) |item, index| {
+                if (index > 0) {
+                    try writer.writeAll(", ");
+                }
+                try dumpExpression(writer, item);
+            }
+            try writer.writeAll("]");
+        },
+        .function_call => |val| unreachable,
+        .method_call => |val| unreachable,
+        .number_literal => |val| try writer.print("{d}", .{val}),
+        .string_literal => |val| try writer.print("\"{}\"", .{val}),
+        .unary_operator => |val| {
+            try writer.writeAll(switch (val.operator) {
+                .negate => "-",
+                .boolean_not => "not",
+            });
+            try dumpExpression(writer, val.value.*);
+        },
+        .binary_operator => |val| {
+            try writer.writeAll("(");
+            try dumpExpression(writer, val.lhs.*);
+            try writer.writeAll(" ");
+            try writer.writeAll(switch (val.operator) {
+                .add => "+",
+                .subtract => "-",
+                .multiply => "*",
+                .divide => "/",
+                .modulus => "%",
+                .boolean_or => "or",
+                .boolean_and => "and",
+                .less_than => "<",
+                .greater_than => ">",
+                .greater_or_equal_than => ">=",
+                .less_or_equal_than => "<=",
+                .equal => "==",
+                .different => "!=",
+            });
+            try writer.writeAll(" ");
+            try dumpExpression(writer, val.rhs.*);
+            try writer.writeAll(")");
+        },
+    }
+}

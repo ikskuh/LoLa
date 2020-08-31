@@ -55,6 +55,9 @@ pub fn parse(
             std.debug.assert(@typeInfo(T) != .Pointer);
             const ptr = try self.allocator.create(T);
             ptr.* = value;
+
+            std.debug.assert(std.meta.eql(ptr.*, value));
+
             return ptr;
         }
 
@@ -371,7 +374,7 @@ pub fn parse(
                 var and_or = self.accept(oneOf(.{ .@"and", .@"or" })) catch break;
                 var rhs = try self.acceptComparisonExpression();
 
-                expr = ast.Expression{
+                var new_expr = ast.Expression{
                     .location = expr.location.merge(and_or.location).merge(rhs.location),
                     .type = .{
                         .binary_operator = .{
@@ -385,6 +388,7 @@ pub fn parse(
                         },
                     },
                 };
+                expr = new_expr;
             }
             return expr;
         }
@@ -402,7 +406,7 @@ pub fn parse(
                 })) catch break;
                 var rhs = try self.acceptSumExpression();
 
-                expr = ast.Expression{
+                var new_expr = ast.Expression{
                     .location = expr.location.merge(and_or.location).merge(rhs.location),
                     .type = .{
                         .binary_operator = .{
@@ -420,6 +424,7 @@ pub fn parse(
                         },
                     },
                 };
+                expr = new_expr;
             }
             return expr;
         }
@@ -433,7 +438,7 @@ pub fn parse(
                 })) catch break;
                 var rhs = try self.acceptMulExpression();
 
-                expr = ast.Expression{
+                var new_expr = ast.Expression{
                     .location = expr.location.merge(and_or.location).merge(rhs.location),
                     .type = .{
                         .binary_operator = .{
@@ -447,6 +452,7 @@ pub fn parse(
                         },
                     },
                 };
+                expr = new_expr;
             }
             return expr;
         }
@@ -461,7 +467,7 @@ pub fn parse(
                 })) catch break;
                 var rhs = try self.acceptUnaryPrefixOperatorExpression();
 
-                expr = ast.Expression{
+                var new_expr = ast.Expression{
                     .location = expr.location.merge(and_or.location).merge(rhs.location),
                     .type = .{
                         .binary_operator = .{
@@ -476,6 +482,7 @@ pub fn parse(
                         },
                     },
                 };
+                expr = new_expr;
             }
             return expr;
         }
@@ -490,7 +497,7 @@ pub fn parse(
                         .unary_operator = .{
                             .operator = switch (prefix.type) {
                                 .@"not" => .boolean_not,
-                                .@"-" => .boolean_not,
+                                .@"-" => .negate,
                                 else => unreachable,
                             },
                             .value = try self.moveToHeap(value),
@@ -541,7 +548,30 @@ pub fn parse(
                     _ = try self.accept(is(.@")"));
                     return value;
                 },
-                .@"[" => @panic("TODO: Implement array literals"),
+                .@"[" => {
+                    var array = std.ArrayList(ast.Expression).init(self.allocator);
+                    defer array.deinit();
+
+                    while (true) {
+                        if (self.accept(is(.@"]"))) |_| {
+                            break;
+                        } else |_| {
+                            const item = try self.acceptExpression();
+
+                            try array.append(item);
+
+                            const delimit = try self.accept(oneOf(.{ .@",", .@"]" }));
+                            if (delimit.type == .@"]")
+                                break;
+                        }
+                    }
+                    return ast.Expression{
+                        .location = token.location,
+                        .type = .{
+                            .array_literal = array.toOwnedSlice(),
+                        },
+                    };
+                },
                 .number_literal => {
                     const val = std.fmt.parseFloat(f64, token.text) catch return error.SyntaxError;
                     return ast.Expression{
@@ -554,10 +584,11 @@ pub fn parse(
                 .string_literal => {
                     // TODO: Escape string here!
                     std.debug.print("TODO: Apply string escapes here!\n", .{});
+                    std.debug.assert(token.text.len >= 2);
                     return ast.Expression{
                         .location = token.location,
                         .type = .{
-                            .string_literal = token.text,
+                            .string_literal = token.text[1 .. token.text.len - 1],
                         },
                     };
                 },
@@ -970,7 +1001,10 @@ fn getTestExpr(pgm: ast.Program) ast.Expression {
     std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
     std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
     std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.target.type);
-    return pgm.root_script[0].type.assignment.value;
+
+    var expr = pgm.root_script[0].type.assignment.value;
+
+    return expr;
 }
 
 test "number literal" {
@@ -983,7 +1017,27 @@ test "number literal" {
     std.testing.expectWithinEpsilon(@as(f64, 1), expr.type.number_literal, 0.000001);
 }
 
-test "addition literal" {
+test "string literal" {
+    var pgm = try parseTest("1 = \"string content\";");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.string_literal, expr.type);
+    std.testing.expectEqualStrings("string content", expr.type.string_literal);
+}
+
+test "variable reference" {
+    var pgm = try parseTest("1 = variable_name;");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.variable_expr, expr.type);
+    std.testing.expectEqualStrings("variable_name", expr.type.variable_expr);
+}
+
+test "addition expression" {
     var pgm = try parseTest("1 = 1 + 1;");
     defer pgm.deinit();
 
@@ -993,7 +1047,17 @@ test "addition literal" {
     std.testing.expectEqual(ast.BinaryOperator.add, expr.type.binary_operator.operator);
 }
 
-test "mutiplication literal" {
+test "subtraction expression" {
+    var pgm = try parseTest("1 = 1 - 1;");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    std.testing.expectEqual(ast.BinaryOperator.subtract, expr.type.binary_operator.operator);
+}
+
+test "multiplication expression" {
     var pgm = try parseTest("1 = 1 * 1;");
     defer pgm.deinit();
 
@@ -1003,7 +1067,107 @@ test "mutiplication literal" {
     std.testing.expectEqual(ast.BinaryOperator.multiply, expr.type.binary_operator.operator);
 }
 
-test "operator precedence literal" {
+test "division expression" {
+    var pgm = try parseTest("1 = 1 / 1;");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    std.testing.expectEqual(ast.BinaryOperator.divide, expr.type.binary_operator.operator);
+}
+
+test "modulus expression" {
+    var pgm = try parseTest("1 = 1 % 1;");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    std.testing.expectEqual(ast.BinaryOperator.modulus, expr.type.binary_operator.operator);
+}
+
+test "boolean or expression" {
+    var pgm = try parseTest("1 = 1 or 1;");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    std.testing.expectEqual(ast.BinaryOperator.boolean_or, expr.type.binary_operator.operator);
+}
+
+test "boolean and expression" {
+    var pgm = try parseTest("1 = 1 and 1;");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    std.testing.expectEqual(ast.BinaryOperator.boolean_and, expr.type.binary_operator.operator);
+}
+
+test "greater than expression" {
+    var pgm = try parseTest("1 = 1 > 1;");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    std.testing.expectEqual(ast.BinaryOperator.greater_than, expr.type.binary_operator.operator);
+}
+
+test "less than expression" {
+    var pgm = try parseTest("1 = 1 < 1;");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    std.testing.expectEqual(ast.BinaryOperator.less_than, expr.type.binary_operator.operator);
+}
+
+test "greater or equal than expression" {
+    var pgm = try parseTest("1 = 1 >= 1;");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    std.testing.expectEqual(ast.BinaryOperator.greater_or_equal_than, expr.type.binary_operator.operator);
+}
+
+test "less or equal than expression" {
+    var pgm = try parseTest("1 = 1 <= 1;");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    std.testing.expectEqual(ast.BinaryOperator.less_or_equal_than, expr.type.binary_operator.operator);
+}
+
+test "equal expression" {
+    var pgm = try parseTest("1 = 1 == 1;");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    std.testing.expectEqual(ast.BinaryOperator.equal, expr.type.binary_operator.operator);
+}
+
+test "different expression" {
+    var pgm = try parseTest("1 = 1 != 1;");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    std.testing.expectEqual(ast.BinaryOperator.different, expr.type.binary_operator.operator);
+}
+
+test "operator precedence (binaries)" {
     var pgm = try parseTest("1 = 1 + 1 * 1;");
     defer pgm.deinit();
 
@@ -1014,6 +1178,52 @@ test "operator precedence literal" {
 
     std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type.binary_operator.rhs.type);
     std.testing.expectEqual(ast.BinaryOperator.multiply, expr.type.binary_operator.rhs.type.binary_operator.operator);
+}
+
+test "operator precedence (unary and binary mixed)" {
+    var pgm = try parseTest("1 = -1 * 1;");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    std.testing.expectEqual(ast.BinaryOperator.multiply, expr.type.binary_operator.operator);
+
+    std.testing.expectEqual(ast.Expression.Type.unary_operator, expr.type.binary_operator.lhs.type);
+    std.testing.expectEqual(ast.UnaryOperator.negate, expr.type.binary_operator.lhs.type.unary_operator.operator);
+}
+
+test "invers operator precedence with parens" {
+    var pgm = try parseTest("1 = 1 * (1 + 1);");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    std.testing.expectEqual(ast.BinaryOperator.multiply, expr.type.binary_operator.operator);
+
+    std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type.binary_operator.rhs.type);
+    std.testing.expectEqual(ast.BinaryOperator.add, expr.type.binary_operator.rhs.type.binary_operator.operator);
+}
+
+test "unary minus expression" {
+    var pgm = try parseTest("1 = -1;");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.unary_operator, expr.type);
+    std.testing.expectEqual(ast.UnaryOperator.negate, expr.type.unary_operator.operator);
+}
+
+test "unary not expression" {
+    var pgm = try parseTest("1 = not 1;");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.unary_operator, expr.type);
+    std.testing.expectEqual(ast.UnaryOperator.boolean_not, expr.type.unary_operator.operator);
 }
 
 test "full suite parsing" {
