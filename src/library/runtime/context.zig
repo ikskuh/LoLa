@@ -2,7 +2,7 @@ const std = @import("std");
 
 pub const Context = union(enum) {
     const Self = @This();
-    const Opaque = @OpaqueType();
+    const Opaque = @Type(.Opaque);
 
     empty: void,
     content: *Opaque,

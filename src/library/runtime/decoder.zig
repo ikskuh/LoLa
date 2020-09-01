@@ -4,7 +4,7 @@ const utility = @import("utility.zig");
 
 // Import modules to reduce file size
 usingnamespace @import("value.zig");
-usingnamespace @import("ir.zig");
+usingnamespace @import("../common/ir.zig");
 usingnamespace @import("compile_unit.zig");
 
 /// A struct that allows decoding data from LoLa IR code.

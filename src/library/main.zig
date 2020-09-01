@@ -1,6 +1,7 @@
 // Import all runtime namespaces
+usingnamespace @import("common/ir.zig");
+
 usingnamespace @import("runtime/value.zig");
-usingnamespace @import("runtime/ir.zig");
 usingnamespace @import("runtime/compile_unit.zig");
 usingnamespace @import("runtime/decoder.zig");
 usingnamespace @import("runtime/named_global.zig");
@@ -28,4 +29,5 @@ comptime {
     _ = @import("compiler/tokenizer.zig");
     _ = @import("compiler/parser.zig");
     _ = @import("compiler/ast.zig");
+    _ = @import("compiler/code-writer.zig");
 }

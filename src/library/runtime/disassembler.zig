@@ -2,7 +2,7 @@ const std = @import("std");
 
 usingnamespace @import("compile_unit.zig");
 usingnamespace @import("decoder.zig");
-usingnamespace @import("ir.zig");
+usingnamespace @import("../common/ir.zig");
 
 pub const DisassemblerOptions = struct {
     /// Prefix each line of the disassembly with the hexadecimal address.

@@ -1,8 +1,9 @@
+/// This enumeration contains all possible instructions and assigns each a value.
 pub const InstructionName = enum(u8) {
     nop = 0,
-    scope_push = 1,
-    scope_pop = 2,
-    declare = 3,
+    scope_push = 1, // deprecated
+    scope_pop = 2, // deprecated
+    declare = 3, // deprecated
     store_global_name = 4,
     load_global_name = 5,
     push_str = 6,
@@ -45,12 +46,18 @@ pub const InstructionName = enum(u8) {
     push_void = 43,
 };
 
+/// This union contains each possible instruction with its (optional) arguments already encoded.
+/// Each instruction type is either `NoArg`, `SingleArg`, `CallArg` or `Deprecated`, defining how
+/// each instruction is encoded.
+/// This information can be used to encode/decode the instructions based on their meta-information.
 pub const Instruction = union(InstructionName) {
     pub const Deprecated = struct {};
     pub const NoArg = struct {};
+    
     fn SingleArg(comptime T: type) type {
         return struct { value: T };
     }
+
     pub const CallArg = struct {
         function: []const u8,
         argc: u8,
