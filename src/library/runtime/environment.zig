@@ -338,7 +338,7 @@ test "Environment" {
 
     std.debug.assert(env.scriptGlobals.len == 4);
 
-    std.debug.assert(env.functions.items().len == 3);
+    std.debug.assert(env.functions.count() == 3);
 
     const f1 = env.functions.get("fun1") orelse unreachable;
     const f2 = env.functions.get("fun_2") orelse unreachable;

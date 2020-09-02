@@ -147,6 +147,7 @@ fn performTypeCheck(diagnostics: *Diagnostics, location: Location, expected: Typ
     }
 }
 
+/// Validates a expression and returns a set of possible result types.
 fn validateExpression(state: *AnalysisState, diagnostics: *Diagnostics, scope: *Scope, expression: ast.Expression) ValidationError!TypeSet {
     // we're happy for now with expressions...
     switch (expression.type) {
@@ -176,6 +177,9 @@ fn validateExpression(state: *AnalysisState, diagnostics: *Diagnostics, scope: *
                     variable_name,
                 });
             };
+
+            // TODO: Return annotated type set from variable.
+
             return TypeSet.any;
         },
 
