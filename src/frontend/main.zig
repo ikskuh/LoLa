@@ -70,6 +70,7 @@ pub fn print_usage() !void {
         \\Disassemble Options:
         \\  --with-offset, -O                  Adds offsets to the disassembly.
         \\  --with-hexdump, -b                 Adds the hex dump in the disassembly.
+        \\  --metadata                         Dumps information about the module itself.
         \\
         \\Run Options:
         \\  --limit [n]                        Limits execution to [n] instructions, then halts.
@@ -145,6 +146,13 @@ fn disassemble(options: DisassemblerCLI, files: []const []const u8) !u8 {
             try stream.print("\tnum globals:     {}\n", .{cu.globalCount});
             try stream.print("\tnum temporaries: {}\n", .{cu.temporaryCount});
             try stream.print("\tnum functions:   {}\n", .{cu.functions.len});
+            for (cu.functions) |fun| {
+                try stream.print("\t\tep={X:0>4}  lc={: >3}  {}\n", .{
+                    fun.entryPoint,
+                    fun.localCount,
+                    fun.name,
+                });
+            }
             try stream.print("\tnum debug syms:  {}\n", .{cu.debugSymbols.len});
 
             try stream.writeAll("disassembly:\n");
@@ -313,11 +321,22 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
             try stderr.print("Call stack:\n", .{});
 
             for (vm.calls.items) |call, i| {
-                try stderr.print("[{}] {} {} {}\n", .{
+                const location = call.function.compileUnit.lookUp(call.decoder.offset);
+
+                var current_fun: []const u8 = "<main>";
+                for (call.function.compileUnit.functions) |fun| {
+                    if (call.decoder.offset < fun.entryPoint)
+                        break;
+                    current_fun = fun.name;
+                }
+
+                try stderr.print("[{}] at offset {} ({}:{}:{}) in function {}\n", .{
                     i,
-                    call.function.compileUnit.debugSymbols.len,
-                    call.function.compileUnit.lookUp(call.function.entryPoint),
-                    call.function.compileUnit.lookUp(call.decoder.offset),
+                    call.decoder.offset,
+                    call.function.compileUnit.comment,
+                    if (location) |l| l.sourceLine else 0,
+                    if (location) |l| l.sourceColumn else 0,
+                    current_fun,
                 });
             }
 
@@ -376,17 +395,23 @@ fn compileFileToUnit(allocator: *std.mem.Allocator, fileName: []const u8) !lola.
         defer pgm.deinit();
 
         try lola.compiler.validate(allocator, &diag, pgm);
+
+        var compile_unit = try lola.compiler.generateIR(allocator, pgm, fileName);
+        errdefer compile_unit;
+
+        return compile_unit;
     }
 
-    var module: ModuleBuffer = undefined;
+    // legacy codegen!
+    // var module: ModuleBuffer = undefined;
 
-    if (!compile_lola_source(source.ptr, source.len, &module))
-        return error.FailedToCompileModule;
-    defer std.c.free(module.data);
+    // if (!compile_lola_source(source.ptr, source.len, &module))
+    //     return error.FailedToCompileModule;
+    // defer std.c.free(module.data);
 
-    var moduleStream = std.io.fixedBufferStream(module.data[0..module.length]);
+    // var moduleStream = std.io.fixedBufferStream(module.data[0..module.length]);
 
-    return try lola.CompileUnit.loadFromStream(allocator, moduleStream.reader());
+    // return try lola.CompileUnit.loadFromStream(allocator, moduleStream.reader());
 }
 
 fn loadModuleFromFile(allocator: *std.mem.Allocator, fileName: []const u8) !lola.CompileUnit {

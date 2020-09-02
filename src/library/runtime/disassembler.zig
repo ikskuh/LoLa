@@ -1,6 +1,6 @@
 const std = @import("std");
 
-usingnamespace @import("compile_unit.zig");
+usingnamespace @import("../common/compile-unit.zig");
 usingnamespace @import("decoder.zig");
 usingnamespace @import("../common/ir.zig");
 

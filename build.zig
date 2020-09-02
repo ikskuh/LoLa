@@ -117,14 +117,12 @@ pub fn build(b: *Builder) !void {
         behaviour_tests.addArg("--no-stdlib"); // we don't want the behaviour tests to be run with any stdlib functions
         behaviour_tests.addArg(prefix ++ "behaviour.lola");
         behaviour_tests.expectStdOutEqual("Behaviour test suite passed.\n");
-        behaviour_tests.expectStdErrEqual("");
         test_step.dependOn(&behaviour_tests.step);
 
         const stdib_test = exe.run();
         stdib_test.addArg("run");
         stdib_test.addArg(prefix ++ "stdlib.lola");
         stdib_test.expectStdOutEqual("Standard library test suite passed.\n");
-        stdib_test.expectStdErrEqual("");
         test_step.dependOn(&stdib_test.step);
 
         {
@@ -148,7 +146,6 @@ pub fn build(b: *Builder) !void {
                 \\Runtime library test suite passed.
                 \\
             );
-            runlib_test.expectStdErrEqual("");
 
             runlib_test.addArg("run");
             runlib_test.addArg("../../" ++ prefix ++ "runtime.lola");
@@ -160,21 +157,18 @@ pub fn build(b: *Builder) !void {
         emptyfile_test.addArg("run");
         emptyfile_test.addArg(prefix ++ "empty.lola");
         emptyfile_test.expectStdOutEqual("");
-        emptyfile_test.expectStdErrEqual("");
         test_step.dependOn(&emptyfile_test.step);
 
         const globreturn_test = exe.run();
         globreturn_test.addArg("run");
         globreturn_test.addArg(prefix ++ "global-return.lola");
         globreturn_test.expectStdOutEqual("");
-        globreturn_test.expectStdErrEqual("");
         test_step.dependOn(&globreturn_test.step);
 
         const extended_behaviour_test = exe.run();
         extended_behaviour_test.addArg("run");
         extended_behaviour_test.addArg(prefix ++ "behaviour-with-stdlib.lola");
         extended_behaviour_test.expectStdOutEqual("Extended behaviour test suite passed.\n");
-        extended_behaviour_test.expectStdErrEqual("");
         test_step.dependOn(&extended_behaviour_test.step);
 
         const compiler_test = exe.run();
@@ -182,7 +176,6 @@ pub fn build(b: *Builder) !void {
         compiler_test.addArg("--verify"); // verify should not emit a compiled module
         compiler_test.addArg(prefix ++ "compiler.lola");
         compiler_test.expectStdOutEqual("");
-        compiler_test.expectStdErrEqual("");
         test_step.dependOn(&compiler_test.step);
     }
 

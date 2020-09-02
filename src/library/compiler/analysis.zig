@@ -195,6 +195,10 @@ fn validateExpression(state: *AnalysisState, diagnostics: *Diagnostics, scope: *
                 try diagnostics.emit(.@"error", expression.location, "Function name expected", .{});
             }
 
+            if (call.arguments.len >= 256) {
+                try diagnostics.emit(.@"error", expression.location, "Function argument list exceeds 255 arguments!", .{});
+            }
+
             for (call.arguments) |item| {
                 _ = try validateExpression(state, diagnostics, scope, item);
             }
@@ -267,6 +271,8 @@ fn validateStatement(state: *AnalysisState, diagnostics: *Diagnostics, scope: *S
                     @tagName(@as(ast.Expression.Type, ass.target.type)),
                 });
             }
+
+            // TODO: Recursive validation of the lvalue here!
 
             _ = try validateExpression(state, diagnostics, scope, ass.target);
             _ = try validateExpression(state, diagnostics, scope, ass.value);
@@ -396,6 +402,23 @@ pub fn validate(allocator: *std.mem.Allocator, diagnostics: *Diagnostics, progra
     }
 }
 
-test "validate" {
-    _ = validate;
+test "semantic analysis" {
+    // For lack of a better idea:
+    // Just run the analysis against the compiler test suite
+    var diagnostics = Diagnostics.init(std.testing.allocator);
+    defer diagnostics.deinit();
+
+    const seq = try @import("tokenizer.zig").tokenize(std.testing.allocator, &diagnostics, "src/test/compiler.lola", @embedFile("../../test/compiler.lola"));
+    defer std.testing.allocator.free(seq);
+
+    var pgm = try @import("parser.zig").parse(std.testing.allocator, &diagnostics, seq);
+    defer pgm.deinit();
+
+    try validate(std.testing.allocator, &diagnostics, pgm);
+
+    for (diagnostics.messages.items) |msg| {
+        std.debug.warn("{}\n", .{msg});
+    }
+
+    std.testing.expectEqual(@as(usize, 0), diagnostics.messages.items.len);
 }

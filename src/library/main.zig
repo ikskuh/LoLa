@@ -1,8 +1,8 @@
 // Import all runtime namespaces
 usingnamespace @import("common/ir.zig");
+usingnamespace @import("common/compile-unit.zig");
 
 usingnamespace @import("runtime/value.zig");
-usingnamespace @import("runtime/compile_unit.zig");
 usingnamespace @import("runtime/decoder.zig");
 usingnamespace @import("runtime/named_global.zig");
 usingnamespace @import("runtime/disassembler.zig");
@@ -22,6 +22,7 @@ pub const compiler = struct {
     pub const ast = @import("compiler/ast.zig");
 
     pub const validate = @import("compiler/analysis.zig").validate;
+    pub const generateIR = @import("compiler/codegen.zig").generateIR;
 };
 
 comptime {
@@ -34,4 +35,5 @@ comptime {
     _ = @import("compiler/code-writer.zig");
     _ = @import("compiler/analysis.zig");
     _ = @import("compiler/scope.zig");
+    _ = @import("compiler/codegen.zig");
 }

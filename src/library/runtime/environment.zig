@@ -5,7 +5,7 @@ const utility = @import("utility.zig");
 
 // Import modules to reduce file size
 usingnamespace @import("value.zig");
-usingnamespace @import("compile_unit.zig");
+usingnamespace @import("../common/compile-unit.zig");
 usingnamespace @import("named_global.zig");
 usingnamespace @import("disassembler.zig");
 usingnamespace @import("context.zig");

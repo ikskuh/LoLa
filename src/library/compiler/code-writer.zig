@@ -150,7 +150,7 @@ pub const CodeWriter = struct {
         try self.emitU8(@enumToInt(name));
     }
 
-    fn emitInstruction(self: *Self, instr: Instruction) !void {
+    pub fn emitInstruction(self: *Self, instr: Instruction) !void {
         try self.emitInstructionName(instr);
         inline for (std.meta.fields(Instruction)) |fld| {
             if (instr == @field(InstructionName, fld.name)) {

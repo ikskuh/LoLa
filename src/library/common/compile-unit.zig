@@ -3,7 +3,7 @@ const std = @import("std");
 const utility = @import("utility.zig");
 
 // Import modules to reduce file size
-usingnamespace @import("value.zig");
+// usingnamespace @import("value.zig");
 
 /// A compiled piece of code, provides the building blocks for
 /// an environment. Note that a compile unit must be instantiated
@@ -143,7 +143,8 @@ pub const CompileUnit = struct {
     pub fn saveToStream(self: Self, stream: anytype) !void {
         try stream.writeAll("LoLa\xB9\x40\x80\x5A");
         try stream.writeIntLittle(u32, 1);
-        try stream.writeAll("Made with NativeLola.zig!" ++ ("\x00" ** (256 - 25)));
+        try stream.writeAll(self.comment);
+        try stream.writeByteNTimes(0, 256 - self.comment.len);
         try stream.writeIntLittle(u16, self.globalCount);
         try stream.writeIntLittle(u16, self.temporaryCount);
         try stream.writeIntLittle(u16, @intCast(u16, self.functions.len));

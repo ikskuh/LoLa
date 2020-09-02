@@ -1,5 +1,5 @@
 ///
-// This file tests the compiler implementation and is intended to be run
+// This file tests the compiler implementation and is intended to be compiled
 // via the test suite.
 // It tries to emit every possible instruction and tries to contain every
 // possible syntax construct.
@@ -138,3 +138,12 @@ else {
 if(true) {
 	Print("single");
 }
+
+// object call syntax
+
+(1 + 2).Method();
+
+var obj;
+_ = obj.Method();
+_ = obj.Method(1);
+_ = obj.Method(1,2,3);

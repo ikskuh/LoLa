@@ -71,16 +71,16 @@ Expect(v == 10);
 Expect(10 == v);
 
 v = "h";
-Expect(v == "h");
+ExpectEqual(v, "h");
 
 // Test variable shadowing
 v = 1;
-Expect(v == 1);
+ExpectEqual(v, 1);
 {
   var v = 2;
-  Expect(v == 2);
+  ExpectEqual(v, 2);
 }
-Expect(v == 1);
+ExpectEqual(v, 1);
 
 // Test global access
 function setV(new) {
@@ -88,23 +88,23 @@ function setV(new) {
 }
 
 v = 1;
-Expect(v == 1);
+ExpectEqual(v, 1);
 setV(2);
-Expect(v == 2);
+ExpectEqual(v, 2);
 
 // Test array read indexing
 v = [3,4,5];
-Expect(v[0] == 3);
-Expect(v[1] == 4);
-Expect(v[2] == 5);
+ExpectEqual(3, v[0]);
+ExpectEqual(4, v[1]);
+ExpectEqual(5, v[2]);
 
 // Test array writeback indexing
 v[0] = 6;
 v[1] = 7;
 v[2] = 8;
-Expect(v[0] == 6);
-Expect(v[1] == 7);
-Expect(v[2] == 8);
+ExpectEqual(v[0], 6);
+ExpectEqual(v[1], 7);
+ExpectEqual(v[2], 8);
 
 // Test nested arrays indexing:
 v = [
@@ -234,21 +234,21 @@ function Fun1() { }
 
 Fun1(); // basic function call
 
-function Fun2(a) { ExpectEqual(a, "a"); }
-Fun2("a");
+function Fun2(a) { ExpectEqual(a, "A"); }
+Fun2("A");
 
 function Fun3(a, b) {
-  ExpectEqual(a, "a");
-  ExpectEqual(b, "b");
+  ExpectEqual(a, "B");
+  ExpectEqual(b, "C");
 }
-Fun3("a", "b");
+Fun3("B", "C");
 
 function Fun4() { return "r"; }
 ExpectEqual(Fun4(), "r");
 
 function Fun5(a) { return a; }
 ExpectEqual(Fun5(), void);
-ExpectEqual(Fun5("a"), "a");
+ExpectEqual(Fun5("D"), "D");
 ExpectEqual(Fun5(1), 1);
 ExpectEqual(Fun5([]), []);
 
