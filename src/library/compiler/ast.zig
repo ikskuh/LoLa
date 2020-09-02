@@ -37,8 +37,8 @@ pub const Expression = struct {
 
     /// Returns true when the expression allows an assignment similar to
     /// Cs `lvalue`.
-    fn isAssignable(self: Self) bool {
-        return switch (self) {
+    pub fn isAssignable(self: Self) bool {
+        return switch (self.type) {
             .array_indexer, .variable_expr => true,
             else => false,
         };

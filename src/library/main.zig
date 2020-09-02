@@ -20,6 +20,8 @@ pub const compiler = struct {
     pub const tokenizer = @import("compiler/tokenizer.zig");
     pub const parser = @import("compiler/parser.zig");
     pub const ast = @import("compiler/ast.zig");
+
+    pub const validate = @import("compiler/analysis.zig").validate;
 };
 
 comptime {
@@ -30,4 +32,6 @@ comptime {
     _ = @import("compiler/parser.zig");
     _ = @import("compiler/ast.zig");
     _ = @import("compiler/code-writer.zig");
+    _ = @import("compiler/analysis.zig");
+    _ = @import("compiler/scope.zig");
 }

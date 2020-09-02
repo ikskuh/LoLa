@@ -801,9 +801,7 @@ pub fn parse(
             const stmt = parser.acceptStatement() catch |err| switch (err) {
                 error.SyntaxError => {
                     // Do some recovery here:
-                    try diagnostics.emit(.@"error", "{}: error: syntax error!", .{
-                        parser.getCurrentLocation(),
-                    });
+                    try diagnostics.emit(.@"error", parser.getCurrentLocation(), "syntax error!", .{});
 
                     while (parser.index < parser.sequence.len) {
                         const recovery_state = parser.saveState();

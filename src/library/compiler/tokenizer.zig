@@ -346,8 +346,7 @@ pub fn tokenize(allocator: *std.mem.Allocator, diagnostics: *Diagnostics, chunk_
         switch (tokenizer.next()) {
             .end_of_file => return result.toOwnedSlice(),
             .invalid_sequence => |seq| {
-                try diagnostics.emit(.@"error", "{}: error: invalid byte sequence: {X}", .{
-                    tokenizer.current_location,
+                try diagnostics.emit(.@"error", tokenizer.current_location, "invalid byte sequence: {X}", .{
                     seq,
                 });
             },

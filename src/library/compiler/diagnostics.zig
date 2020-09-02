@@ -1,12 +1,23 @@
 const std = @import("std");
 
+const Location = @import("location.zig").Location;
+
 pub const MessageKind = enum {
     @"error", warning, notice
 };
 
 pub const Message = struct {
-    message: []const u8,
     kind: MessageKind,
+    location: Location,
+    message: []const u8,
+
+    pub fn format(value: @This(), comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
+        try writer.print("{}: {}: {}", .{
+            value.location,
+            @tagName(value.kind),
+            value.message,
+        });
+    }
 };
 
 pub const Diagnostics = struct {
@@ -28,12 +39,13 @@ pub const Diagnostics = struct {
     }
 
     /// Emits a new diagnostic message and appends that to the current output.
-    pub fn emit(self: *Self, kind: MessageKind, comptime fmt: []const u8, args: anytype) !void {
+    pub fn emit(self: *Self, kind: MessageKind, location: Location, comptime fmt: []const u8, args: anytype) !void {
         const msg_string = try std.fmt.allocPrint(&self.arena.allocator, fmt, args);
         errdefer self.arena.allocator.free(msg_string);
 
         try self.messages.append(Message{
             .kind = kind,
+            .location = location,
             .message = msg_string,
         });
     }
@@ -48,23 +60,31 @@ pub const Diagnostics = struct {
 };
 
 test "diagnostic list" {
+    const loc = Location{
+        .chunk = "demo",
+        .line = 1,
+        .column = 2,
+        .offset_end = undefined,
+        .offset_start = undefined,
+    };
+
     var diagnostics = Diagnostics.init(std.testing.allocator);
     defer diagnostics.deinit();
 
     std.testing.expectEqual(false, diagnostics.hasErrors());
     std.testing.expectEqual(@as(usize, 0), diagnostics.messages.items.len);
 
-    try diagnostics.emit(.warning, "{}", .{"this is a warning!"});
+    try diagnostics.emit(.warning, loc, "{}", .{"this is a warning!"});
 
     std.testing.expectEqual(false, diagnostics.hasErrors());
     std.testing.expectEqual(@as(usize, 1), diagnostics.messages.items.len);
 
-    try diagnostics.emit(.notice, "{}", .{"this is a notice!"});
+    try diagnostics.emit(.notice, loc, "{}", .{"this is a notice!"});
 
     std.testing.expectEqual(false, diagnostics.hasErrors());
     std.testing.expectEqual(@as(usize, 2), diagnostics.messages.items.len);
 
-    try diagnostics.emit(.@"error", "{}", .{"this is a error!"});
+    try diagnostics.emit(.@"error", loc, "{}", .{"this is a error!"});
 
     std.testing.expectEqual(true, diagnostics.hasErrors());
     std.testing.expectEqual(@as(usize, 3), diagnostics.messages.items.len);

@@ -49,7 +49,7 @@ var a = [ 42.0 ];
 _ = a[0]; // array_load
 a[0] = 10; // array_store
 
-var a = true;
+a = true;
 
 if(a) { // jif, jmp
   a = 1;
@@ -57,7 +57,7 @@ if(a) { // jif, jmp
   a = 2;
 }
 
-var a = true;
+a = true;
 while(a) { // jif, jmp
   a = false;
 }

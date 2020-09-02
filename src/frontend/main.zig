@@ -364,7 +364,7 @@ fn compileFileToUnit(allocator: *std.mem.Allocator, fileName: []const u8) !lola.
         var diag = lola.compiler.Diagnostics.init(allocator);
         defer {
             for (diag.messages.items) |msg| {
-                std.debug.print("{}\n", .{msg.message});
+                std.debug.print("{}\n", .{msg});
             }
             diag.deinit();
         }
@@ -372,8 +372,10 @@ fn compileFileToUnit(allocator: *std.mem.Allocator, fileName: []const u8) !lola.
         const seq = try lola.compiler.tokenizer.tokenize(allocator, &diag, fileName, source);
         defer allocator.free(seq);
 
-        var pgm = try lola.compiler.parser.parse(std.testing.allocator, &diag, seq);
+        var pgm = try lola.compiler.parser.parse(allocator, &diag, seq);
         defer pgm.deinit();
+
+        try lola.compiler.validate(allocator, &diag, pgm);
     }
 
     var module: ModuleBuffer = undefined;
