@@ -35,51 +35,6 @@ pub fn build(b: *Builder) !void {
             std.zig.CrossTarget{},
     });
 
-    const precompileGrammar = b.addSystemCommand(&[_][]const u8{
-        "bison",
-        "-d",
-        "--name-prefix=grammar",
-        "--file-prefix=grammar",
-        "--output=grammar.tab.cpp",
-        "grammar.yy",
-    });
-    precompileGrammar.cwd = "src/library/compiler/";
-
-    const precompileLexer = b.addSystemCommand(&[_][]const u8{
-        "flex",
-        "--prefix=yy",
-        "--nounistd",
-        "--outfile=yy_lex.cpp",
-        "yy.l",
-    });
-    precompileLexer.cwd = "src/library/compiler/";
-    precompileLexer.step.dependOn(&precompileGrammar.step);
-
-    const cppSources = [_][]const u8{
-        "src/library/compiler/ast.cpp",
-        "src/library/compiler/compiler.cpp",
-        "src/library/compiler/error.cpp",
-        "src/library/compiler/yy_lex.cpp",
-        "src/library/compiler/driver.cpp",
-        "src/library/compiler/grammar.tab.cpp",
-    };
-
-    const lib = b.addStaticLibrary("lola", "./src/library/main.zig");
-    lib.setBuildMode(mode);
-    lib.setTarget(target);
-    lib.addIncludeDir("./libs/flex");
-    lib.linkLibC();
-    lib.linkSystemLibrary("c++");
-    for (cppSources) |cppSource| {
-        lib.addCSourceFile(cppSource, &[_][]const u8{
-            "-std=c++17",
-            "-fno-use-cxa-atexit",
-            "-Wall",
-            "-Wextra",
-        });
-    }
-    lib.install();
-
     const exe = b.addExecutable("lola", "./src/frontend/main.zig");
     exe.setBuildMode(mode);
     exe.setTarget(target);
@@ -88,15 +43,6 @@ pub fn build(b: *Builder) !void {
         .name = "lola",
         .path = "./src/library/main.zig",
     });
-
-    exe.addCSourceFile("src/frontend/compile_lola_source.cpp", &[_][]const u8{
-        "-std=c++17",
-        "-fno-use-cxa-atexit",
-    });
-
-    exe.linkSystemLibrary("c");
-    exe.linkSystemLibrary("c++");
-    exe.linkLibrary(lib);
     exe.install();
 
     var main_tests = b.addTest("src/library/main.zig");
@@ -184,10 +130,6 @@ pub fn build(b: *Builder) !void {
 
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
-
-    const refresh_step = b.step("refresh", "Recompiles flex/bison grammar files");
-    refresh_step.dependOn(&precompileLexer.step);
-    refresh_step.dependOn(&precompileGrammar.step);
 
     /////////////////////////////////////////////////////////////////////////
     // Documentation and Website generation:

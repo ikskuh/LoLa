@@ -178,25 +178,24 @@ Right now, it's not published in the gallery, so to install the extension, you h
 
 ## Building
 
-![CI](https://github.com/MasterQ32/LoLa-native/workflows/CI/badge.svg?branch=master)
+### Continous Integration
 
-**Requirements:**
+![Linux CI](https://github.com/MasterQ32/LoLa-native/workflows/Linux%20Build/badge.svg)
+![MacOS CI](https://github.com/MasterQ32/LoLa-native/workflows/MacOS%20Build/badge.svg)
+![Windows CI](https://github.com/MasterQ32/LoLa-native/workflows/Windows%20Build/badge.svg)
 
-Required:
-- The [Zig Compiler](https://ziglang.org/) (Version 0.6.0+60ea87340 or newer)
+### Requirements
 
-Optional dependencies for development:
-- Bison 3.2 or newer (optional)
-- Flex 2.6 or newer (optional)
+- The [Zig Compiler](https://ziglang.org/) (Version 0.6.0+12ce6eb8f or newer)
 
-**Building:**
+### Building
 
 ```sh
 zig build
 ./zig-cache/bin/lola
 ```
 
-**Running the test suite:**
+### Running the test suite
 
 When you change things in the compiler or VM implementation, run the test suite:
 

@@ -3,10 +3,15 @@ const lola = @import("lola");
 const argsParser = @import("args");
 const runtime = @import("runtime.zig");
 
+var gpa_state = std.heap.GeneralPurposeAllocator(.{}){};
+const gpa = &gpa_state.allocator;
+
 pub fn main() !u8 {
+    defer _ = gpa_state.deinit();
+
     var args = std.process.args();
 
-    var argsAllocator = std.heap.c_allocator;
+    var argsAllocator = gpa;
 
     const exeName = try (args.next(argsAllocator) orelse {
         try std.io.getStdErr().writer().writeAll("Failed to get executable name from the argument list!\n");
@@ -126,7 +131,7 @@ fn disassemble(options: DisassemblerCLI, files: []const []const u8) !u8 {
             try stream.print("Disassembly for {}:\n", .{arg});
         }
 
-        var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+        var arena = std.heap.ArenaAllocator.init(gpa);
         defer arena.deinit();
 
         const allocator = &arena.allocator;
@@ -184,15 +189,13 @@ const ModuleBuffer = extern struct {
     length: usize,
 };
 
-extern fn compile_lola_source(source: [*]const u8, sourceLength: usize, module: *ModuleBuffer) bool;
-
 fn compile(options: CompileCLI, files: []const []const u8) !u8 {
     if (files.len != 1) {
         try print_usage();
         return 1;
     }
 
-    const allocator = std.heap.c_allocator;
+    const allocator = gpa;
 
     const inname = files[0];
 
@@ -244,8 +247,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
         return 1;
     }
 
-    var gpa_state = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = &gpa_state.allocator;
+    const allocator = gpa;
 
     var cu = autoLoadModule(allocator, options, files[0]) catch |err| {
         const stderr = std.io.getStdErr().writer();
@@ -374,44 +376,30 @@ fn compileFileToUnit(allocator: *std.mem.Allocator, fileName: []const u8) !lola.
         var file = try std.fs.cwd().openFile(fileName, .{ .read = true, .write = false });
         defer file.close();
 
-        break :blk try file.reader().readAllAlloc(std.heap.page_allocator, maxLength);
+        break :blk try file.reader().readAllAlloc(gpa, maxLength);
     };
-    defer std.heap.page_allocator.free(source);
+    defer gpa.free(source);
 
-    // Testing new compiler
-    {
-        var diag = lola.compiler.Diagnostics.init(allocator);
-        defer {
-            for (diag.messages.items) |msg| {
-                std.debug.print("{}\n", .{msg});
-            }
-            diag.deinit();
+    var diag = lola.compiler.Diagnostics.init(allocator);
+    defer {
+        for (diag.messages.items) |msg| {
+            std.debug.print("{}\n", .{msg});
         }
-
-        const seq = try lola.compiler.tokenizer.tokenize(allocator, &diag, fileName, source);
-        defer allocator.free(seq);
-
-        var pgm = try lola.compiler.parser.parse(allocator, &diag, seq);
-        defer pgm.deinit();
-
-        try lola.compiler.validate(allocator, &diag, pgm);
-
-        var compile_unit = try lola.compiler.generateIR(allocator, pgm, fileName);
-        errdefer compile_unit;
-
-        return compile_unit;
+        diag.deinit();
     }
 
-    // legacy codegen!
-    // var module: ModuleBuffer = undefined;
+    const seq = try lola.compiler.tokenizer.tokenize(allocator, &diag, fileName, source);
+    defer allocator.free(seq);
 
-    // if (!compile_lola_source(source.ptr, source.len, &module))
-    //     return error.FailedToCompileModule;
-    // defer std.c.free(module.data);
+    var pgm = try lola.compiler.parser.parse(allocator, &diag, seq);
+    defer pgm.deinit();
 
-    // var moduleStream = std.io.fixedBufferStream(module.data[0..module.length]);
+    try lola.compiler.validate(allocator, &diag, pgm);
 
-    // return try lola.CompileUnit.loadFromStream(allocator, moduleStream.reader());
+    var compile_unit = try lola.compiler.generateIR(allocator, pgm, fileName);
+    errdefer compile_unit;
+
+    return compile_unit;
 }
 
 fn loadModuleFromFile(allocator: *std.mem.Allocator, fileName: []const u8) !lola.CompileUnit {
