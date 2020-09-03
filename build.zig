@@ -138,7 +138,8 @@ pub fn build(b: *Builder) !void {
 
     /////////////////////////////////////////////////////////////////////////
     // Documentation and Website generation:
-    {
+    // this is disabed by-default so we don't depend on any vcpkgs
+    if (b.option(bool, "enable-website", "Enables website generation.") orelse false) {
         // Generates documentation and future files.
         const gen_website_step = b.step("website", "Generates the website and all required resources.");
 
