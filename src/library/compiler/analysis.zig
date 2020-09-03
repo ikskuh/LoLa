@@ -5,140 +5,18 @@ const ast = @import("ast.zig");
 const Location = @import("location.zig").Location;
 const Scope = @import("scope.zig").Scope;
 const Diagnostics = @import("diagnostics.zig").Diagnostics;
+const Type = @import("typeset.zig").Type;
+const TypeSet = @import("typeset.zig").TypeSet;
 
 const AnalysisState = struct {
+    /// Depth of nested loops (while, for)
     loop_nesting: usize,
+
+    /// Depth of nested conditionally executed scopes (if, while, for)
+    conditional_scope_depth: usize,
+
+    /// Only `true` when not analyzing a function
     is_root_script: bool,
-};
-
-const Type = enum {
-    @"void",
-    number,
-    string,
-    boolean,
-    array,
-    object,
-
-    pub fn format(value: @This(), comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
-        try writer.writerAll(@tagName(value));
-    }
-};
-
-const TypeSet = struct {
-    const Self = @This();
-
-    pub const empty = Self{
-        .@"void" = false,
-        .number = false,
-        .string = false,
-        .boolean = false,
-        .array = false,
-        .object = false,
-    };
-
-    pub const any = Self{
-        .@"void" = true,
-        .number = true,
-        .string = true,
-        .boolean = true,
-        .array = true,
-        .object = true,
-    };
-
-    @"void": bool,
-    number: bool,
-    string: bool,
-    boolean: bool,
-    array: bool,
-    object: bool,
-
-    fn from(value_type: Type) Self {
-        return Self{
-            .@"void" = (value_type == .@"void"),
-            .number = (value_type == .number),
-            .string = (value_type == .string),
-            .boolean = (value_type == .boolean),
-            .array = (value_type == .array),
-            .object = (value_type == .object),
-        };
-    }
-
-    fn init(list: anytype) Self {
-        var set = TypeSet.empty;
-        inline for (list) |item| {
-            set = set.@"union"(from(item));
-        }
-        return set;
-    }
-
-    fn contains(self: Self, item: Type) bool {
-        return switch (item) {
-            .@"void" => self.@"void",
-            .number => self.number,
-            .string => self.string,
-            .boolean => self.boolean,
-            .array => self.array,
-            .object => self.object,
-        };
-    }
-
-    /// Returns a type set that only contains all types that are contained in both parameters.
-    fn intersection(a: Self, b: Self) Self {
-        var result: Self = undefined;
-        inline for (std.meta.fields(Self)) |fld| {
-            @field(result, fld.name) = @field(a, fld.name) and @field(b, fld.name);
-        }
-        return result;
-    }
-
-    /// Returns a type set that contains all types that are contained in any of the parameters.
-    fn @"union"(a: Self, b: Self) Self {
-        var result: Self = undefined;
-        inline for (std.meta.fields(Self)) |fld| {
-            @field(result, fld.name) = @field(a, fld.name) or @field(b, fld.name);
-        }
-        return result;
-    }
-
-    fn isEmpty(self: Self) bool {
-        inline for (std.meta.fields(Self)) |fld| {
-            if (@field(self, fld.name))
-                return false;
-        }
-        return true;
-    }
-
-    fn isAny(self: Self) bool {
-        inline for (std.meta.fields(Self)) |fld| {
-            if (!@field(self, fld.name))
-                return false;
-        }
-        return true;
-    }
-
-    /// Tests if the type set contains at least one common type.
-    fn areCompatible(a: Self, b: Self) bool {
-        return !intersection(a, b).isEmpty();
-    }
-
-    pub fn format(value: Self, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
-        if (value.isEmpty()) {
-            try writer.writeAll("none");
-        } else if (value.isAny()) {
-            try writer.writeAll("any");
-        } else {
-            var separate = false;
-            inline for (std.meta.fields(Self)) |fld| {
-                if (@field(value, fld.name)) {
-                    if (separate) {
-                        try writer.writeAll("|");
-                    }
-                    separate = true;
-                    try writer.writeAll(fld.name);
-                }
-            }
-        }
-    }
 };
 
 const ValidationError = error{OutOfMemory};
@@ -179,7 +57,7 @@ fn validateExpression(state: *AnalysisState, diagnostics: *Diagnostics, scope: *
             const index_type = try validateExpression(state, diagnostics, scope, indexer.index.*);
 
             try performTypeCheck(diagnostics, indexer.value.location, TypeSet.from(.array), array_type);
-            try performTypeCheck(diagnostics, indexer.index.location, TypeSet.from(.number), array_type);
+            try performTypeCheck(diagnostics, indexer.index.location, TypeSet.from(.number), index_type);
 
             return TypeSet.any;
         },
@@ -195,15 +73,14 @@ fn validateExpression(state: *AnalysisState, diagnostics: *Diagnostics, scope: *
                 return TypeSet.from(.void);
             }
 
-            _ = scope.get(variable_name) orelse {
+            const variable = scope.get(variable_name) orelse {
                 try diagnostics.emit(.@"error", expression.location, "Use of undeclared variable {}", .{
                     variable_name,
                 });
+                return TypeSet.any;
             };
 
-            // TODO: Return annotated type set from variable.
-
-            return TypeSet.any;
+            return variable.possible_types;
         },
 
         .array_literal => |array| {
@@ -319,8 +196,21 @@ fn validateStore(state: *AnalysisState, diagnostics: *Diagnostics, scope: *Scope
                 try diagnostics.emit(.@"error", expression.location, "Expected array indexer or a variable, got {}", .{
                     variable_name,
                 });
-            } else {
-                std.debug.warn("store {} into {}\n", .{ type_hint, variable_name });
+            } else if (scope.get(variable_name)) |variable| {
+                const previous = variable.possible_types;
+
+                if (state.conditional_scope_depth > 0) {
+                    variable.possible_types = variable.possible_types.@"union"(type_hint);
+                } else {
+                    variable.possible_types = type_hint;
+                }
+
+                // std.debug.warn("mutate {} from {} into {} applying {}\n", .{
+                //     variable_name,
+                //     previous,
+                //     variable.possible_types,
+                //     type_hint,
+                // });
             }
         },
 
@@ -362,6 +252,9 @@ fn validateStatement(state: *AnalysisState, diagnostics: *Diagnostics, scope: *S
             state.loop_nesting += 1;
             defer state.loop_nesting -= 1;
 
+            state.conditional_scope_depth += 1;
+            defer state.conditional_scope_depth -= 1;
+
             const condition_type = try validateExpression(state, diagnostics, scope, loop.condition);
             try validateStatement(state, diagnostics, scope, loop.body.*);
 
@@ -370,6 +263,9 @@ fn validateStatement(state: *AnalysisState, diagnostics: *Diagnostics, scope: *S
         .for_loop => |loop| {
             state.loop_nesting += 1;
             defer state.loop_nesting -= 1;
+
+            state.conditional_scope_depth += 1;
+            defer state.conditional_scope_depth -= 1;
 
             try scope.enter();
 
@@ -387,6 +283,9 @@ fn validateStatement(state: *AnalysisState, diagnostics: *Diagnostics, scope: *S
             try scope.leave();
         },
         .if_statement => |conditional| {
+            state.conditional_scope_depth += 1;
+            defer state.conditional_scope_depth -= 1;
+
             const conditional_type = try validateExpression(state, diagnostics, scope, conditional.condition);
             try validateStatement(state, diagnostics, scope, conditional.true_body.*);
             if (conditional.false_body) |body| {
@@ -396,16 +295,21 @@ fn validateStatement(state: *AnalysisState, diagnostics: *Diagnostics, scope: *S
             try performTypeCheck(diagnostics, stmt.location, TypeSet.from(.boolean), conditional_type);
         },
         .declaration => |decl| {
+            // evaluate expression before so we can safely reference up-variables:
+            // var a = a * 2;
+            const initial_value = if (decl.initial_value) |init_val|
+                try validateExpression(state, diagnostics, scope, init_val)
+            else
+                null;
+
             scope.declare(decl.variable) catch |err| switch (err) {
                 error.AlreadyDeclared => try diagnostics.emit(.@"error", stmt.location, "Global variable {} is already declared!", .{decl.variable}),
                 error.TooManyVariables => try emitTooManyVariables(diagnostics, stmt.location),
                 else => |e| return e,
             };
 
-            if (decl.initial_value) |init_val| {
-                _ = try validateExpression(state, diagnostics, scope, init_val);
-                // TODO: annotate variable type here
-            }
+            if (initial_value) |init_val|
+                scope.get(decl.variable).?.possible_types = init_val;
         },
         .extern_variable => |name| {
             scope.declareExtern(name) catch |err| switch (err) {
@@ -444,6 +348,7 @@ pub fn validate(allocator: *std.mem.Allocator, diagnostics: *Diagnostics, progra
         var state = AnalysisState{
             .loop_nesting = 0,
             .is_root_script = true,
+            .conditional_scope_depth = 0,
         };
 
         try validateStatement(&state, diagnostics, &global_scope, stmt);
@@ -473,12 +378,13 @@ pub fn validate(allocator: *std.mem.Allocator, diagnostics: *Diagnostics, progra
         var state = AnalysisState{
             .loop_nesting = 0,
             .is_root_script = false,
+            .conditional_scope_depth = 0,
         };
         try validateStatement(&state, diagnostics, &local_scope, function.body);
     }
 }
 
-test "semantic analysis" {
+test "validate correct program" {
     // For lack of a better idea:
     // Just run the analysis against the compiler test suite
     var diagnostics = Diagnostics.init(std.testing.allocator);
@@ -497,4 +403,21 @@ test "semantic analysis" {
     }
 
     std.testing.expectEqual(@as(usize, 0), diagnostics.messages.items.len);
+}
+
+test "detect return from root script" {
+    // For lack of a better idea:
+    // Just run the analysis against the compiler test suite
+    var diagnostics = Diagnostics.init(std.testing.allocator);
+    defer diagnostics.deinit();
+
+    const seq = try @import("tokenizer.zig").tokenize(std.testing.allocator, &diagnostics, "", "return 10;");
+    defer std.testing.allocator.free(seq);
+
+    var pgm = try @import("parser.zig").parse(std.testing.allocator, &diagnostics, seq);
+    defer pgm.deinit();
+
+    try validate(std.testing.allocator, &diagnostics, pgm);
+
+    std.testing.expectEqual(@as(usize, 1), diagnostics.messages.items.len);
 }

@@ -1,5 +1,8 @@
 const std = @import("std");
 
+const Type = @import("typeset.zig").Type;
+const TypeSet = @import("typeset.zig").TypeSet;
+
 /// A scope structure that can be used to manage variable
 /// allocation with different scopes (global, extern, local).
 pub const Scope = struct {
@@ -7,14 +10,16 @@ pub const Scope = struct {
 
     const Variable = struct {
         /// This is the offset of the variables
+        name: []const u8,
         storage_slot: u16,
         type: enum { local, global, @"extern" },
+        possible_types: TypeSet = TypeSet.any,
     };
 
     arena: std.heap.ArenaAllocator,
-    extern_variables: std.ArrayList([]const u8),
-    local_variables: std.ArrayList([]const u8),
-    global_variables: std.ArrayList([]const u8),
+    extern_variables: std.ArrayList(Variable),
+    local_variables: std.ArrayList(Variable),
+    global_variables: std.ArrayList(Variable),
     return_point: std.ArrayList(usize),
 
     /// When this is true, the scope will declare
@@ -35,9 +40,9 @@ pub const Scope = struct {
     pub fn init(allocator: *std.mem.Allocator, global_scope: ?*Self, is_global: bool) Self {
         return Self{
             .arena = std.heap.ArenaAllocator.init(allocator),
-            .extern_variables = std.ArrayList([]const u8).init(allocator),
-            .local_variables = std.ArrayList([]const u8).init(allocator),
-            .global_variables = std.ArrayList([]const u8).init(allocator),
+            .extern_variables = std.ArrayList(Variable).init(allocator),
+            .local_variables = std.ArrayList(Variable).init(allocator),
+            .global_variables = std.ArrayList(Variable).init(allocator),
             .return_point = std.ArrayList(usize).init(allocator),
             .is_global = is_global,
             .global_scope = global_scope,
@@ -74,8 +79,8 @@ pub const Scope = struct {
         if (self.is_global and (self.return_point.items.len == 0)) {
             // a variable is only global when the scope is a global scope and
             // we don't have any sub-scopes open (which would create temporary variables)
-            for (self.global_variables.items) |varname| {
-                if (std.mem.eql(u8, varname, name)) {
+            for (self.global_variables.items) |variable| {
+                if (std.mem.eql(u8, variable.name, name)) {
                     // Global variables are not allowed to
                     return error.AlreadyDeclared;
                 }
@@ -83,11 +88,19 @@ pub const Scope = struct {
 
             if (self.global_variables.items.len == std.math.maxInt(u16))
                 return error.TooManyVariables;
-            try self.global_variables.append(try self.arena.allocator.dupe(u8, name));
+            try self.global_variables.append(Variable{
+                .storage_slot = @intCast(u16, self.global_variables.items.len),
+                .name = try self.arena.allocator.dupe(u8, name),
+                .type = .global,
+            });
         } else {
             if (self.local_variables.items.len == std.math.maxInt(u16))
                 return error.TooManyVariables;
-            try self.local_variables.append(try self.arena.allocator.dupe(u8, name));
+            try self.local_variables.append(Variable{
+                .storage_slot = @intCast(u16, self.local_variables.items.len),
+                .name = try self.arena.allocator.dupe(u8, name),
+                .type = .local,
+            });
 
             self.max_locals = std.math.max(self.max_locals, self.local_variables.items.len);
         }
@@ -97,20 +110,24 @@ pub const Scope = struct {
     pub fn declareExtern(self: *Self, name: []const u8) !void {
         // Search if an extern with this name was already declared:
         // If so, we're done
-        for (self.extern_variables.items) |varname| {
-            if (std.mem.eql(u8, varname, name))
+        for (self.extern_variables.items) |variable| {
+            if (std.mem.eql(u8, variable.name, name))
                 return;
         }
 
         if (self.extern_variables.items.len == std.math.maxInt(u16))
             return error.TooManyVariables;
-        try self.extern_variables.append(try self.arena.allocator.dupe(u8, name));
+        try self.extern_variables.append(Variable{
+            .storage_slot = undefined,
+            .name = try self.arena.allocator.dupe(u8, name),
+            .type = .@"extern",
+        });
     }
 
     /// Tries to return a variable named `name`. This will first search in the
     /// local variables, then in the global ones and then in extern variables.
     /// Will return `null` when a variable is not found.
-    pub fn get(self: Self, name: []const u8) ?Variable {
+    pub fn get(self: Self, name: []const u8) ?*Variable {
         var i: usize = undefined;
 
         // First, search all local variables back-to-front:
@@ -119,8 +136,9 @@ pub const Scope = struct {
         i = self.local_variables.items.len;
         while (i > 0) {
             i -= 1;
-            if (std.mem.eql(u8, self.local_variables.items[i], name))
-                return Variable{ .type = .local, .storage_slot = @intCast(u16, i) };
+            const variable = &self.local_variables.items[i];
+            if (std.mem.eql(u8, variable.name, name))
+                return variable;
         }
 
         if (self.is_global) {
@@ -128,16 +146,17 @@ pub const Scope = struct {
             i = self.global_variables.items.len;
             while (i > 0) {
                 i -= 1;
-                if (std.mem.eql(u8, self.global_variables.items[i], name))
-                    return Variable{ .type = .global, .storage_slot = @intCast(u16, i) };
+                const variable = &self.global_variables.items[i];
+                if (std.mem.eql(u8, variable.name, name))
+                    return variable;
             }
         }
 
         // Extern variables don't have a defined order as they are referenced by-name and
         // don't have a storage slot assigned.
-        for (self.extern_variables.items) |varname| {
-            if (std.mem.eql(u8, varname, name))
-                return Variable{ .type = .@"extern", .storage_slot = undefined };
+        for (self.extern_variables.items) |*variable| {
+            if (std.mem.eql(u8, variable.name, name))
+                return variable;
         }
 
         if (self.global_scope) |globals| {

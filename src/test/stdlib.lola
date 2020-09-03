@@ -178,8 +178,8 @@ Expect(DeltaEqual(Log(1000), 3, delta));
 Expect(DeltaEqual(Log(1000), 3, delta));
 
 Expect(DeltaEqual(Exp(0), 1, delta));
-Expect(DeltaEqual(Exp(1), 2.71828182845904, delta));
-Expect(DeltaEqual(Exp(2), 7.38905609893065, delta));
+Expect(DeltaEqual(Exp(1), 2.71828182845904523536, delta));
+Expect(DeltaEqual(Exp(2), 7.38905609893065022723, delta));
 
 
 /////////////////////////////////////////////////////////////////////
