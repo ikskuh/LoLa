@@ -79,9 +79,7 @@ fn markdownToHtmlInternal(resultAllocator: *std.mem.Allocator, internalAllocator
 
     defer doc.deinit();
 
-    doc.validate(false);
-
-    return try koino.html.print(resultAllocator, &p.options, doc);
+    return try koino.html.print(resultAllocator, p.options, doc);
 }
 
 pub fn markdownToHtml(allocator: *std.mem.Allocator, options: koino.Options, markdown: []const u8) ![]u8 {

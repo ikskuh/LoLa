@@ -142,6 +142,20 @@ const TypeSet = struct {
 
 const ValidationError = error{OutOfMemory};
 
+fn expressionTypeToString(src: ast.Expression.Type) []const u8 {
+    return switch (src) {
+        .array_indexer => "array indexer",
+        .variable_expr => "variable",
+        .array_literal => "array literal",
+        .function_call => "function call",
+        .method_call => "method call",
+        .number_literal => "number literal",
+        .string_literal => "string literal",
+        .unary_operator => "unary operator application",
+        .binary_operator => "binary operator application",
+    };
+}
+
 fn emitTooManyVariables(diagnostics: *Diagnostics, location: Location) !void {
     try diagnostics.emit(.@"error", location, "Too many variables declared! The maximum allowed number of variables is 35535.", .{});
 }
@@ -279,22 +293,54 @@ fn validateExpression(state: *AnalysisState, diagnostics: *Diagnostics, scope: *
     return .void;
 }
 
+fn validateStore(state: *AnalysisState, diagnostics: *Diagnostics, scope: *Scope, expression: ast.Expression, type_hint: TypeSet) ValidationError!void {
+    if (!expression.isAssignable()) {
+        try diagnostics.emit(.@"error", expression.location, "Expected array indexer or a variable, got {}", .{
+            expressionTypeToString(expression.type),
+        });
+        return;
+    }
+    switch (expression.type) {
+        .array_indexer => |indexer| {
+            const array_val = try validateExpression(state, diagnostics, scope, indexer.value.*);
+            const index_val = try validateExpression(state, diagnostics, scope, indexer.index.*);
+
+            try performTypeCheck(diagnostics, indexer.value.location, TypeSet.from(.array), array_val);
+            try performTypeCheck(diagnostics, indexer.index.location, TypeSet.from(.number), index_val);
+
+            // now propagate the store validation back to the lvalue.
+            // Note that we can assume that the lvalue _is_ a array, as it would be a type mismatch otherwise.
+            try validateStore(state, diagnostics, scope, indexer.value.*, TypeSet.from(.array));
+        },
+
+        .variable_expr => |variable_name| {
+            if (std.mem.eql(u8, variable_name, "true") or std.mem.eql(u8, variable_name, "false") or std.mem.eql(u8, variable_name, "void")) {
+                try diagnostics.emit(.@"error", expression.location, "Expected array indexer or a variable, got {}", .{
+                    variable_name,
+                });
+            } else {
+                std.debug.warn("store {} into {}\n", .{ type_hint, variable_name });
+            }
+        },
+
+        else => unreachable,
+    }
+}
+
 fn validateStatement(state: *AnalysisState, diagnostics: *Diagnostics, scope: *Scope, stmt: ast.Statement) ValidationError!void {
     switch (stmt.type) {
         .empty => {
             // trivial: do nothing!
         },
         .assignment => |ass| {
-            if (!ass.target.isAssignable()) {
+            const value_type = try validateExpression(state, diagnostics, scope, ass.value);
+            if (ass.target.isAssignable()) {
+                try validateStore(state, diagnostics, scope, ass.target, value_type);
+            } else {
                 try diagnostics.emit(.@"error", ass.target.location, "Expected either a array indexer or a variable, got {}", .{
                     @tagName(@as(ast.Expression.Type, ass.target.type)),
                 });
             }
-
-            // TODO: Recursive validation of the lvalue here!
-
-            _ = try validateExpression(state, diagnostics, scope, ass.target);
-            _ = try validateExpression(state, diagnostics, scope, ass.value);
         },
         .discard_value => |expr| {
             _ = try validateExpression(state, diagnostics, scope, expr);
@@ -381,7 +427,10 @@ fn validateStatement(state: *AnalysisState, diagnostics: *Diagnostics, scope: *S
     }
 }
 
-pub fn validate(allocator: *std.mem.Allocator, diagnostics: *Diagnostics, program: ast.Program) !void {
+/// Validates the `program` against programming mistakes and filles `diagnostics` with the findings.
+/// Note that the function will always succeed when no `OutOfMemory` happens. To see if the program
+/// is semantically sound, check `diagnostics` for error messages.
+pub fn validate(allocator: *std.mem.Allocator, diagnostics: *Diagnostics, program: ast.Program) ValidationError!void {
     var global_scope = Scope.init(allocator, null, true);
     defer global_scope.deinit();
 
