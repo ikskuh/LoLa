@@ -14,6 +14,7 @@ pub const Scope = struct {
         storage_slot: u16,
         type: enum { local, global, @"extern" },
         possible_types: TypeSet = TypeSet.any,
+        is_const: bool,
     };
 
     arena: std.heap.ArenaAllocator,
@@ -75,7 +76,7 @@ pub const Scope = struct {
     /// Declares are new variable. Depending on the state of the scope,
     /// it will either be a global or a local variable, but will never be a
     /// extern variable.
-    pub fn declare(self: *Self, name: []const u8) !void {
+    pub fn declare(self: *Self, name: []const u8, is_const: bool) !void {
         if (self.is_global and (self.return_point.items.len == 0)) {
             // a variable is only global when the scope is a global scope and
             // we don't have any sub-scopes open (which would create temporary variables)
@@ -92,6 +93,7 @@ pub const Scope = struct {
                 .storage_slot = @intCast(u16, self.global_variables.items.len),
                 .name = try self.arena.allocator.dupe(u8, name),
                 .type = .global,
+                .is_const = is_const,
             });
         } else {
             if (self.local_variables.items.len == std.math.maxInt(u16))
@@ -100,6 +102,7 @@ pub const Scope = struct {
                 .storage_slot = @intCast(u16, self.local_variables.items.len),
                 .name = try self.arena.allocator.dupe(u8, name),
                 .type = .local,
+                .is_const = is_const,
             });
 
             self.max_locals = std.math.max(self.max_locals, self.local_variables.items.len);
@@ -121,6 +124,7 @@ pub const Scope = struct {
             .storage_slot = undefined,
             .name = try self.arena.allocator.dupe(u8, name),
             .type = .@"extern",
+            .is_const = false,
         });
     }
 
@@ -184,13 +188,13 @@ test "scope declare/get" {
 
     try scope.declareExtern("baz");
 
-    try scope.declare("foo");
+    try scope.declare("foo", true);
 
-    std.testing.expectError(error.AlreadyDeclared, scope.declare("foo"));
+    std.testing.expectError(error.AlreadyDeclared, scope.declare("foo", true));
 
     try scope.enter();
 
-    try scope.declare("bar");
+    try scope.declare("bar", true);
 
     std.testing.expect(scope.get("baz").?.type == .@"extern");
     std.testing.expect(scope.get("foo").?.type == .global);
@@ -209,9 +213,9 @@ test "variable allocation" {
     var scope = Scope.init(std.testing.allocator, null, true);
     defer scope.deinit();
 
-    try scope.declare("foo");
-    try scope.declare("bar");
-    try scope.declare("bam");
+    try scope.declare("foo", true);
+    try scope.declare("bar", true);
+    try scope.declare("bam", true);
 
     std.testing.expect(scope.get("foo").?.storage_slot == 0);
     std.testing.expect(scope.get("bar").?.storage_slot == 1);
@@ -219,12 +223,12 @@ test "variable allocation" {
 
     try scope.enter();
 
-    try scope.declare("foo");
+    try scope.declare("foo", true);
 
     try scope.enter();
 
-    try scope.declare("bar");
-    try scope.declare("bam");
+    try scope.declare("bar", true);
+    try scope.declare("bam", true);
 
     std.testing.expect(scope.get("foo").?.storage_slot == 0);
     std.testing.expect(scope.get("bar").?.storage_slot == 1);

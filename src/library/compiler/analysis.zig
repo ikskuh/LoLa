@@ -197,6 +197,12 @@ fn validateStore(state: *AnalysisState, diagnostics: *Diagnostics, scope: *Scope
                     variable_name,
                 });
             } else if (scope.get(variable_name)) |variable| {
+                if (variable.is_const) {
+                    try diagnostics.emit(.@"error", expression.location, "Assignment to constant {} not allowed.", .{
+                        variable_name,
+                    });
+                }
+
                 const previous = variable.possible_types;
 
                 if (state.conditional_scope_depth > 0) {
@@ -269,7 +275,7 @@ fn validateStatement(state: *AnalysisState, diagnostics: *Diagnostics, scope: *S
 
             try scope.enter();
 
-            scope.declare(loop.variable) catch |err| switch (err) {
+            scope.declare(loop.variable, true) catch |err| switch (err) {
                 error.AlreadyDeclared => unreachable, // not possible for locals
                 error.TooManyVariables => try emitTooManyVariables(diagnostics, stmt.location),
                 else => |e| return e,
@@ -302,7 +308,7 @@ fn validateStatement(state: *AnalysisState, diagnostics: *Diagnostics, scope: *S
             else
                 null;
 
-            scope.declare(decl.variable) catch |err| switch (err) {
+            scope.declare(decl.variable, decl.is_const) catch |err| switch (err) {
                 error.AlreadyDeclared => try diagnostics.emit(.@"error", stmt.location, "Global variable {} is already declared!", .{decl.variable}),
                 error.TooManyVariables => try emitTooManyVariables(diagnostics, stmt.location),
                 else => |e| return e,
@@ -310,6 +316,12 @@ fn validateStatement(state: *AnalysisState, diagnostics: *Diagnostics, scope: *S
 
             if (initial_value) |init_val|
                 scope.get(decl.variable).?.possible_types = init_val;
+
+            if (decl.is_const and decl.initial_value == null) {
+                try diagnostics.emit(.@"error", stmt.location, "Constant {} must be initialized!", .{
+                    decl.variable,
+                });
+            }
         },
         .extern_variable => |name| {
             scope.declareExtern(name) catch |err| switch (err) {
@@ -368,7 +380,7 @@ pub fn validate(allocator: *std.mem.Allocator, diagnostics: *Diagnostics, progra
         defer local_scope.deinit();
 
         for (function.parameters) |param| {
-            local_scope.declare(param) catch |err| switch (err) {
+            local_scope.declare(param, false) catch |err| switch (err) {
                 error.AlreadyDeclared => try diagnostics.emit(.@"error", function.location, "A parameter {} is already declared!", .{param}),
                 error.TooManyVariables => try emitTooManyVariables(diagnostics, function.location),
                 else => |e| return e,
@@ -405,13 +417,13 @@ test "validate correct program" {
     std.testing.expectEqual(@as(usize, 0), diagnostics.messages.items.len);
 }
 
-test "detect return from root script" {
+fn expectAnalysisErrors(source: []const u8, expected_messages: []const []const u8) !void {
     // For lack of a better idea:
     // Just run the analysis against the compiler test suite
     var diagnostics = Diagnostics.init(std.testing.allocator);
     defer diagnostics.deinit();
 
-    const seq = try @import("tokenizer.zig").tokenize(std.testing.allocator, &diagnostics, "", "return 10;");
+    const seq = try @import("tokenizer.zig").tokenize(std.testing.allocator, &diagnostics, "", source);
     defer std.testing.allocator.free(seq);
 
     var pgm = try @import("parser.zig").parse(std.testing.allocator, &diagnostics, seq);
@@ -419,5 +431,32 @@ test "detect return from root script" {
 
     try validate(std.testing.allocator, &diagnostics, pgm);
 
-    std.testing.expectEqual(@as(usize, 1), diagnostics.messages.items.len);
+    std.testing.expectEqual(expected_messages.len, diagnostics.messages.items.len);
+    for (expected_messages) |expected, i| {
+        std.testing.expectEqualStrings(expected, diagnostics.messages.items[i].message);
+    }
+}
+
+test "detect return from root script" {
+    try expectAnalysisErrors("return 10;", &[_][]const u8{
+        "Returning a value from global scope is not allowed.",
+    });
+}
+
+test "detect const without init" {
+    try expectAnalysisErrors("const a;", &[_][]const u8{
+        "Constant a must be initialized!",
+    });
+}
+
+test "detect assignment to const" {
+    try expectAnalysisErrors("const a = 5; a = 10;", &[_][]const u8{
+        "Assignment to constant a not allowed.",
+    });
+}
+
+test "detect doubly-declared global variables" {
+    try expectAnalysisErrors("var a; var a;", &[_][]const u8{
+        "Global variable a is already declared!",
+    });
 }

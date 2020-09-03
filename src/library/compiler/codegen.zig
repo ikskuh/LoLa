@@ -254,7 +254,8 @@ fn emitStatement(debug_symbols: *DebugSyms, scope: *Scope, writer: *CodeWriter, 
 
             try writer.emitInstructionName(.iter_make);
 
-            try scope.declare(loop.variable);
+            // Loop variable is a constant!
+            try scope.declare(loop.variable, true);
 
             const loopvar = scope.get(loop.variable) orelse unreachable;
             std.debug.assert(loopvar.type == .local);
@@ -317,7 +318,7 @@ fn emitStatement(debug_symbols: *DebugSyms, scope: *Scope, writer: *CodeWriter, 
             try writer.defineLabel(end_if);
         },
         .declaration => |decl| {
-            try scope.declare(decl.variable);
+            try scope.declare(decl.variable, decl.is_const);
 
             if (decl.initial_value) |value| {
                 try emitExpression(debug_symbols, scope, writer, value);
@@ -399,7 +400,8 @@ pub fn generateIR(
         defer local_scope.deinit();
 
         for (function.parameters) |param| {
-            try local_scope.declare(param);
+            // TODO: Make function arguments const by default?
+            try local_scope.declare(param, false);
         }
 
         try emitStatement(&debug_symbols, &local_scope, &writer, function.body);
