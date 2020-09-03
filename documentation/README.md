@@ -438,6 +438,12 @@ Possible panics are:
 
 A panic may be caused by the LoLa virtual machine or any library functions.
 
+## Objects
+
+Objects in LoLa are opaque handles except for their methods. Users cannot declare or create objects without the help of the script host. Object handles are usually valid as long as the LoLa script has access to that handle, but the script host might destroy objects actively as well.
+
+Object handles can be considered a reference type as you don't get a copy of the object when you pass a handle around. This type would be the only exception to LoLas design of *value types only*.
+
 ## LoLa File Types
 
 The following list contains LoLa-related file types 
@@ -447,12 +453,21 @@ The following list contains LoLa-related file types
 - [LoLa Modules](Modules.md) (`*.lola.lm`)
   These files contain compiled LoLa byte code and can be executed by a [LoLa VM](IR.md).
 
+## Frequently Asked Questions
 
+This section tries to answer questions that are commonly asked.
+
+### Why does the language not allow user-defined objects?
+
+The design decision of LoLa was to be a simple as possible without losing too much features. User-defined objects would make the language way more complex and harder to reason about code. As the focus group of the language is mostly programmer novices, this complexity was left out and passed to the script host.
+
+It is still possible to create user-defined objects and classes though: The script host might implement a function `MakeObject(str)` which compiles a LoLa source and returns the compiled script as a object, evaluating the top-level code as some kind of constructor and exporting all functions as methods to that object.
 
 ## List of Keywords
 
 - `and`
 - `break`
+- `const`
 - `continue`
 - `else`
 - `extern`
