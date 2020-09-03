@@ -252,4 +252,11 @@ ExpectEqual(Fun5("D"), "D");
 ExpectEqual(Fun5(1), 1);
 ExpectEqual(Fun5([]), []);
 
+// Character literals
+ExpectEqual(' ', 0x20);
+ExpectEqual('\a', 0x07);
+ExpectEqual('💩', 0x1F4A9);
+ExpectEqual('\xF3', 0xF3);
+ExpectEqual('\xf0\x9f\x92\xa9', 0x1F4A9); // handcrafted utf8 escape sequence
+
 Print("Behaviour test suite passed.");

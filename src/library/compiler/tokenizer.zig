@@ -7,6 +7,7 @@ pub const TokenType = enum {
 
     number_literal,
     string_literal,
+    character_literal,
     identifier,
     comment,
     whitespace,
@@ -136,6 +137,8 @@ pub const Tokenizer = struct {
                     .text = self.source[start..end],
                 };
 
+                // std.debug.print("token: `{}`\n", .{token.text});
+
                 if (token.type == .identifier) {
                     inline for (keywords) |kwd| {
                         if (std.mem.eql(u8, token.text, kwd)) {
@@ -176,7 +179,12 @@ pub const Tokenizer = struct {
     fn accept(self: *Self, predicate: fn (u8) bool) bool {
         if (self.offset >= self.source.len)
             return false;
-        if (predicate(self.source[self.offset])) {
+        const c = self.source[self.offset];
+        const accepted = predicate(c);
+        // std.debug.print("{c} → {}\n", .{
+        //     c, accepted,
+        // });
+        if (accepted) {
             self.offset += 1;
             return true;
         } else {
@@ -210,13 +218,14 @@ pub const Tokenizer = struct {
         }.pred;
     }
 
-    const invalid_char_class = noneOf(" \r\n\tABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789+-*/%={}()[]<>\".,;!");
+    const invalid_char_class = noneOf(" \r\n\tABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789+-*/%={}()[]<>\"\'.,;!");
     const whitespace_class = anyOf(" \r\n\t");
     const comment_class = noneOf("\n");
     const identifier_class = anyOf("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789");
     const digit_class = anyOf("0123456789");
     const hexdigit_class = anyOf("0123456789abcdefABCDEF");
     const string_char_class = noneOf("\"\\");
+    const character_char_class = noneOf("\'\\");
 
     fn nextInternal(self: *Self) ?TokenType {
         std.debug.assert(self.offset < self.source.len);
@@ -324,9 +333,32 @@ pub const Tokenizer = struct {
                                 return null;
                             if (!self.accept(hexdigit_class))
                                 return null;
+                        } else {
+                            if (!self.accept(any))
+                                return null;
                         }
-                        if (!self.accept(any))
-                            return null;
+                    } else {
+                        return null;
+                    }
+                }
+            },
+
+            // parse character literals
+            '\'' => {
+                while (true) {
+                    while (self.accept(character_char_class)) {}
+                    if (self.accept(anyOf("\'"))) {
+                        return .character_literal;
+                    } else if (self.accept(anyOf("\\"))) {
+                        if (self.accept(anyOf("x"))) { // hex literal
+                            if (!self.accept(hexdigit_class))
+                                return null;
+                            if (!self.accept(hexdigit_class))
+                                return null;
+                        } else {
+                            if (!self.accept(any))
+                                return null;
+                        }
                     } else {
                         return null;
                     }
@@ -391,7 +423,7 @@ test "Tokenizer (tokenize compiler test suite)" {
             },
             .end_of_file => break,
             .invalid_sequence => |seq| {
-                std.debug.print("failed to parse test file at '{}'!\n", .{
+                std.debug.print("failed to parse test file at `{}`!\n", .{
                     seq,
                 });
                 // this test should never reach this state, as the test file

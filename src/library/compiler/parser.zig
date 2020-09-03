@@ -39,6 +39,12 @@ pub fn parse(
         allocator: *std.mem.Allocator,
         sequence: []const lexer.Token,
         index: usize = 0,
+        diagnostics: *diag.Diagnostics,
+
+        fn emitDiagnostics(self: *Self, comptime fmt: []const u8, args: anytype) !error{SyntaxError} {
+            try self.diagnostics.emit(.@"error", self.getCurrentLocation(), fmt, args);
+            return error.SyntaxError;
+        }
 
         fn getCurrentLocation(self: Self) Location {
             return self.sequence[self.index].location;
@@ -715,6 +721,7 @@ pub fn parse(
                 .@"[",
                 .number_literal,
                 .string_literal,
+                .character_literal,
                 .identifier,
             }));
             switch (token.type) {
@@ -749,9 +756,9 @@ pub fn parse(
                 },
                 .number_literal => {
                     const val = if (std.mem.startsWith(u8, token.text, "0x"))
-                        @intToFloat(f64, std.fmt.parseInt(i54, token.text[2..], 16) catch return error.SyntaxError)
+                        @intToFloat(f64, std.fmt.parseInt(i54, token.text[2..], 16) catch return try self.emitDiagnostics("`{}` is not a valid hexadecimal number!", .{token.text}))
                     else
-                        std.fmt.parseFloat(f64, token.text) catch return error.SyntaxError;
+                        std.fmt.parseFloat(f64, token.text) catch return try self.emitDiagnostics("`{}` is not a valid number!", .{token.text});
 
                     return ast.Expression{
                         .location = token.location,
@@ -765,7 +772,34 @@ pub fn parse(
                     return ast.Expression{
                         .location = token.location,
                         .type = .{
-                            .string_literal = self.escapeString(token.text[1 .. token.text.len - 1]) catch return error.SyntaxError,
+                            .string_literal = self.escapeString(token.text[1 .. token.text.len - 1]) catch return try self.emitDiagnostics("Invalid escape sequence in {}!", .{token.text}),
+                        },
+                    };
+                },
+                .character_literal => {
+                    std.debug.assert(token.text.len >= 2);
+
+                    const escaped_text = self.escapeString(token.text[1 .. token.text.len - 1]) catch return try self.emitDiagnostics("Invalid escape sequence in {}!", .{token.text});
+
+                    var value: u21 = undefined;
+
+                    if (escaped_text.len == 0) {
+                        return error.SyntaxError;
+                    } else if (escaped_text.len == 1) {
+                        // this is a shortcut for non-utf8 encoded files.
+                        // it's not a perfect heuristic, but it's okay.
+                        value = escaped_text[0];
+                    } else {
+                        const utf8_len = std.unicode.utf8ByteSequenceLength(escaped_text[0]) catch return try self.emitDiagnostics("Invalid utf8 sequence: `{}`!", .{escaped_text});
+                        if (escaped_text.len != utf8_len)
+                            return error.SyntaxError;
+                        value = std.unicode.utf8Decode(escaped_text[0..utf8_len]) catch return try self.emitDiagnostics("Invalid utf8 sequence: `{}`!", .{escaped_text});
+                    }
+
+                    return ast.Expression{
+                        .location = token.location,
+                        .type = .{
+                            .number_literal = @intToFloat(f64, value),
                         },
                     };
                 },
@@ -783,6 +817,7 @@ pub fn parse(
     var parser = Parser{
         .allocator = &arena.allocator,
         .sequence = sequence,
+        .diagnostics = diagnostics,
     };
 
     while (parser.index < parser.sequence.len) {
@@ -1310,6 +1345,16 @@ test "escaped string literal" {
     std.testing.expectEqualStrings("\"content\"", expr.type.string_literal);
 }
 
+test "character literal" {
+    var pgm = try parseTest("1 = ' ';");
+    defer pgm.deinit();
+
+    const expr = getTestExpr(pgm);
+
+    std.testing.expectEqual(ast.Expression.Type.number_literal, expr.type);
+    std.testing.expectEqual(@as(f64, ' '), expr.type.number_literal);
+}
+
 test "variable reference" {
     var pgm = try parseTest("1 = variable_name;");
     defer pgm.deinit();
@@ -1633,6 +1678,10 @@ test "full suite parsing" {
 
     var pgm = try parse(std.testing.allocator, &diagnostics, seq);
     defer pgm.deinit();
+
+    for (diagnostics.messages.items) |msg| {
+        std.debug.warn("{}\n", .{msg});
+    }
 
     // assert that we don't have an empty AST
     std.testing.expect(pgm.root_script.len > 0);

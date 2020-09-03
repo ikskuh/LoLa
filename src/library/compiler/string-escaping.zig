@@ -32,7 +32,7 @@ pub const EscapedStringIterator = struct {
                     '\"' => 34,
                     '\'' => 39,
                     'x' => blk: {
-                        if (self.position + 2 >= self.slice.len)
+                        if (self.position + 2 > self.slice.len)
                             return error.IncompleteEscapeSequence;
                         const str = self.slice[self.position..][0..2];
                         self.position += 2;
@@ -107,7 +107,7 @@ test "escape string with predefined escape sequences" {
 }
 
 test "escape string with hexadecimal escape sequences" {
-    const str = try escapeString(std.testing.allocator, " \\xca \\x84 \\x2d \\x75 \\xb7 \\xf1 \\xf3 \\x9e ");
+    const str = try escapeString(std.testing.allocator, " \\xcA \\x84 \\x2d \\x75 \\xb7 \\xF1 \\xf3 \\x9e ");
     defer std.testing.allocator.free(str);
 
     std.testing.expectEqualStrings(" \xca \x84 \x2d \x75 \xb7 \xf1 \xf3 \x9e ", str);
@@ -124,4 +124,18 @@ test "incomplete normal hex sequence" {
 
 test "invalid hex sequence" {
     std.testing.expectError(error.IncompleteEscapeSequence, escapeString(std.testing.allocator, "\\xXX"));
+}
+
+test "escape string with tight predefined escape sequence" {
+    const str = try escapeString(std.testing.allocator, "\\a");
+    defer std.testing.allocator.free(str);
+
+    std.testing.expectEqualStrings("\x07", str);
+}
+
+test "escape string with tight hexadecimal escape sequence" {
+    const str = try escapeString(std.testing.allocator, "\\xca");
+    defer std.testing.allocator.free(str);
+
+    std.testing.expectEqualStrings("\xca", str);
 }
