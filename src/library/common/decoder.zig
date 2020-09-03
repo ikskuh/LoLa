@@ -1,11 +1,10 @@
 const std = @import("std");
 
-const utility = @import("../common/utility.zig");
+const utility = @import("utility.zig");
 
 // Import modules to reduce file size
-// usingnamespace @import("value.zig");
-usingnamespace @import("../common/ir.zig");
-usingnamespace @import("../common/compile-unit.zig");
+usingnamespace @import("ir.zig");
+usingnamespace @import("compile-unit.zig");
 
 /// A struct that allows decoding data from LoLa IR code.
 pub const Decoder = struct {
@@ -113,7 +112,7 @@ pub const Decoder = struct {
                 }
             }
         }
-        unreachable;
+        return error.InvalidInstruction;
     }
 
     fn mapEndOfStreamToNotEnoughData(err: anytype) @TypeOf(err) {

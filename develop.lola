@@ -1,2 +1,4 @@
-const foo = 10;
-foo = foo[20];
+
+
+// const foo = 10;
+// foo = foo[20];

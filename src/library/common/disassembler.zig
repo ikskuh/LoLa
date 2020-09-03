@@ -1,8 +1,8 @@
 const std = @import("std");
 
-usingnamespace @import("../common/compile-unit.zig");
-usingnamespace @import("../runtime/decoder.zig");
-usingnamespace @import("../common/ir.zig");
+usingnamespace @import("compile-unit.zig");
+usingnamespace @import("decoder.zig");
+usingnamespace @import("ir.zig");
 
 pub const DisassemblerOptions = struct {
     /// Prefix each line of the disassembly with the hexadecimal address.

@@ -2,7 +2,7 @@ const std = @import("std");
 usingnamespace @import("value.zig");
 usingnamespace @import("../common/ir.zig");
 usingnamespace @import("../common/compile-unit.zig");
-usingnamespace @import("decoder.zig");
+usingnamespace @import("../common/decoder.zig");
 usingnamespace @import("named_global.zig");
 usingnamespace @import("environment.zig");
 usingnamespace @import("objects.zig");

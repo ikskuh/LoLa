@@ -3,10 +3,10 @@ pub usingnamespace @import("common/ir.zig");
 pub usingnamespace @import("common/compile-unit.zig");
 
 pub usingnamespace @import("common/disassembler.zig");
+pub usingnamespace @import("common/decoder.zig");
 
 pub const runtime = struct {
     usingnamespace @import("runtime/value.zig");
-    usingnamespace @import("runtime/decoder.zig");
     usingnamespace @import("runtime/named_global.zig");
     usingnamespace @import("runtime/environment.zig");
     usingnamespace @import("runtime/vm.zig");
@@ -48,8 +48,8 @@ comptime {
     _ = @import("runtime/value.zig");
     _ = @import("runtime/context.zig");
     _ = @import("runtime/strings.zig");
-    _ = @import("runtime/decoder.zig");
     _ = @import("runtime/named_global.zig");
+    _ = @import("common/decoder.zig");
     _ = @import("common/disassembler.zig");
     _ = @import("common/utility.zig");
     _ = @import("common/ir.zig");
