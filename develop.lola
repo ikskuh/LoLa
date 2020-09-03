@@ -1,6 +1,2 @@
-
-
-
 const foo = 10;
-
-var foo = 20;
+foo = foo[20];

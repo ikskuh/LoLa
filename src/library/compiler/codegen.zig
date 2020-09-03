@@ -400,8 +400,7 @@ pub fn generateIR(
         defer local_scope.deinit();
 
         for (function.parameters) |param| {
-            // TODO: Make function arguments const by default?
-            try local_scope.declare(param, false);
+            try local_scope.declare(param, true);
         }
 
         try emitStatement(&debug_symbols, &local_scope, &writer, function.body);
