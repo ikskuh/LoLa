@@ -1,0 +1,25 @@
+// This example was inspired by the Stone Script:
+// https://stonestoryrpg.com/stonescript/#example
+
+const location = GetLocation();
+if(location == "rocky") {
+  Equip("shovel");
+}
+else if(location == "cave") {
+  SetLoadout(1);
+  if(GetFoe() == "bolesh") {
+    Equip("grap");
+    Equip("hammer *7 D");
+  }
+}
+else if(location == "halls") {
+  EquipLeft("poison wand");
+  EquipRight("vigor wand");
+  if(GetStars(location) > 5) {
+    Equip("vigor staff +13");
+  }
+}
+
+if(GetHP() < 10) {
+  Activate("potion");
+}

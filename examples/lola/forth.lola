@@ -1,0 +1,55 @@
+// A small example implementing a language similar to Forth
+// https://en.wikipedia.org/wiki/Forth_(programming_language)
+
+// must be declared before it's used anywhere in the script
+const binary_operators = "+-*/%";
+
+RunForth("1 2 + 3 * 4 - =");
+
+Print(RunForth("1 2 +"));
+
+// Applies a singe-character binary operator to the given stack
+function ApplyBinOp(stack, op)
+{
+  const l = Length(stack);
+  const lhs = stack[l - 2];
+  const rhs = stack[l - 1];
+
+  var result;
+  if(op == "+") result = lhs + rhs;
+  else if(op == "-") result = lhs - rhs;
+  else if(op == "*") result = lhs * rhs;
+  else if(op == "/") result = lhs / rhs;
+  else if(op == "%") result = lhs % rhs;
+
+  var new_stack = Slice(stack, 0, l - 1);
+  new_stack[l - 2] = result;
+  return new_stack;
+}
+
+
+function RunForth(script, trace)
+{
+  const items = Split(script, " ", true);
+  var stack = [ ];
+  for(command in items)
+  {
+    const l = Length(stack);
+    if(IndexOf(binary_operators, command) != void) {
+      stack = ApplyBinOp(stack, command);
+    }
+    else if(command == "=") {
+      const top = stack[l - 1];
+      stack = Slice(stack, 0, l - 1);   
+      Print(top);
+    }
+    else {
+      stack = stack + [ StringToNum(command) ];
+    }
+    if(trace == true) // don't do it on false or void
+      Print(command, " -> ", stack);
+  }
+  const len = Length(stack);
+  if(len > 0)
+    return stack[len - 1];
+}
