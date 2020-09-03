@@ -253,7 +253,8 @@ fn validateExpression(state: *AnalysisState, diagnostics: *Diagnostics, scope: *
                 .add => TypeSet.init(.{ .string, .number, .array }),
                 .subtract, .multiply, .divide, .modulus => TypeSet.from(.number),
                 .boolean_or, .boolean_and => TypeSet.from(.boolean),
-                .less_than, .greater_than, .greater_or_equal_than, .less_or_equal_than, .equal, .different => TypeSet.init(.{ .string, .number, .array }),
+                .equal, .different => TypeSet.any,
+                .less_than, .greater_than, .greater_or_equal_than, .less_or_equal_than => TypeSet.init(.{ .string, .number, .array }),
             };
 
             try performTypeCheck(diagnostics, expr.lhs.location, accepted_set, lhs);
