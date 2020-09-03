@@ -183,7 +183,7 @@ When you want to contribute to the compiler, check out the following documents:
 - [Source Code](src/)
 - [Bison Grammar](src/library/compiler/grammar.yy)
 - [Flex Tokenizer](src/library/compiler/yy.l)
-- [Issue List](https://github.com/MasterQ32/LoLa-native/issues)
+- [Issue List](https://github.com/MasterQ32/LoLa/issues)
 
 ## Visual Studio Code Extension
 If you want syntax highlighting in VSCode, you can install the [`lola-vscode`](https://github.com/MasterQ32/lola-vscode) extension.
@@ -194,9 +194,9 @@ Right now, it's not published in the gallery, so to install the extension, you h
 
 ### Continous Integration
 
-![Linux CI](https://github.com/MasterQ32/LoLa-native/workflows/Linux%20Build/badge.svg)
-![MacOS CI](https://github.com/MasterQ32/LoLa-native/workflows/MacOS%20Build/badge.svg)
-![Windows CI](https://github.com/MasterQ32/LoLa-native/workflows/Windows%20Build/badge.svg)
+![Linux CI](https://github.com/MasterQ32/LoLa/workflows/Linux%20Build/badge.svg)
+![MacOS CI](https://github.com/MasterQ32/LoLa/workflows/MacOS%20Build/badge.svg)
+![Windows CI](https://github.com/MasterQ32/LoLa/workflows/Windows%20Build/badge.svg)
 
 ### Requirements
 
