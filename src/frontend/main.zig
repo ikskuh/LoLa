@@ -210,7 +210,10 @@ fn compile(options: CompileCLI, files: []const []const u8) !u8 {
     defer if (options.output == null)
         allocator.free(outname);
 
-    const cu = try compileFileToUnit(allocator, inname);
+    const cu = compileFileToUnit(allocator, inname) catch |err| switch (err) {
+        error.CompileError => return 1,
+        else => |e| return e,
+    };
     defer cu.deinit();
 
     if (!options.verify) {
@@ -262,7 +265,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
             .module => "Failed to run file: File seems not to be a compiled module.\n",
             .source => return 1, // We already have the diagnostic output of the compiler anyways
         });
-        if (err != error.InvalidFormat) {
+        if (err != error.InvalidFormat and err != error.CompileError) {
             try stderr.print("The following error happened: {}\n", .{
                 @errorName(err),
             });
@@ -322,7 +325,11 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
             try stderr.print("Panic during execution: {}\n", .{@errorName(err)});
             try stderr.print("Call stack:\n", .{});
 
-            for (vm.calls.items) |call, i| {
+            var i: usize = vm.calls.items.len;
+            while (i > 0) {
+                i -= 1;
+                const call = vm.calls.items[i];
+
                 const location = call.function.compileUnit.lookUp(call.decoder.offset);
 
                 var current_fun: []const u8 = "<main>";
@@ -395,6 +402,9 @@ fn compileFileToUnit(allocator: *std.mem.Allocator, fileName: []const u8) !lola.
     defer pgm.deinit();
 
     try lola.compiler.validate(allocator, &diag, pgm);
+
+    if (diag.hasErrors())
+        return error.CompileError;
 
     var compile_unit = try lola.compiler.generateIR(allocator, pgm, fileName);
     errdefer compile_unit;

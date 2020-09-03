@@ -72,6 +72,11 @@ pub fn build(b: *Builder) !void {
         test_step.dependOn(&stdib_test.step);
 
         {
+            std.fs.cwd().makeDir("zig-cache/tmp") catch |err| switch (err) {
+                error.PathAlreadyExists => {}, // nice
+                else => |e| return e,
+            };
+
             const runlib_test = exe.run();
 
             // execute in the zig-cache directory so we have a "safe" playfield

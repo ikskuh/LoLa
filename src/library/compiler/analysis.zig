@@ -62,6 +62,14 @@ const TypeSet = struct {
         };
     }
 
+    fn init(list: anytype) Self {
+        var set = TypeSet.empty;
+        inline for (list) |item| {
+            set = set.@"union"(from(item));
+        }
+        return set;
+    }
+
     fn contains(self: Self, item: Type) bool {
         return switch (item) {
             .@"void" => self.@"void",
@@ -240,6 +248,16 @@ fn validateExpression(state: *AnalysisState, diagnostics: *Diagnostics, scope: *
         .binary_operator => |expr| {
             const lhs = try validateExpression(state, diagnostics, scope, expr.lhs.*);
             const rhs = try validateExpression(state, diagnostics, scope, expr.rhs.*);
+
+            const accepted_set = switch (expr.operator) {
+                .add => TypeSet.init(.{ .string, .number, .array }),
+                .subtract, .multiply, .divide, .modulus => TypeSet.from(.number),
+                .boolean_or, .boolean_and => TypeSet.from(.boolean),
+                .less_than, .greater_than, .greater_or_equal_than, .less_or_equal_than, .equal, .different => TypeSet.init(.{ .string, .number, .array }),
+            };
+
+            try performTypeCheck(diagnostics, expr.lhs.location, accepted_set, lhs);
+            try performTypeCheck(diagnostics, expr.rhs.location, accepted_set, rhs);
 
             if (!TypeSet.areCompatible(lhs, rhs)) {
                 try diagnostics.emit(.warning, expression.location, "Possible type mismatch detected. {} and {} are not compatible.\n", .{

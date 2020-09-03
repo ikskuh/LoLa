@@ -157,6 +157,19 @@ if(string != void) {
 
 This design decision was made with the idea in mind that most LoLa programmers won't write the next best security critical software, but just do a quick hack in game to reach their next item unlock.
 
+### Smart compiler
+
+As LoLa isn't the most complex language, the compiler can support the programmer. Even though the language has fully dynamic typing, the compiler can do some type checking at compile time already:
+
+```js
+// warning: Possible type mismatch detected: Expected number|string|array, found boolean
+if(a < true) { }
+```
+
+Right now, this is only used for validating expressions, but it is planned to extend this behaviour to annotate variables as well, so even more type errors can be found during compile time.
+
+Note that this is a fairly new feature, it does not catch all your type mismatches, but can prevent the obvious ones.
+
 ## Starting Points
 
 To get familiar with LoLa, you can check out these starting points:
