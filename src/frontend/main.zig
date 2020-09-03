@@ -1,7 +1,6 @@
 const std = @import("std");
 const lola = @import("lola");
 const argsParser = @import("args");
-const runtime = @import("runtime.zig");
 
 var gpa_state = std.heap.GeneralPurposeAllocator(.{}){};
 const gpa = &gpa_state.allocator;
@@ -281,11 +280,11 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
     defer env.deinit();
 
     if (!options.@"no-stdlib") {
-        try lola.std.install(&env, allocator);
+        try lola.libs.std.install(&env, allocator);
     }
 
     if (!options.@"no-runtime") {
-        try runtime.install(&env, allocator);
+        try lola.libs.runtime.install(&env, allocator);
 
         // Move these two to a test runner
 
@@ -401,9 +400,9 @@ fn compileFileToUnit(allocator: *std.mem.Allocator, fileName: []const u8) !lola.
     var pgm = try lola.compiler.parser.parse(allocator, &diag, seq);
     defer pgm.deinit();
 
-    try lola.compiler.validate(allocator, &diag, pgm);
+    const successful = try lola.compiler.validate(allocator, &diag, pgm);
 
-    if (diag.hasErrors())
+    if (!successful)
         return error.CompileError;
 
     var compile_unit = try lola.compiler.generateIR(allocator, pgm, fileName);

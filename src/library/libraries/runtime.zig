@@ -1,7 +1,7 @@
 // This file implements the LoLa Runtime Library.
 
 const std = @import("std");
-const lola = @import("lola");
+const lola = @import("../main.zig");
 
 /// Installs the LoLa standard library into the given environment,
 /// providing it with a basic set of functions.
@@ -29,18 +29,21 @@ pub fn install(environment: *lola.runtime.Environment, allocator: *std.mem.Alloc
 }
 
 /// empty compile unit for testing purposes
-const empty_compile_unit = lola.runtime.CompileUnit{
+const empty_compile_unit = lola.CompileUnit{
     .arena = std.heap.ArenaAllocator.init(std.testing.failing_allocator),
     .comment = "empty compile unit",
     .globalCount = 0,
     .temporaryCount = 0,
     .code = "",
-    .functions = &[0]lola.runtime.CompileUnit.Function{},
-    .debugSymbols = &[0]lola.runtime.CompileUnit.DebugSymbol{},
+    .functions = &[0]lola.CompileUnit.Function{},
+    .debugSymbols = &[0]lola.CompileUnit.DebugSymbol{},
 };
 
 test "runtime.install" {
-    var env = try lola.runtime.Environment.init(std.testing.allocator, &empty_compile_unit);
+    var pool = lola.runtime.ObjectPool.init(std.testing.allocator);
+    defer pool.deinit();
+
+    var env = try lola.runtime.Environment.init(std.testing.allocator, &empty_compile_unit, &pool);
     defer env.deinit();
 
     // TODO: Reinsert this

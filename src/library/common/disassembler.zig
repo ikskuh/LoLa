@@ -125,3 +125,8 @@ fn writeHexDump(stream: anytype, data: []const u8, begin: usize, end: usize, wid
     }
     try stream.writeAll("|");
 }
+
+test "disassemble" {
+    // dummy test
+    _ = disassemble;
+}

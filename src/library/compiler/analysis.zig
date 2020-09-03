@@ -352,9 +352,11 @@ fn validateStatement(state: *AnalysisState, diagnostics: *Diagnostics, scope: *S
 /// Validates the `program` against programming mistakes and filles `diagnostics` with the findings.
 /// Note that the function will always succeed when no `OutOfMemory` happens. To see if the program
 /// is semantically sound, check `diagnostics` for error messages.
-pub fn validate(allocator: *std.mem.Allocator, diagnostics: *Diagnostics, program: ast.Program) ValidationError!void {
+pub fn validate(allocator: *std.mem.Allocator, diagnostics: *Diagnostics, program: ast.Program) ValidationError!bool {
     var global_scope = Scope.init(allocator, null, true);
     defer global_scope.deinit();
+
+    const inital_messages = diagnostics.messages.items.len;
 
     for (program.root_script) |stmt| {
         var state = AnalysisState{
@@ -394,6 +396,8 @@ pub fn validate(allocator: *std.mem.Allocator, diagnostics: *Diagnostics, progra
         };
         try validateStatement(&state, diagnostics, &local_scope, function.body);
     }
+
+    return (inital_messages == diagnostics.messages.items.len);
 }
 
 test "validate correct program" {
@@ -408,7 +412,7 @@ test "validate correct program" {
     var pgm = try @import("parser.zig").parse(std.testing.allocator, &diagnostics, seq);
     defer pgm.deinit();
 
-    try validate(std.testing.allocator, &diagnostics, pgm);
+    std.testing.expectEqual(true, try validate(std.testing.allocator, &diagnostics, pgm));
 
     for (diagnostics.messages.items) |msg| {
         std.debug.warn("{}\n", .{msg});
@@ -429,7 +433,7 @@ fn expectAnalysisErrors(source: []const u8, expected_messages: []const []const u
     var pgm = try @import("parser.zig").parse(std.testing.allocator, &diagnostics, seq);
     defer pgm.deinit();
 
-    try validate(std.testing.allocator, &diagnostics, pgm);
+    std.testing.expectEqual(false, try validate(std.testing.allocator, &diagnostics, pgm));
 
     std.testing.expectEqual(expected_messages.len, diagnostics.messages.items.len);
     for (expected_messages) |expected, i| {

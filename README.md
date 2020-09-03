@@ -10,7 +10,7 @@ for(text in list) {
 }
 ```
 
-You can find more examples in the [Examples](Examples/) folder.
+You can find more examples in the [examples](examples/lola) folder.
 
 ## Why LoLa when there is *X*?
 LoLa isn't meant to be your next best day-to-day scripting language. Its design is focused on embedding the language in environments where the users want/need/should write some small scripts like games or scriptable applications. In most script languages, you as a script host don't have control over the execution time of the scripts you're executing. LoLa protects you against programming errors like endless loops and such:
@@ -175,7 +175,8 @@ Note that this is a fairly new feature, it does not catch all your type mismatch
 To get familiar with LoLa, you can check out these starting points:
 
 - [Documentation](Documentation/README.md)
-- [Examples](Examples/README.md)
+- [LoLa Examples](examples/lola/README.md)
+- [Script Host Examples](examples/host)
 
 When you want to contribute to the compiler, check out the following documents:
 

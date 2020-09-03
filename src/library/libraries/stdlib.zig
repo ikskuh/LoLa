@@ -1,3 +1,5 @@
+// This file implements the LoLa standard library
+
 const std = @import("std");
 const lola = @import("../main.zig");
 
