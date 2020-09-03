@@ -153,3 +153,6 @@ var obj;
 _ = obj.Method();
 _ = obj.Method(1);
 _ = obj.Method(1,2,3);
+
+const foo1;
+const foo2 = 10;

@@ -119,6 +119,7 @@ pub const Statement = struct {
         declaration: struct {
             variable: []const u8,
             initial_value: ?Expression,
+            is_const: bool,
         },
         extern_variable: []const u8,
         block: []Statement,

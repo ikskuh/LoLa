@@ -18,6 +18,7 @@ pub const TokenType = enum {
     @"]",
     @"[",
     @"var",
+    @"const",
     @"extern",
     @"for",
     @"while",
@@ -77,6 +78,7 @@ const keywords = [_][]const u8{
     "and",
     "or",
     "not",
+    "const",
 };
 
 pub const Location = @import("location.zig").Location;

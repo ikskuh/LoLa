@@ -346,8 +346,9 @@ pub fn parse(
                     };
                 },
 
-                .@"var" => {
-                    _ = try self.accept(is(.@"var"));
+                .@"var", .@"const" => {
+                    const decl_type = try self.accept(oneOf(.{ .@"var", .@"const" }));
+
                     const name = try self.accept(is(.identifier));
                     const decider = try self.accept(oneOf(.{ .@";", .@"=" }));
 
@@ -357,6 +358,7 @@ pub fn parse(
                             .declaration = .{
                                 .variable = name.text,
                                 .initial_value = null,
+                                .is_const = (decl_type.type == .@"const"),
                             },
                         },
                     };
@@ -1183,7 +1185,7 @@ test "parsing extern declaration" {
     std.testing.expectEqualStrings("name", pgm.root_script[0].type.extern_variable);
 }
 
-test "parsing declaration (no value)" {
+test "parsing var declaration (no value)" {
     var pgm = try parseTest("var name;");
     defer pgm.deinit();
 
@@ -1192,10 +1194,11 @@ test "parsing declaration (no value)" {
 
     std.testing.expectEqual(ast.Statement.Type.declaration, pgm.root_script[0].type);
     std.testing.expectEqualStrings("name", pgm.root_script[0].type.declaration.variable);
+    std.testing.expectEqual(false, pgm.root_script[0].type.declaration.is_const);
     std.testing.expectEqual(@as(?ast.Expression, null), pgm.root_script[0].type.declaration.initial_value);
 }
 
-test "parsing declaration (initial value)" {
+test "parsing var declaration (initial value)" {
     var pgm = try parseTest("var name = 1;");
     defer pgm.deinit();
 
@@ -1204,6 +1207,33 @@ test "parsing declaration (initial value)" {
 
     std.testing.expectEqual(ast.Statement.Type.declaration, pgm.root_script[0].type);
     std.testing.expectEqualStrings("name", pgm.root_script[0].type.declaration.variable);
+    std.testing.expectEqual(false, pgm.root_script[0].type.declaration.is_const);
+    std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.declaration.initial_value.?.type);
+}
+
+test "parsing const declaration (no value)" {
+    var pgm = try parseTest("const name;");
+    defer pgm.deinit();
+
+    std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
+    std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+
+    std.testing.expectEqual(ast.Statement.Type.declaration, pgm.root_script[0].type);
+    std.testing.expectEqualStrings("name", pgm.root_script[0].type.declaration.variable);
+    std.testing.expectEqual(true, pgm.root_script[0].type.declaration.is_const);
+    std.testing.expectEqual(@as(?ast.Expression, null), pgm.root_script[0].type.declaration.initial_value);
+}
+
+test "parsing const declaration (initial value)" {
+    var pgm = try parseTest("const name = 1;");
+    defer pgm.deinit();
+
+    std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
+    std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+
+    std.testing.expectEqual(ast.Statement.Type.declaration, pgm.root_script[0].type);
+    std.testing.expectEqualStrings("name", pgm.root_script[0].type.declaration.variable);
+    std.testing.expectEqual(true, pgm.root_script[0].type.declaration.is_const);
     std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.declaration.initial_value.?.type);
 }
 
