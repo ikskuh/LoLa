@@ -3,7 +3,7 @@ const std = @import("std");
 const utility = @import("../common/utility.zig");
 
 // Import modules to reduce file size
-usingnamespace @import("value.zig");
+// usingnamespace @import("value.zig");
 usingnamespace @import("../common/ir.zig");
 usingnamespace @import("../common/compile-unit.zig");
 

@@ -7,7 +7,6 @@ const utility = @import("utility.zig");
 usingnamespace @import("value.zig");
 usingnamespace @import("../common/compile-unit.zig");
 usingnamespace @import("named_global.zig");
-usingnamespace @import("disassembler.zig");
 usingnamespace @import("context.zig");
 usingnamespace @import("vm.zig");
 usingnamespace @import("objects.zig");

@@ -274,10 +274,10 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
     };
     defer cu.deinit();
 
-    var pool = lola.ObjectPool.init(allocator);
+    var pool = lola.runtime.ObjectPool.init(allocator);
     defer pool.deinit();
 
-    var env = try lola.Environment.init(allocator, &cu, &pool);
+    var env = try lola.runtime.Environment.init(allocator, &cu, &pool);
     defer env.deinit();
 
     if (!options.@"no-stdlib") {
@@ -289,8 +289,8 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
 
         // Move these two to a test runner
 
-        try env.installFunction("Expect", lola.Function.initSimpleUser(struct {
-            fn call(environment: *const lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+        try env.installFunction("Expect", lola.runtime.Function.initSimpleUser(struct {
+            fn call(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
                 if (args.len != 1)
                     return error.InvalidArgs;
                 const assertion = try args[0].toBoolean();
@@ -302,8 +302,8 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
             }
         }.call));
 
-        try env.installFunction("ExpectEqual", lola.Function.initSimpleUser(struct {
-            fn call(environment: *const lola.Environment, context: lola.Context, args: []const lola.Value) anyerror!lola.Value {
+        try env.installFunction("ExpectEqual", lola.runtime.Function.initSimpleUser(struct {
+            fn call(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
                 if (args.len != 2)
                     return error.InvalidArgs;
                 if (!args[0].eql(args[1])) {
@@ -316,7 +316,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
         }.call));
     }
 
-    var vm = try lola.VM.init(allocator, &env);
+    var vm = try lola.runtime.VM.init(allocator, &env);
     defer vm.deinit();
 
     while (true) {
