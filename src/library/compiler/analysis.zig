@@ -8,6 +8,7 @@ const Diagnostics = @import("diagnostics.zig").Diagnostics;
 
 const AnalysisState = struct {
     loop_nesting: usize,
+    is_root_script: bool,
 };
 
 const Type = enum {
@@ -351,6 +352,11 @@ fn validateStatement(state: *AnalysisState, diagnostics: *Diagnostics, scope: *S
         .return_expr => |expr| {
             // this is ok when the expr is ok
             _ = try validateExpression(state, diagnostics, scope, expr);
+
+            // and when we are not on the root script.
+            if (state.is_root_script) {
+                try diagnostics.emit(.@"error", stmt.location, "Returning a value from global scope is not allowed.", .{});
+            }
         },
         .while_loop => |loop| {
             state.loop_nesting += 1;
@@ -437,6 +443,7 @@ pub fn validate(allocator: *std.mem.Allocator, diagnostics: *Diagnostics, progra
     for (program.root_script) |stmt| {
         var state = AnalysisState{
             .loop_nesting = 0,
+            .is_root_script = true,
         };
 
         try validateStatement(&state, diagnostics, &global_scope, stmt);
@@ -465,6 +472,7 @@ pub fn validate(allocator: *std.mem.Allocator, diagnostics: *Diagnostics, progra
 
         var state = AnalysisState{
             .loop_nesting = 0,
+            .is_root_script = false,
         };
         try validateStatement(&state, diagnostics, &local_scope, function.body);
     }

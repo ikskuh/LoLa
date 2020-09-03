@@ -4,4 +4,4 @@
 ///
 
 // Don't die when returning from the main script
-return 10;
+return;

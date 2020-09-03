@@ -66,6 +66,18 @@ Literals provide a way to create a primitive value in the language. All of the t
 | `string`  | `"Hello, World!"`, `""`, `"One\nTwo\nThree"`  |
 | `array`   | `[]`, `[1,2,3,4,5]`, `[true, false, void]`    |
 
+LoLa also supports character literals. Character literals have the type `number` and will be equivalent to their unicode codepoint and might be written literally (`ö`) or with the same rules as string escapes (`\xF3`):
+
+```js
+0x20    == ' '
+0x07    == '\a'
+0x1F4A9 == '💩'
+0xF3    == '\xF3'
+0x1F4A9 == '\xf0\x9f\x92\xa9'
+```
+
+As LoLa doesn't enforce utf-8 encoding, all single-byte literals will be copied verbatim, allowing support for any 8-bit encoding. All literals that take up more than a single byte will be assumed utf-8 encoded.
+
 ### String Escape Sequence
 
 As strings are contained in double quotes and don't allow to contain a line feed, one needs the possibility to escape those characters. For this, LoLa provides two ways to include escaped and non-printable characters in a string:
@@ -305,6 +317,8 @@ return true; // Stop execution now and return true
 ```
 
 `return` may take an optional value that will be returned as a result of the sub-program.
+
+Returning a value from global execution environment is not allowed, returning a value to the script host should be done with a function provided by the host.
 
 ### `break`
 
