@@ -19,7 +19,7 @@ jobs:
     
     - name: Render website
       run: |
-        zig build -Denable-website website
+        zig build -Denable-website "-Dversion=$(git describe --tags || git rev-parse --short HEAD)" website
 
     - name: Deploy to Server
       uses: easingthemes/ssh-deploy@v2.1.1

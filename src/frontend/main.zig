@@ -1,6 +1,7 @@
 const std = @import("std");
 const lola = @import("lola");
 const argsParser = @import("args");
+const build_options = @import("build_options");
 
 var gpa_state = std.heap.GeneralPurposeAllocator(.{}){};
 const gpa = &gpa_state.allocator;
@@ -41,6 +42,9 @@ pub fn main() !u8 {
         return try run(options.options, options.positionals);
     } else if (std.mem.eql(u8, module, "help")) {
         try print_usage();
+        return 0;
+    } else if (std.mem.eql(u8, module, "version")) {
+        try std.io.getStdOut().writeAll(build_options.version ++ "\n");
         return 0;
     } else {
         try std.io.getStdErr().writer().print(

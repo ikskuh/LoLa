@@ -21,6 +21,8 @@ const koino = std.build.Pkg{
 };
 
 pub fn build(b: *Builder) !void {
+    const version_tag = b.option([]const u8, "version", "Sets the version displayed in the docs and for `lola version`");
+
     const mode = b.standardReleaseOptions();
     const target = b.standardTargetOptions(.{
         .default_target = if (std.builtin.os.tag == .windows)
@@ -43,6 +45,7 @@ pub fn build(b: *Builder) !void {
         .name = "lola",
         .path = "./src/library/main.zig",
     });
+    exe.addBuildOption([]const u8, "version", version_tag orelse "development");
     exe.install();
 
     var main_tests = b.addTest("src/library/main.zig");
@@ -169,6 +172,9 @@ pub fn build(b: *Builder) !void {
         try linkPcre(md_renderer);
 
         const render = md_renderer.run();
+
+        render.addArg(version_tag orelse "development");
+
         gen_website_step.dependOn(&render.step);
     }
 }

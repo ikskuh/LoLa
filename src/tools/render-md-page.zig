@@ -45,6 +45,19 @@ pub fn main() !u8 {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
 
+    var args = std.process.args();
+
+    const exe_name = try (args.next(&gpa.allocator) orelse return 1);
+    gpa.allocator.free(exe_name);
+
+    const version_name = if (args.next(&gpa.allocator)) |v|
+        try v
+    else
+        null;
+    defer if (version_name) |name| {
+        gpa.allocator.free(name);
+    };
+
     for (menu_items) |current_file, current_index| {
         const options = koino.Options{
             .extensions = .{
@@ -108,19 +121,22 @@ pub fn main() !u8 {
             });
         }
 
-        try outfile.writeAll(
+        var version_name_str = @as(?[]const u8, version_name) orelse @as([]const u8, "development");
+        try outfile.writer().print(
             \\          </ul>
             \\        </div>
             \\        <div id="sectInfo" class="">
             \\          <h2><span>LoLa Version</span></h2>
-            \\          <p class="str" id="tdZigVer">1.0.0+234757d</p>
+            \\          <p class="str" id="tdZigVer">{}</p>
             \\        </div>
             \\      </nav>
             \\    </div>
             \\    <div class="flex-right">
             \\      <div class="wrap">
             \\        <section class="docs">
-        );
+        , .{
+            version_name_str,
+        });
 
         try outfile.writer().writeAll(output);
         try outfile.writeAll(
