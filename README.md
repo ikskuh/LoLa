@@ -1,5 +1,7 @@
 # LoLa Programming Language
 
+![LoLa Logo](design/logo.png)
+
 LoLa is a small programming language meant to be embedded into games to be programmed by the players. The compiler and runtime are implemented in Zig and C++.
 
 ## Short Example
@@ -218,3 +220,14 @@ zig build test
 ```
 
 This will execute all zig tests, and also runs a set of predefined tests within the [`src/test/`](src/test/) folder. These tests will verify that the compiler and language runtime behave correctly.
+
+### Building the website
+
+The website generator is gated behind `-Denable-website` which removes a lot of dependencies for people not wanting to render a new version of the website.
+If you still want to update/change the website or documentation, use the following command:
+
+```sh
+zig build -Denable-website "-Dversion=$(git describe --tags || git rev-parse --short HEAD)" website
+```
+
+It will depend on [koino](https://github.com/kivikakk/koino), which is included as a git submodule. Adding new pages to the documentation is done by modifying the `menu_items` array in `src/tools/render-md-page.zig`.

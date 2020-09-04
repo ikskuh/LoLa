@@ -67,6 +67,7 @@ pub fn print_usage() !void {
         \\  compile [source]                   Compiles the given source file into a module.
         \\  dump [module]                      Disassembles the given module.
         \\  run [file]                         Runs the given file. Both modules and source files are allowed.
+        \\  version                            Prints version number and exits.
         \\
         \\General Options:
         \\  -o [output file]                   Defines the output file for the action.
