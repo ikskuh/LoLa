@@ -168,22 +168,7 @@ pub fn build(b: *Builder) !void {
         md_renderer.addPackage(koino);
         try linkPcre(md_renderer);
 
-        const MdInOut = struct {
-            src: []const u8,
-            dst: []const u8,
-        };
-
-        const sources = [_]MdInOut{
-            .{ .src = "documentation/README.md", .dst = "website/language.htm" },
-            .{ .src = "documentation/standard-library.md", .dst = "website/standard-library.htm" },
-            .{ .src = "documentation/runtime-library.md", .dst = "website/runtime-library.htm" },
-            .{ .src = "documentation/ir.md", .dst = "website/intermediate-language.htm" },
-            .{ .src = "documentation/modules.md", .dst = "website/module-binary.htm" },
-        };
-        for (sources) |cfg| {
-            const render = md_renderer.run();
-            render.addArgs(&[_][]const u8{ cfg.src, cfg.dst });
-            gen_website_step.dependOn(&render.step);
-        }
+        const render = md_renderer.run();
+        gen_website_step.dependOn(&render.step);
     }
 }

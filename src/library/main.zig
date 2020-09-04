@@ -14,7 +14,6 @@ pub const runtime = struct {
     usingnamespace @import("runtime/environment.zig");
     usingnamespace @import("runtime/vm.zig");
     usingnamespace @import("runtime/context.zig");
-    usingnamespace @import("runtime/strings.zig");
     usingnamespace @import("runtime/objects.zig");
 };
 
@@ -77,7 +76,6 @@ comptime {
     _ = @import("runtime/environment.zig");
     _ = @import("runtime/value.zig");
     _ = @import("runtime/context.zig");
-    _ = @import("runtime/strings.zig");
     _ = @import("runtime/named_global.zig");
     _ = @import("common/decoder.zig");
     _ = @import("common/disassembler.zig");

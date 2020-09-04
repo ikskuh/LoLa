@@ -1,9 +1,6 @@
 [submodule "libs/args"]
 	path = libs/args
 	url = https://github.com/MasterQ32/zig-args
-[submodule "libs/interface.zig"]
-	path = libs/interface.zig
-	url = https://github.com/alexnask/interface.zig
 [submodule "libs/--recursive"]
 	path = libs/koino
 	url = https://github.com/kivikakk/koino

@@ -21,14 +21,6 @@ As you can see, the *Hello World*-Program is quite short and expressive. The lan
 
 More [Examples](#Examples) can be found at the end of the document.
 
-## Additional Documents
-
-These documents contain additional information about implementation details of the current runtime generation.
-
-- [The LoLa Programming Language – Quick Reference](LoLa.md)
-- [Intermedia Representation](IR.md)
-- [Compiled Modules](Modules.md)
-
 ## Comments
 
 LoLa provides only single-line comments:
