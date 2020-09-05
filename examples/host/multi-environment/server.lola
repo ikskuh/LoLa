@@ -1,0 +1,9 @@
+var storage = CreateDictionary();
+
+function Store(key, value) {
+  storage.Set(key, value);
+}
+
+function Load(key) {
+  return storage.Get(key);
+}

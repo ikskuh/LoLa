@@ -41,19 +41,19 @@ pub const VM = struct {
     };
 
     allocator: *std.mem.Allocator,
-    environment: *Environment,
     stack: std.ArrayList(Value),
     calls: std.ArrayList(Context),
     currentAsynCall: ?AsyncFunctionCall,
+    objectPool: *ObjectPool,
 
     /// Initialize a new virtual machine that will run the given environment.
     pub fn init(allocator: *std.mem.Allocator, environment: *Environment) !Self {
         var vm = Self{
             .allocator = allocator,
-            .environment = environment,
             .stack = std.ArrayList(Value).init(allocator),
             .calls = std.ArrayList(Context).init(allocator),
             .currentAsynCall = null,
+            .objectPool = environment.objectPool,
         };
         errdefer vm.stack.deinit();
         errdefer vm.calls.deinit();
@@ -64,7 +64,7 @@ pub const VM = struct {
         // Initialize with special "init context" that runs the script itself
         // and hosts the global variables.
         var initFun = try vm.createContext(ScriptFunction{
-            .compileUnit = environment.compileUnit,
+            .environment = environment,
             .entryPoint = 0, // start at the very first byte
             .localCount = environment.compileUnit.temporaryCount,
         });
@@ -99,9 +99,14 @@ pub const VM = struct {
     }
 
     /// Creates a new execution context.
+    /// The script function must have a resolved environment which
+    /// uses the same object pool as the main environment.
+    /// It is not possible to mix several object pools.
     fn createContext(self: *Self, fun: ScriptFunction) !Context {
+        std.debug.assert(fun.environment != null);
+        std.debug.assert(fun.environment.?.objectPool == self.objectPool);
         var ctx = Context{
-            .decoder = Decoder.init(fun.compileUnit.code),
+            .decoder = Decoder.init(fun.environment.?.compileUnit.code),
             .stackBalance = self.stack.items.len,
             .locals = undefined,
             .function = fun,
@@ -176,7 +181,7 @@ pub const VM = struct {
     fn executeSingle(self: *Self) !?SingleResult {
         if (self.currentAsynCall) |*asyncCall| {
             if (asyncCall.object) |obj| {
-                if (!self.environment.objectPool.isObjectValid(obj))
+                if (!self.objectPool.isObjectValid(obj))
                     return error.AsyncCallWithInvalidObject;
             }
 
@@ -194,6 +199,8 @@ pub const VM = struct {
         }
 
         const ctx = &self.calls.items[self.calls.items.len - 1];
+
+        const environment = ctx.function.environment.?;
 
         // std.debug.warn("execute 0x{X}…\n", .{ctx.decoder.offset});
 
@@ -224,19 +231,19 @@ pub const VM = struct {
             // Memory Access Section:
 
             .store_global_idx => |i| {
-                if (i.value >= self.environment.scriptGlobals.len)
+                if (i.value >= environment.scriptGlobals.len)
                     return error.InvalidGlobalVariable;
 
                 const value = try self.pop();
 
-                self.environment.scriptGlobals[i.value].replaceWith(value);
+                environment.scriptGlobals[i.value].replaceWith(value);
             },
 
             .load_global_idx => |i| {
-                if (i.value >= self.environment.scriptGlobals.len)
+                if (i.value >= environment.scriptGlobals.len)
                     return error.InvalidGlobalVariable;
 
-                var value = try self.environment.scriptGlobals[i.value].clone();
+                var value = try environment.scriptGlobals[i.value].clone();
                 errdefer value.deinit();
 
                 try self.push(value);
@@ -262,7 +269,7 @@ pub const VM = struct {
             },
 
             .store_global_name => |i| {
-                const global_kv = self.environment.namedGlobals.getEntry(i.value);
+                const global_kv = environment.namedGlobals.getEntry(i.value);
                 if (global_kv == null)
                     return error.InvalidGlobalVariable;
                 const global = &global_kv.?.value;
@@ -274,7 +281,7 @@ pub const VM = struct {
             },
 
             .load_global_name => |i| {
-                const global_kv = self.environment.namedGlobals.getEntry(i.value);
+                const global_kv = environment.namedGlobals.getEntry(i.value);
                 if (global_kv == null)
                     return error.InvalidGlobalVariable;
                 const global = &global_kv.?.value;
@@ -422,11 +429,11 @@ pub const VM = struct {
             },
 
             .call_fn => |call| {
-                const fun_kv = self.environment.functions.getEntry(call.function);
-                if (fun_kv == null)
+                const method = environment.getMethod(call.function);
+                if (method == null)
                     return error.FunctionNotFound;
 
-                if (try self.executeFunctionCall(call, fun_kv.?.value, null))
+                if (try self.executeFunctionCall(environment, call, method.?, null))
                     return .yield;
             },
 
@@ -437,13 +444,13 @@ pub const VM = struct {
                     return error.TypeMismatch;
 
                 const obj = obj_val.object;
-                if (!self.environment.objectPool.isObjectValid(obj))
+                if (!self.objectPool.isObjectValid(obj))
                     return error.InvalidObject;
 
-                const function_or_null = try self.environment.objectPool.getMethod(obj, call.function);
+                const function_or_null = try self.objectPool.getMethod(obj, call.function);
 
                 if (function_or_null) |function| {
-                    if (try self.executeFunctionCall(call, function, obj))
+                    if (try self.executeFunctionCall(environment, call, function, obj))
                         return .yield;
                 } else {
                     return error.FunctionNotFound;
@@ -623,7 +630,7 @@ pub const VM = struct {
 
     /// Initiates or executes a function call.
     /// Returns `true` when the VM execution should suspend after the call, else `false`.
-    fn executeFunctionCall(self: *Self, call: anytype, function: Function, object: ?ObjectHandle) !bool {
+    fn executeFunctionCall(self: *Self, environment: *Environment, call: anytype, function: Function, object: ?ObjectHandle) !bool {
         return switch (function) {
             .script => |fun| blk: {
                 var context = try self.createContext(fun);
@@ -652,7 +659,7 @@ pub const VM = struct {
 
                 try self.readLocals(call, locals);
 
-                var result = try fun.call(self.environment, fun.context, locals);
+                var result = try fun.call(environment, fun.context, locals);
                 errdefer result.deinit();
 
                 try self.push(result);

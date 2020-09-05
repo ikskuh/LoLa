@@ -14,7 +14,12 @@ usingnamespace @import("objects.zig");
 /// A script function contained in either this or a foreign
 /// environment. For foreign environments.
 pub const ScriptFunction = struct {
-    compileUnit: *const CompileUnit,
+    /// This is a reference to the environment for that function.
+    /// If the environment is `null`, the environment is context-sensitive
+    /// and will always be the environment that provided that function.
+    /// This is a "workaround" for not storing a pointer-to-self in Environment for
+    /// embedded script functions.
+    environment: ?*Environment,
     entryPoint: u32,
     localCount: u16,
 };
@@ -230,6 +235,9 @@ pub const Environment = struct {
     /// the name must be kept alive until end of the environment.
     functions: std.StringHashMap(Function),
 
+    /// This is called when the destroyObject is called.
+    destructor: ?fn (self: *Environment) void,
+
     pub fn init(allocator: *std.mem.Allocator, compileUnit: *const CompileUnit, object_pool: *ObjectPool) !Self {
         var self = Self{
             .allocator = allocator,
@@ -238,6 +246,7 @@ pub const Environment = struct {
             .scriptGlobals = undefined,
             .namedGlobals = undefined,
             .functions = undefined,
+            .destructor = null,
         };
 
         self.scriptGlobals = try allocator.alloc(Value, compileUnit.globalCount);
@@ -253,7 +262,7 @@ pub const Environment = struct {
         for (compileUnit.functions) |srcfun| {
             var fun = Function{
                 .script = ScriptFunction{
-                    .compileUnit = compileUnit,
+                    .environment = null, // this is a "self-contained" script function
                     .entryPoint = srcfun.entryPoint,
                     .localCount = srcfun.localCount,
                 },
@@ -299,6 +308,25 @@ pub const Environment = struct {
         if (result.found_existing)
             return error.AlreadyExists;
         result.entry.value = NamedGlobal.initStored(value);
+    }
+
+    // Implementation to make a Environment a valid LoLa object:
+    pub fn getMethod(self: *Self, name: []const u8) ?Function {
+        if (self.functions.get(name)) |fun| {
+            var mut_fun = fun;
+            if (mut_fun == .script and mut_fun.script.environment == null)
+                mut_fun.script.environment = self;
+            return mut_fun;
+        } else {
+            return null;
+        }
+    }
+
+    /// This is called when the object is removed from the associated object pool.
+    pub fn destroyObject(self: *Self) void {
+        if (self.destructor) |dtor| {
+            dtor(self);
+        }
     }
 };
 

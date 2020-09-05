@@ -1,0 +1,2 @@
+var server = GetServer();
+Print(server.Load("msg"));

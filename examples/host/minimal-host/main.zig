@@ -1,6 +1,12 @@
 const std = @import("std");
 const lola = @import("lola");
 
+////
+// Minimal API example:
+// This example shows how to get started with the LoLa library.
+// Compiles and runs the Hello-World program.
+//
+
 const example_source =
     \\Print("Hello, World!");
     \\

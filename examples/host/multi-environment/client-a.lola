@@ -1,0 +1,3 @@
+
+var server = GetServer();
+server.Store("msg", "Hello, World!");
