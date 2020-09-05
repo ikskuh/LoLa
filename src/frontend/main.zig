@@ -334,10 +334,12 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
                 i -= 1;
                 const call = vm.calls.items[i];
 
-                const location = call.function.compileUnit.lookUp(call.decoder.offset);
+                const stack_compile_unit = call.function.environment.?.compileUnit;
+
+                const location = cu.lookUp(call.decoder.offset);
 
                 var current_fun: []const u8 = "<main>";
-                for (call.function.compileUnit.functions) |fun| {
+                for (stack_compile_unit.functions) |fun| {
                     if (call.decoder.offset < fun.entryPoint)
                         break;
                     current_fun = fun.name;
@@ -346,7 +348,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
                 try stderr.print("[{}] at offset {} ({}:{}:{}) in function {}\n", .{
                     i,
                     call.decoder.offset,
-                    call.function.compileUnit.comment,
+                    stack_compile_unit.comment,
                     if (location) |l| l.sourceLine else 0,
                     if (location) |l| l.sourceColumn else 0,
                     current_fun,

@@ -367,19 +367,19 @@ test "Environment" {
 
     std.debug.assert(env.functions.count() == 3);
 
-    const f1 = env.functions.get("fun1") orelse unreachable;
-    const f2 = env.functions.get("fun_2") orelse unreachable;
-    const f3 = env.functions.get("fun 3") orelse unreachable;
+    const f1 = env.getMethod("fun1") orelse unreachable;
+    const f2 = env.getMethod("fun_2") orelse unreachable;
+    const f3 = env.getMethod("fun 3") orelse unreachable;
 
-    std.debug.assert(f1.script.entryPoint == 10);
-    std.debug.assert(f1.script.localCount == 5);
-    std.debug.assert(f1.script.compileUnit == &cu);
+    std.testing.expectEqual(@as(usize, 10), f1.script.entryPoint);
+    std.testing.expectEqual(@as(usize, 5), f1.script.localCount);
+    std.testing.expectEqual(&env, f1.script.environment.?);
 
-    std.debug.assert(f2.script.entryPoint == 21);
-    std.debug.assert(f2.script.localCount == 1);
-    std.debug.assert(f2.script.compileUnit == &cu);
+    std.testing.expectEqual(@as(usize, 21), f2.script.entryPoint);
+    std.testing.expectEqual(@as(usize, 1), f2.script.localCount);
+    std.testing.expectEqual(&env, f2.script.environment.?);
 
-    std.debug.assert(f3.script.entryPoint == 32);
-    std.debug.assert(f3.script.localCount == 3);
-    std.debug.assert(f3.script.compileUnit == &cu);
+    std.testing.expectEqual(@as(usize, 32), f3.script.entryPoint);
+    std.testing.expectEqual(@as(usize, 3), f3.script.localCount);
+    std.testing.expectEqual(&env, f3.script.environment.?);
 }
