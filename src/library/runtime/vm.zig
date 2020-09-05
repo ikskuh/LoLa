@@ -772,6 +772,35 @@ pub const VM = struct {
 
         try self.push(Value.initNumber(result));
     }
+
+    /// Prints a stack trace for the current code position into `stream`.
+    pub fn printStackTrace(self: Self, stream: anytype) !void {
+        var i: usize = self.calls.items.len;
+        while (i > 0) {
+            i -= 1;
+            const call = self.calls.items[i];
+
+            const stack_compile_unit = call.function.environment.?.compileUnit;
+
+            const location = stack_compile_unit.lookUp(call.decoder.offset);
+
+            var current_fun: []const u8 = "<main>";
+            for (stack_compile_unit.functions) |fun| {
+                if (call.decoder.offset < fun.entryPoint)
+                    break;
+                current_fun = fun.name;
+            }
+
+            try stream.print("[{}] at offset {} ({}:{}:{}) in function {}\n", .{
+                i,
+                call.decoder.offset,
+                stack_compile_unit.comment,
+                if (location) |l| l.sourceLine else 0,
+                if (location) |l| l.sourceColumn else 0,
+                current_fun,
+            });
+        }
+    }
 };
 
 test "VM" {
@@ -779,4 +808,5 @@ test "VM" {
     _ = VM.init;
     _ = VM.deinit;
     _ = VM.execute;
+    _ = VM.printStackTrace;
 }

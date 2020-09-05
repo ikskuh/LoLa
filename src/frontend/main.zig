@@ -329,31 +329,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
             try stderr.print("Panic during execution: {}\n", .{@errorName(err)});
             try stderr.print("Call stack:\n", .{});
 
-            var i: usize = vm.calls.items.len;
-            while (i > 0) {
-                i -= 1;
-                const call = vm.calls.items[i];
-
-                const stack_compile_unit = call.function.environment.?.compileUnit;
-
-                const location = cu.lookUp(call.decoder.offset);
-
-                var current_fun: []const u8 = "<main>";
-                for (stack_compile_unit.functions) |fun| {
-                    if (call.decoder.offset < fun.entryPoint)
-                        break;
-                    current_fun = fun.name;
-                }
-
-                try stderr.print("[{}] at offset {} ({}:{}:{}) in function {}\n", .{
-                    i,
-                    call.decoder.offset,
-                    stack_compile_unit.comment,
-                    if (location) |l| l.sourceLine else 0,
-                    if (location) |l| l.sourceColumn else 0,
-                    current_fun,
-                });
-            }
+            try vm.printStackTrace(stderr);
 
             return 1;
         };
