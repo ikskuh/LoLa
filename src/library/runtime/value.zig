@@ -223,16 +223,15 @@ pub const Value = union(TypeId) {
         };
     }
 
-    /// Serializes the value into the given `writer`, optionally using the `object_pool` to serialize the objects.
-    pub fn serialize(self: Self, writer: anytype, object_pool: ?envsrc.ObjectPoolInterface) (@TypeOf(writer).Error || error{ NotSupported, ObjectTooLarge })!void {
+    /// Serializes the value into the given `writer`.
+    /// Note that this does not serialize object values but only references. It is required to serialize the corresponding
+    /// object pool as well to gain restorability of objects.
+    pub fn serialize(self: Self, writer: anytype) (@TypeOf(writer).Error || error{ NotSupported, ObjectTooLarge })!void {
         try writer.writeByte(@enumToInt(@as(TypeId, self)));
         switch (self) {
             .void => return, // void values are empty \o/
             .number => |val| try writer.writeAll(std.mem.asBytes(&val)),
-            .object => |val| if (object_pool) |pool|
-                try pool.serialize(writer, val)
-            else
-                return error.NotSupported,
+            .object => |val| try writer.writeIntLittle(u64, @enumToInt(val)),
             .boolean => |val| try writer.writeByte(if (val) @as(u8, 1) else 0),
             .string => |val| {
                 try writer.writeIntLittle(u32, std.math.cast(u32, val.contents.len) catch return error.ObjectTooLarge);
@@ -241,15 +240,16 @@ pub const Value = union(TypeId) {
             .array => |arr| {
                 try writer.writeIntLittle(u32, std.math.cast(u32, arr.contents.len) catch return error.ObjectTooLarge);
                 for (arr.contents) |item| {
-                    try item.serialize(writer, object_pool);
+                    try item.serialize(writer);
                 }
             },
             .enumerator => return error.NotSupported,
         }
     }
 
-    /// Deserializes a value from the `reader`, using `allocator` to allocate memory, and optionally `object_pool` to deserialize objects.
-    pub fn deserialize(reader: anytype, allocator: *std.mem.Allocator, object_pool: ?envsrc.ObjectPoolInterface) (@TypeOf(reader).Error || error{ OutOfMemory, InvalidEnumTag, EndOfStream, NotSupported })!Self {
+    /// Deserializes a value from the `reader`, using `allocator` to allocate memory.
+    /// Note that if objects are deserialized you need to also deserialize the corresponding object pool
+    pub fn deserialize(reader: anytype, allocator: *std.mem.Allocator) (@TypeOf(reader).Error || error{ OutOfMemory, InvalidEnumTag, EndOfStream, NotSupported })!Self {
         const type_id_src = try reader.readByte();
         const type_id = try std.meta.intToEnum(TypeId, type_id_src);
         return switch (type_id) {
@@ -261,10 +261,7 @@ pub const Value = union(TypeId) {
 
                 break :blk initNumber(@bitCast(f64, buffer));
             },
-            .object => if (object_pool) |pool|
-                initObject(try pool.deserialize(reader))
-            else
-                return error.NotSupported,
+            .object => initObject(@intToEnum(envsrc.ObjectHandle, try reader.readIntLittle(@TagType(envsrc.ObjectHandle)))),
             .boolean => initBoolean((try reader.readByte()) != 0),
             .string => blk: {
                 const size = try reader.readIntLittle(u32);
@@ -282,7 +279,7 @@ pub const Value = union(TypeId) {
                 errdefer array.deinit();
 
                 for (array.contents) |*item| {
-                    item.* = try deserialize(reader, allocator, object_pool);
+                    item.* = try deserialize(reader, allocator);
                 }
 
                 break :blk fromArray(array);

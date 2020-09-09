@@ -51,11 +51,29 @@ pub const InputStream = struct {
     const Self = @This();
     pub const ErasedSelf = @Type(.Opaque);
 
-    self: *ErasedSelf,
-    read: fn (self: *ErasedSelf, buf: []u8) anyerror!usize,
+    self: *const ErasedSelf,
+    read: fn (self: *const ErasedSelf, buf: []u8) anyerror!usize,
+
+    fn from(reader_ptr: anytype) Self {
+        const T = std.meta.Child(@TypeOf(reader_ptr));
+        return Self{
+            .self = @ptrCast(*const ErasedSelf, reader_ptr),
+            .read = struct {
+                fn read(self: *const ErasedSelf, buf: []u8) anyerror!usize {
+                    return @ptrCast(*const T, @alignCast(@alignOf(T), self)).read(buf);
+                }
+            }.read,
+        };
+    }
 
     fn readSome(self: Self, buffer: []u8) anyerror!usize {
         return self.read(self.self, buffer);
+    }
+
+    fn reader(self: @This()) Reader {
+        return Reader{
+            .context = self,
+        };
     }
 
     pub const Reader = std.io.Reader(Self, anyerror, readSome);
@@ -65,11 +83,29 @@ pub const OutputStream = struct {
     const Self = @This();
     pub const ErasedSelf = @Type(.Opaque);
 
-    self: *ErasedSelf,
-    write: fn (self: *ErasedSelf, buf: []const u8) anyerror!usize,
+    self: *const ErasedSelf,
+    write: fn (self: *const ErasedSelf, buf: []const u8) anyerror!usize,
+
+    fn from(writer_ptr: anytype) Self {
+        const T = std.meta.Child(@TypeOf(writer_ptr));
+        return Self{
+            .self = @ptrCast(*const ErasedSelf, writer_ptr),
+            .write = struct {
+                fn write(self: *const ErasedSelf, buf: []const u8) anyerror!usize {
+                    return @ptrCast(*const T, @alignCast(@alignOf(T), self)).write(buf);
+                }
+            }.write,
+        };
+    }
 
     fn writeSome(self: Self, buffer: []const u8) anyerror!usize {
-        return self.read(self.self, buffer);
+        return self.write(self.self, buffer);
+    }
+
+    fn writer(self: @This()) Writer {
+        return Writer{
+            .context = self,
+        };
     }
 
     pub const Writer = std.io.Writer(Self, anyerror, writeSome);
@@ -89,17 +125,13 @@ pub const ObjectPoolInterface = struct {
     pub fn getMethod(self: @This(), handle: ObjectHandle, name: []const u8) ObjectGetError!?Function {
         return self.getMethodFn(self.self, handle, name);
     }
+
     pub fn destroyObject(self: @This(), handle: ObjectHandle) void {
         return self.destroyObjectFn(self.self, handle);
     }
+
     pub fn isObjectValid(self: @This(), handle: ObjectHandle) bool {
         return self.isObjectValidFn(self.self, handle);
-    }
-    pub fn serialize(self: @This(), stream: anytype, handle: ObjectHandle) !void {
-        unreachable;
-    }
-    pub fn deserialize(self: @This(), stream: anytype) !ObjectHandle {
-        unreachable;
     }
 
     pub fn castTo(self: *@This(), comptime PoolType: type) *PoolType {
@@ -129,13 +161,57 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
 
     comptime var hasher = std.hash.SipHash64(2, 4).init("ObjectPool Serialization Version 1");
 
+    comptime var all_classes_can_serialize = (classes.len > 0);
+
     inline for (classes) |class| {
-        if (@hasDecl(class, "serializeObject") != @hasDecl(class, "deserializeObject")) {
+        const can_serialize = @hasDecl(class, "serializeObject");
+        if (can_serialize != @hasDecl(class, "deserializeObject")) {
             @compileError("Each class requires either both serializeObject and deserializeObject to be present or none.");
         }
+
+        all_classes_can_serialize = all_classes_can_serialize and can_serialize;
+
         // this requires to use a typeHash structure instead of the type name
         hasher.update(@typeName(class));
     }
+
+    const TypeIndex = std.meta.Int(
+        false,
+        // We need 1 extra value, so 0xFFFF… is never a valid type index
+        // this marks the end of objects in the stream
+        std.mem.alignForward(std.math.log2_int_ceil(usize, classes.len + 1), 8),
+    );
+
+    const ClassInfo = struct {
+        name: []const u8,
+        serialize: fn (stream: OutputStream, obj: Object) anyerror!void,
+        deserialize: fn (stream: InputStream) anyerror!Object,
+    };
+
+    const class_lut = comptime if (all_classes_can_serialize) blk: {
+        var lut: [classes.len]ClassInfo = undefined;
+        for (lut) |*info, i| {
+            const Class = classes[i];
+
+            const Interface = struct {
+                fn serialize(stream: OutputStream, obj: Object) anyerror!void {
+                    try Class.serializeObject(stream.writer(), @ptrCast(*Class, @alignCast(@alignOf(Class), obj.impl.storage.erased_ptr)));
+                }
+
+                fn deserialize(stream: InputStream) anyerror!Object {
+                    var ptr = try Class.deserializeObject(stream.reader());
+                    return Object.init(ptr);
+                }
+            };
+
+            info.* = ClassInfo{
+                .name = @typeName(Class),
+                .serialize = Interface.serialize,
+                .deserialize = Interface.deserialize,
+            };
+        }
+        break :blk lut;
+    } else {};
 
     const pool_signature = hasher.finalInt();
 
@@ -146,7 +222,11 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
             refcount: usize,
             manualRefcount: usize,
             object: Object,
+            class_id: TypeIndex,
         };
+
+        /// Is `true` when all classes in the ObjectPool allow seriaization
+        pub const serializeable: bool = all_classes_can_serialize;
 
         /// ever-increasing number which is used to allocate new object handles.
         objectCounter: u64,
@@ -174,30 +254,94 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
             self.* = undefined;
         }
 
+        // Serialization API
+
+        /// Serializes the whole object pool into the `stream`.
+        pub fn serialize(self: Self, stream: anytype) !void {
+            if (all_classes_can_serialize) {
+                try stream.writeIntLittle(u64, pool_signature);
+
+                var iter = self.objects.iterator();
+                while (iter.next()) |entry| {
+                    const obj = &entry.value;
+                    var class = class_lut[obj.class_id];
+
+                    try stream.writeIntLittle(TypeIndex, obj.class_id);
+                    try stream.writeIntLittle(u64, @enumToInt(entry.key));
+
+                    try class.serialize(OutputStream.from(&stream), obj.object);
+                }
+
+                try stream.writeIntLittle(TypeIndex, std.math.maxInt(TypeIndex));
+            } else {
+                @compileError("This ObjectPool is not serializable!");
+            }
+        }
+
+        /// Deserializes a object pool from `steam` and returns it.
+        pub fn deserialize(allocator: *std.mem.Allocator, stream: anytype) !Self {
+            if (all_classes_can_serialize) {
+                var pool = init(allocator);
+                errdefer pool.deinit();
+
+                var signature = try stream.readIntLittle(u64);
+                if (signature != pool_signature)
+                    return error.InvalidStream;
+
+                while (true) {
+                    const type_index = try stream.readIntLittle(TypeIndex);
+                    if (type_index == std.math.maxInt(TypeIndex))
+                        break; // end of objects
+                    if (type_index >= class_lut.len)
+                        return error.InvalidStream;
+                    const object_id = try stream.readIntLittle(u64);
+                    pool.objectCounter = std.math.max(object_id + 1, pool.objectCounter);
+
+                    const gop = try pool.objects.getOrPut(@intToEnum(ObjectHandle, object_id));
+                    if (gop.found_existing)
+                        return error.InvalidStream;
+
+                    const object = try class_lut[type_index].deserialize(InputStream.from(&stream));
+
+                    gop.entry.value = ManagedObject{
+                        .object = object,
+                        .refcount = 0,
+                        .manualRefcount = 0,
+                        .class_id = type_index,
+                    };
+                }
+
+                return pool;
+            } else {
+                @compileError("This ObjectPool is not serializable!");
+            }
+        }
+
         // Public API
 
-        /// Serializes a object handle into the `stream` or returns a error.NotSupported.
-        pub fn serialize(self: Self, stream: anytype, object: ObjectHandle) !void {
-            // TODO: Implement object serialization/deserialization API
-            @panic("not implemented yet!");
-        }
-
-        /// Deserializes a new object from `steam` and returns its object handle.
-        /// May return `error.NotSupported` when the ObjectPool does not support
-        /// object serialization/deserialization.
-        pub fn deserialize(self: Self, stream: anytype) !ObjectHandle {
-            // TODO: Implement object serialization/deserialization API
-            @panic("not implemented yet!");
-        }
-
         /// Inserts a new object into the pool and returns a handle to it.
-        pub fn createObject(self: *Self, object: Object) !ObjectHandle {
+        /// `object_ptr` must be a mutable pointer to the object itself.
+        pub fn createObject(self: *Self, object_ptr: anytype) !ObjectHandle {
+            const ObjectTypeInfo = @typeInfo(@TypeOf(object_ptr)).Pointer;
+            if (ObjectTypeInfo.is_const)
+                @compileError("Passing a const pointer to ObjectPool.createObject is not allowed!");
+
+            // Calculate the index of the type:
+            const type_index = inline for (classes) |class, index| {
+                if (class == ObjectTypeInfo.child)
+                    break index;
+            } else @compileError("The type " ++ @typeName(ObjectTypeInfo.child) ++ " is not valid for this object pool. Add it to the class list in the type definition to allow creation.");
+
+            var object = Object.init(object_ptr);
+
             self.objectCounter += 1;
+            errdefer self.objectCounter -= 1;
             const handle = @intToEnum(ObjectHandle, self.objectCounter);
             try self.objects.putNoClobber(handle, ManagedObject{
                 .object = object,
                 .refcount = 0,
                 .manualRefcount = 0,
+                .class_id = type_index,
             });
             return handle;
         }
@@ -351,19 +495,61 @@ const TestObject = struct {
 
     got_method_query: bool = false,
     got_destroy_call: bool = false,
+    was_serialized: bool = false,
+    was_deserialized: bool = false,
 
     pub fn getMethod(self: *Self, name: []const u8) ?Function {
         self.got_method_query = true;
         return null;
     }
 
-    /// This is called when the object is removed from the associated object pool.
     pub fn destroyObject(self: *Self) void {
         self.got_destroy_call = true;
+    }
+
+    pub fn serializeObject(writer: OutputStream.Writer, object: *Self) !void {
+        try writer.writeAll("test object");
+        object.was_serialized = true;
+    }
+
+    var deserialize_instance = Self{};
+
+    pub fn deserializeObject(reader: InputStream.Reader) !*Self {
+        var buf: [11]u8 = undefined;
+        try reader.readNoEof(&buf);
+        std.testing.expectEqualStrings("test object", &buf);
+        deserialize_instance.was_deserialized = true;
+        return &deserialize_instance;
     }
 };
 
 const TestPool = ObjectPool([_]type{TestObject});
+
+comptime {
+    if (ObjectPool([_]type{}).serializeable != false)
+        @compileError("Empty ObjectPool is required to be unserializable!");
+}
+
+comptime {
+    if (TestPool.serializeable != true)
+        @compileError("TestPool is required to be serializable!");
+}
+
+comptime {
+    const Unserializable = struct {
+        const Self = @This();
+        pub fn getMethod(self: *Self, name: []const u8) ?Function {
+            unreachable;
+        }
+
+        pub fn destroyObject(self: *Self) void {
+            unreachable;
+        }
+    };
+
+    if (ObjectPool([_]type{ TestObject, Unserializable }).serializeable != false)
+        @compileError("Unserializable detection doesn't work!");
+}
 
 test "Object" {
     var test_obj = TestObject{};
@@ -389,7 +575,7 @@ test "ObjectPool basic object create/destroy cycle" {
 
     var test_obj = TestObject{};
 
-    const handle = try pool.createObject(Object.init(&test_obj));
+    const handle = try pool.createObject(&test_obj);
 
     std.testing.expectEqual(false, test_obj.got_destroy_call);
     std.testing.expectEqual(false, test_obj.got_method_query);
@@ -415,7 +601,7 @@ test "ObjectPool automatic cleanup" {
 
     var test_obj = TestObject{};
 
-    const handle = try pool.createObject(Object.init(&test_obj));
+    const handle = try pool.createObject(&test_obj);
 
     std.testing.expectEqual(false, test_obj.got_destroy_call);
     std.testing.expectEqual(false, test_obj.got_method_query);
@@ -434,7 +620,7 @@ test "ObjectPool garbage collection" {
 
     var test_obj = TestObject{};
 
-    const handle = try pool.createObject(Object.init(&test_obj));
+    const handle = try pool.createObject(&test_obj);
 
     std.testing.expectEqual(false, test_obj.got_destroy_call);
     std.testing.expectEqual(true, pool.isObjectValid(handle));
@@ -465,3 +651,37 @@ test "ObjectPool garbage collection" {
 }
 
 // TODO: Write tests for walkEnvironment and walkVM
+
+test "ObjectPool serialization" {
+    var backing_buffer: [1024]u8 = undefined;
+
+    const serialized_id = blk: {
+        var pool = TestPool.init(std.testing.allocator);
+        defer pool.deinit();
+
+        var test_obj = TestObject{};
+        const id = try pool.createObject(&test_obj);
+
+        std.testing.expectEqual(false, test_obj.was_serialized);
+
+        var fbs = std.io.fixedBufferStream(&backing_buffer);
+        try pool.serialize(fbs.writer());
+
+        std.testing.expectEqual(true, test_obj.was_serialized);
+
+        break :blk id;
+    };
+
+    {
+        var fbs = std.io.fixedBufferStream(&backing_buffer);
+
+        std.testing.expectEqual(false, TestObject.deserialize_instance.was_deserialized);
+
+        var pool = try TestPool.deserialize(std.testing.allocator, fbs.reader());
+        defer pool.deinit();
+
+        std.testing.expectEqual(true, TestObject.deserialize_instance.was_deserialized);
+
+        std.testing.expect(pool.isObjectValid(serialized_id));
+    }
+}

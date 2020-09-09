@@ -202,7 +202,7 @@ const sync_functions = struct {
         }
 
         return lola.runtime.Value.initObject(
-            try environment.objectPool.castTo(GlobalObjectPool).createObject(lola.runtime.Object.init(list)),
+            try environment.objectPool.castTo(GlobalObjectPool).createObject(list),
         );
     }
 
@@ -220,7 +220,7 @@ const sync_functions = struct {
         };
 
         return lola.runtime.Value.initObject(
-            try environment.objectPool.castTo(GlobalObjectPool).createObject(lola.runtime.Object.init(list)),
+            try environment.objectPool.castTo(GlobalObjectPool).createObject(list),
         );
     }
 };
