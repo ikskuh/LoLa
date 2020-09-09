@@ -223,7 +223,7 @@ pub const Environment = struct {
     scriptGlobals: []Value,
 
     /// Object interface to
-    objectPool: *ObjectPool,
+    objectPool: ObjectPoolInterface,
 
     /// Stores all available named globals.
     /// Globals will be contained in this unit and will be deinitialized,
@@ -238,7 +238,7 @@ pub const Environment = struct {
     /// This is called when the destroyObject is called.
     destructor: ?fn (self: *Environment) void,
 
-    pub fn init(allocator: *std.mem.Allocator, compileUnit: *const CompileUnit, object_pool: *ObjectPool) !Self {
+    pub fn init(allocator: *std.mem.Allocator, compileUnit: *const CompileUnit, object_pool: ObjectPoolInterface) !Self {
         var self = Self{
             .allocator = allocator,
             .compileUnit = compileUnit,
@@ -357,10 +357,10 @@ test "Environment" {
         .debugSymbols = &[0]CompileUnit.DebugSymbol{},
     };
 
-    var pool = ObjectPool.init(std.testing.allocator);
+    var pool = ObjectPool(.{}).init(std.testing.allocator);
     defer pool.deinit();
 
-    var env = try Environment.init(std.testing.allocator, &cu, &pool);
+    var env = try Environment.init(std.testing.allocator, &cu, pool.interface());
     defer env.deinit();
 
     std.debug.assert(env.scriptGlobals.len == 4);

@@ -3,21 +3,37 @@ const Builder = std.build.Builder;
 
 const linkPcre = @import("libs/koino/vendor/libpcre.zig/build.zig").linkPcre;
 
-const argsPkg = std.build.Pkg{
-    .name = "args",
-    .path = "libs/args/args.zig",
-    .dependencies = &[0]std.build.Pkg{},
-};
+const pkgs = struct {
+    const args = std.build.Pkg{
+        .name = "args",
+        .path = "libs/args/args.zig",
+        .dependencies = &[_]std.build.Pkg{},
+    };
 
-const koino = std.build.Pkg{
-    .name = "koino",
-    .path = "libs/koino/src/koino.zig",
-    .dependencies = &[_]std.build.Pkg{
-        std.build.Pkg{ .name = "libpcre", .path = "libs/koino/vendor/libpcre.zig/src/main.zig" },
-        std.build.Pkg{ .name = "htmlentities", .path = "libs/koino/vendor/htmlentities.zig/src/main.zig" },
-        std.build.Pkg{ .name = "clap", .path = "libs/koino/vendor/zig-clap/clap.zig" },
-        std.build.Pkg{ .name = "zunicode", .path = "libs/koino/vendor/zunicode/src/zunicode.zig" },
-    },
+    const interface = std.build.Pkg{
+        .name = "interface",
+        .path = "libs/interface.zig/interface.zig",
+        .dependencies = &[_]std.build.Pkg{},
+    };
+
+    const lola = std.build.Pkg{
+        .name = "lola",
+        .path = "src/library/main.zig",
+        .dependencies = &[_]std.build.Pkg{
+            interface,
+        },
+    };
+
+    const koino = std.build.Pkg{
+        .name = "koino",
+        .path = "libs/koino/src/koino.zig",
+        .dependencies = &[_]std.build.Pkg{
+            std.build.Pkg{ .name = "libpcre", .path = "libs/koino/vendor/libpcre.zig/src/main.zig" },
+            std.build.Pkg{ .name = "htmlentities", .path = "libs/koino/vendor/htmlentities.zig/src/main.zig" },
+            std.build.Pkg{ .name = "clap", .path = "libs/koino/vendor/zig-clap/clap.zig" },
+            std.build.Pkg{ .name = "zunicode", .path = "libs/koino/vendor/zunicode/src/zunicode.zig" },
+        },
+    };
 };
 
 pub fn build(b: *Builder) !void {
@@ -40,15 +56,17 @@ pub fn build(b: *Builder) !void {
     const exe = b.addExecutable("lola", "./src/frontend/main.zig");
     exe.setBuildMode(mode);
     exe.setTarget(target);
-    exe.addPackage(argsPkg);
-    exe.addPackage(std.build.Pkg{
-        .name = "lola",
-        .path = "./src/library/main.zig",
-    });
+    exe.addPackage(pkgs.lola);
+    exe.addPackage(pkgs.args);
     exe.addBuildOption([]const u8, "version", version_tag orelse "development");
     exe.install();
 
-    var main_tests = b.addTest("src/library/main.zig");
+    var main_tests = b.addTest("src/library/test.zig");
+    if (pkgs.lola.dependencies) |deps| {
+        for (deps) |pkg| {
+            main_tests.addPackage(pkg);
+        }
+    }
     main_tests.setBuildMode(mode);
 
     const test_step = b.step("test", "Run test suite");
@@ -155,7 +173,7 @@ pub fn build(b: *Builder) !void {
         const gen_docs_runner = b.addSystemCommand(&[_][]const u8{
             "zig",
             "test",
-            "src/library/main.zig",
+            pkgs.lola.path,
             "-femit-docs",
             "-fno-emit-bin",
             "--output-dir",
@@ -168,7 +186,7 @@ pub fn build(b: *Builder) !void {
         gen_website_step.dependOn(&gen_docs_runner.step);
 
         const md_renderer = b.addExecutable("markdown-md-page", "src/tools/render-md-page.zig");
-        md_renderer.addPackage(koino);
+        md_renderer.addPackage(pkgs.koino);
         try linkPcre(md_renderer);
 
         const render = md_renderer.run();

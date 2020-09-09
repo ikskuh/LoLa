@@ -2,6 +2,18 @@
 
 const std = @import("std");
 const lola = @import("../main.zig");
+const root = @import("root");
+
+const GlobalObjectPool = if (std.builtin.is_test)
+// we need to do a workaround here for testing purposes
+    lola.runtime.ObjectPool([_]type{
+        LoLaList,
+        LoLaDictionary,
+    })
+else if (@hasDecl(root, "ObjectPool"))
+    root.ObjectPool
+else
+    @compileError("Please define and use a global ObjectPool type to use the runtime classes.");
 
 /// Installs the LoLa standard library into the given environment,
 /// providing it with a basic set of functions.
@@ -40,13 +52,12 @@ const empty_compile_unit = lola.CompileUnit{
 };
 
 test "runtime.install" {
-    var pool = lola.runtime.ObjectPool.init(std.testing.allocator);
+    var pool = GlobalObjectPool.init(std.testing.allocator);
     defer pool.deinit();
 
-    var env = try lola.runtime.Environment.init(std.testing.allocator, &empty_compile_unit, &pool);
+    var env = try lola.runtime.Environment.init(std.testing.allocator, &empty_compile_unit, pool.interface());
     defer env.deinit();
 
-    // TODO: Reinsert this
     try install(&env, std.testing.allocator);
 }
 
@@ -161,6 +172,7 @@ const sync_functions = struct {
 
     fn CreateList(environment: *lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
         const allocator = context.get(std.mem.Allocator);
+
         if (args.len > 1)
             return error.InvalidArgs;
 
@@ -190,7 +202,7 @@ const sync_functions = struct {
         }
 
         return lola.runtime.Value.initObject(
-            try environment.objectPool.createObject(lola.runtime.Object.init(list)),
+            try environment.objectPool.castTo(GlobalObjectPool).createObject(lola.runtime.Object.init(list)),
         );
     }
 
@@ -208,12 +220,12 @@ const sync_functions = struct {
         };
 
         return lola.runtime.Value.initObject(
-            try environment.objectPool.createObject(lola.runtime.Object.init(list)),
+            try environment.objectPool.castTo(GlobalObjectPool).createObject(lola.runtime.Object.init(list)),
         );
     }
 };
 
-const LoLaList = struct {
+pub const LoLaList = struct {
     const Self = @This();
 
     allocator: *std.mem.Allocator,
@@ -416,7 +428,7 @@ const LoLaList = struct {
     };
 };
 
-const LoLaDictionary = struct {
+pub const LoLaDictionary = struct {
     const Self = @This();
 
     const KV = struct {

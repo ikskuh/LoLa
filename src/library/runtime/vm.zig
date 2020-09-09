@@ -44,7 +44,7 @@ pub const VM = struct {
     stack: std.ArrayList(Value),
     calls: std.ArrayList(Context),
     currentAsynCall: ?AsyncFunctionCall,
-    objectPool: *ObjectPool,
+    objectPool: ObjectPoolInterface,
 
     /// Initialize a new virtual machine that will run the given environment.
     pub fn init(allocator: *std.mem.Allocator, environment: *Environment) !Self {
@@ -104,7 +104,7 @@ pub const VM = struct {
     /// It is not possible to mix several object pools.
     fn createContext(self: *Self, fun: ScriptFunction) !Context {
         std.debug.assert(fun.environment != null);
-        std.debug.assert(fun.environment.?.objectPool == self.objectPool);
+        std.debug.assert(fun.environment.?.objectPool.self == self.objectPool.self);
         var ctx = Context{
             .decoder = Decoder.init(fun.environment.?.compileUnit.code),
             .stackBalance = self.stack.items.len,

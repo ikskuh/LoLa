@@ -51,10 +51,10 @@ const empty_compile_unit = lola.CompileUnit{
 };
 
 test "stdlib.install" {
-    var pool = lola.runtime.ObjectPool.init(std.testing.allocator);
+    var pool = lola.runtime.ObjectPool([_]type{}).init(std.testing.allocator);
     defer pool.deinit();
 
-    var env = try lola.runtime.Environment.init(std.testing.allocator, &empty_compile_unit, &pool);
+    var env = try lola.runtime.Environment.init(std.testing.allocator, &empty_compile_unit, pool.interface());
     defer env.deinit();
 
     // TODO: Reinsert this

@@ -4,3 +4,6 @@
 [submodule "libs/--recursive"]
 	path = libs/koino
 	url = https://github.com/kivikakk/koino
+[submodule "libs/interface.zig"]
+	path = libs/interface.zig
+	url = https://github.com/alexnask/interface.zig

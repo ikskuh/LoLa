@@ -6,6 +6,13 @@ const build_options = @import("build_options");
 var gpa_state = std.heap.GeneralPurposeAllocator(.{}){};
 const gpa = &gpa_state.allocator;
 
+// This is our global object pool that is back-referenced
+// by the runtime library.
+pub const ObjectPool = lola.runtime.ObjectPool([_]type{
+    lola.libs.runtime.LoLaList,
+    lola.libs.runtime.LoLaDictionary,
+});
+
 pub fn main() !u8 {
     defer _ = gpa_state.deinit();
 
@@ -278,10 +285,10 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
     };
     defer cu.deinit();
 
-    var pool = lola.runtime.ObjectPool.init(allocator);
+    var pool = ObjectPool.init(allocator);
     defer pool.deinit();
 
-    var env = try lola.runtime.Environment.init(allocator, &cu, &pool);
+    var env = try lola.runtime.Environment.init(allocator, &cu, pool.interface());
     defer env.deinit();
 
     if (!options.@"no-stdlib") {
