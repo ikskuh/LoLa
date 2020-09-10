@@ -178,6 +178,10 @@ pub fn build(b: *Builder) !void {
             "-fno-emit-bin",
             "--output-dir",
             "website/",
+            "--pkg-begin",
+            "interface",
+            pkgs.interface.path,
+            "--pkg-end",
         });
 
         // Only  generates documentation
