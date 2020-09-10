@@ -114,7 +114,8 @@ pub fn build(b: *Builder) !void {
         stdib_test.expectStdOutEqual("Standard library test suite passed.\n");
         test_step.dependOn(&stdib_test.step);
 
-        {
+        // when the host is windows, this won't work :(
+        if (std.builtin.os.tag != .windows) {
             std.fs.cwd().makeDir("zig-cache/tmp") catch |err| switch (err) {
                 error.PathAlreadyExists => {}, // nice
                 else => |e| return e,
