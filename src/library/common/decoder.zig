@@ -84,6 +84,8 @@ pub const Decoder = struct {
     /// Reads a a full instruction from the source.
     /// This will provide full decoding and error checking.
     fn readInstruction(self: *Self) !Instruction {
+        if (self.isEof())
+            return error.EndOfStream;
         const instr = try self.read(InstructionName);
         inline for (std.meta.fields(Instruction)) |fld| {
             if (instr == @field(InstructionName, fld.name)) {

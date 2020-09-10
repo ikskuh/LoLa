@@ -204,7 +204,10 @@ pub const VM = struct {
 
         // std.debug.warn("execute 0x{X}…\n", .{ctx.decoder.offset});
 
-        const instruction = try ctx.decoder.read(Instruction);
+        const instruction = ctx.decoder.read(Instruction) catch |err| return switch (err) {
+            error.EndOfStream => error.InvalidJump,
+            else => error.InvalidBytecode,
+        };
         switch (instruction) {
 
             // Auxiliary Section:
@@ -803,10 +806,91 @@ pub const VM = struct {
     }
 };
 
-test "VM" {
-    _ = VM;
-    _ = VM.init;
-    _ = VM.deinit;
-    _ = VM.execute;
-    _ = VM.printStackTrace;
+const TestPool = ObjectPool(.{});
+
+fn runTest(comptime TestRunner: type) !void {
+    var code = TestRunner.code;
+
+    const cu = CompileUnit{
+        .arena = undefined,
+        .comment = "",
+        .globalCount = 0,
+        .temporaryCount = 0,
+        .functions = &[_]CompileUnit.Function{},
+        .debugSymbols = &[0]CompileUnit.DebugSymbol{},
+        .code = &code,
+    };
+
+    var pool = TestPool.init(std.testing.allocator);
+    defer pool.deinit();
+
+    var env = try Environment.init(std.testing.allocator, &cu, pool.interface());
+    defer env.deinit();
+
+    var vm = try VM.init(std.testing.allocator, &env);
+    defer vm.deinit();
+
+    try TestRunner.verify(&vm);
+}
+
+test "VM basic execution" {
+    try runTest(struct {
+        var code = [_]u8{
+            @enumToInt(InstructionName.ret),
+        };
+
+        fn verify(vm: *VM) !void {
+            const result = try vm.execute(1);
+
+            std.testing.expectEqual(ExecutionResult.completed, result);
+        }
+    });
+}
+
+test "VM endless loop exhaustion" {
+    try runTest(struct {
+        var code = [_]u8{
+            @enumToInt(InstructionName.jmp),
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+        };
+
+        fn verify(vm: *VM) !void {
+            const result = try vm.execute(1000);
+            std.testing.expectEqual(ExecutionResult.exhausted, result);
+        }
+    });
+}
+
+test "VM invalid code panic" {
+    try runTest(struct {
+        var code = [_]u8{
+            @enumToInt(InstructionName.jmp),
+            0x00,
+            0x00,
+            0x00,
+        };
+
+        fn verify(vm: *VM) !void {
+            std.testing.expectError(error.InvalidBytecode, vm.execute(1000));
+        }
+    });
+}
+
+test "VM invalid jump panic" {
+    try runTest(struct {
+        var code = [_]u8{
+            @enumToInt(InstructionName.jmp),
+            0x00,
+            0x00,
+            0x00,
+            0xFF,
+        };
+
+        fn verify(vm: *VM) !void {
+            std.testing.expectError(error.InvalidJump, vm.execute(1000));
+        }
+    });
 }
