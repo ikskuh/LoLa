@@ -188,6 +188,9 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
         deserialize: fn (allocator: *std.mem.Allocator, stream: InputStream) anyerror!Object,
     };
 
+    // Provide a huge-enough branch quota
+    @setEvalBranchQuota(1000 * (classes.len + 1));
+
     const class_lut = comptime if (all_classes_can_serialize) blk: {
         var lut: [classes.len]ClassInfo = undefined;
         for (lut) |*info, i| {

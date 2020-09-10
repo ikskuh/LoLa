@@ -211,6 +211,10 @@ zig build
 ./zig-cache/bin/lola
 ```
 
+### Examples
+
+To compile the host examples, you can use `zig build examples` to build all provided examples. These will be available in `./zig-cache/bin` then.
+
 ### Running the test suite
 
 When you change things in the compiler or VM implementation, run the test suite:

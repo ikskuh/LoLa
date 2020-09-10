@@ -36,6 +36,22 @@ const pkgs = struct {
     };
 };
 
+const Example = struct {
+    name: []const u8,
+    path: []const u8,
+};
+
+const examples = [_]Example{
+    Example{
+        .name = "minimal-host",
+        .path = "examples/host/minimal-host/main.zig",
+    },
+    Example{
+        .name = "multi-environment",
+        .path = "examples/host/multi-environment/main.zig",
+    },
+};
+
 pub fn build(b: *Builder) !void {
     const version_tag = b.option([]const u8, "version", "Sets the version displayed in the docs and for `lola version`");
 
@@ -53,13 +69,22 @@ pub fn build(b: *Builder) !void {
             std.zig.CrossTarget{},
     });
 
-    const exe = b.addExecutable("lola", "./src/frontend/main.zig");
+    const exe = b.addExecutable("lola", "src/frontend/main.zig");
     exe.setBuildMode(mode);
     exe.setTarget(target);
     exe.addPackage(pkgs.lola);
     exe.addPackage(pkgs.args);
     exe.addBuildOption([]const u8, "version", version_tag orelse "development");
     exe.install();
+
+    const examples_step = b.step("examples", "Compiles all examples");
+    for (examples) |example| {
+        const example_exe = b.addExecutable(example.name, example.path);
+        example_exe.setBuildMode(mode);
+        example_exe.setTarget(target);
+        example_exe.addPackage(pkgs.lola);
+        examples_step.dependOn(&example_exe.step);
+    }
 
     var main_tests = b.addTest("src/library/test.zig");
     if (pkgs.lola.dependencies) |deps| {
@@ -74,10 +99,7 @@ pub fn build(b: *Builder) !void {
 
     // Run compiler test suites
     {
-        const prefix = if (std.builtin.os.tag == .windows)
-            "src\\test\\" // TODO: Fix when .\ works on windows again
-        else
-            "./src/test/";
+        const prefix = "src/test/";
 
         const behaviour_tests = exe.run();
         behaviour_tests.addArg("run");

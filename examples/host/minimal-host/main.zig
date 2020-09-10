@@ -12,6 +12,13 @@ const example_source =
     \\
 ;
 
+// This is required for the runtime library to be able to provide
+// object implementations.
+pub const ObjectPool = lola.runtime.ObjectPool([_]type{
+    lola.libs.runtime.LoLaDictionary,
+    lola.libs.runtime.LoLaList,
+});
+
 pub fn main() anyerror!u8 {
     var gpa_state = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa_state.deinit();
@@ -42,13 +49,13 @@ pub fn main() anyerror!u8 {
 
     // A object pool is required for garabge collecting object handles
     // stored in several LoLa environments and virtual machines.
-    var pool = lola.runtime.ObjectPool.init(allocator);
+    var pool = ObjectPool.init(allocator);
     defer pool.deinit();
 
     // A environment stores global variables and provides functions
     // to the virtual machines. It is also a possible LoLa object that
     // can be passed into virtual machines.
-    var env = try lola.runtime.Environment.init(allocator, &compile_unit, &pool);
+    var env = try lola.runtime.Environment.init(allocator, &compile_unit, pool.interface());
     defer env.deinit();
 
     // Install both standard and runtime library into

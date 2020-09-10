@@ -19,6 +19,15 @@ const lola = @import("lola");
 // communicate with each other.
 //
 
+pub const ObjectPool = lola.runtime.ObjectPool([_]type{
+    lola.libs.runtime.LoLaDictionary,
+    lola.libs.runtime.LoLaList,
+
+    // Environment is a non-serializable object. If you need to serialize a whole VM state with cross-references,
+    // provide your own wrapper implementation
+    lola.runtime.Environment,
+});
+
 pub fn main() anyerror!u8 {
     var gpa_state = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa_state.deinit();
@@ -42,16 +51,16 @@ pub fn main() anyerror!u8 {
     var client_b_unit = (try lola.compiler.compile(allocator, &diagnostics, "client-b.lola", @embedFile("client-b.lola"))) orelse return 1;
     defer client_b_unit.deinit();
 
-    var pool = lola.runtime.ObjectPool.init(allocator);
+    var pool = ObjectPool.init(allocator);
     defer pool.deinit();
 
-    var server_env = try lola.runtime.Environment.init(allocator, &server_unit, &pool);
+    var server_env = try lola.runtime.Environment.init(allocator, &server_unit, pool.interface());
     defer server_env.deinit();
 
-    var client_a_env = try lola.runtime.Environment.init(allocator, &client_a_unit, &pool);
+    var client_a_env = try lola.runtime.Environment.init(allocator, &client_a_unit, pool.interface());
     defer client_a_env.deinit();
 
-    var client_b_env = try lola.runtime.Environment.init(allocator, &client_b_unit, &pool);
+    var client_b_env = try lola.runtime.Environment.init(allocator, &client_b_unit, pool.interface());
     defer client_b_env.deinit();
 
     for ([_]*lola.runtime.Environment{ &server_env, &client_a_env, &client_b_env }) |env| {
@@ -59,7 +68,7 @@ pub fn main() anyerror!u8 {
         try lola.libs.runtime.install(env, allocator);
     }
 
-    var server_obj_handle = try pool.createObject(lola.runtime.Object.init(&server_env));
+    var server_obj_handle = try pool.createObject(&server_env);
 
     // Important: The environment is stored in the ObjectPool,
     // but will be destroyed earlier by us, so we have to remove it
