@@ -185,7 +185,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
     const ClassInfo = struct {
         name: []const u8,
         serialize: fn (stream: OutputStream, obj: Object) anyerror!void,
-        deserialize: fn (stream: InputStream) anyerror!Object,
+        deserialize: fn (allocator: *std.mem.Allocator, stream: InputStream) anyerror!Object,
     };
 
     const class_lut = comptime if (all_classes_can_serialize) blk: {
@@ -198,8 +198,8 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
                     try Class.serializeObject(stream.writer(), @ptrCast(*Class, @alignCast(@alignOf(Class), obj.impl.storage.erased_ptr)));
                 }
 
-                fn deserialize(stream: InputStream) anyerror!Object {
-                    var ptr = try Class.deserializeObject(stream.reader());
+                fn deserialize(allocator: *std.mem.Allocator, stream: InputStream) anyerror!Object {
+                    var ptr = try Class.deserializeObject(allocator, stream.reader());
                     return Object.init(ptr);
                 }
             };
@@ -226,7 +226,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
         };
 
         /// Is `true` when all classes in the ObjectPool allow seriaization
-        pub const serializeable: bool = all_classes_can_serialize;
+        pub const serializable: bool = all_classes_can_serialize;
 
         /// ever-increasing number which is used to allocate new object handles.
         objectCounter: u64,
@@ -301,7 +301,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
                     if (gop.found_existing)
                         return error.InvalidStream;
 
-                    const object = try class_lut[type_index].deserialize(InputStream.from(&stream));
+                    const object = try class_lut[type_index].deserialize(allocator, InputStream.from(&stream));
 
                     gop.entry.value = ManagedObject{
                         .object = object,
@@ -514,7 +514,7 @@ const TestObject = struct {
 
     var deserialize_instance = Self{};
 
-    pub fn deserializeObject(reader: InputStream.Reader) !*Self {
+    pub fn deserializeObject(allocator: *std.mem.Allocator, reader: InputStream.Reader) !*Self {
         var buf: [11]u8 = undefined;
         try reader.readNoEof(&buf);
         std.testing.expectEqualStrings("test object", &buf);
@@ -526,12 +526,12 @@ const TestObject = struct {
 const TestPool = ObjectPool([_]type{TestObject});
 
 comptime {
-    if (ObjectPool([_]type{}).serializeable != false)
+    if (ObjectPool([_]type{}).serializable != false)
         @compileError("Empty ObjectPool is required to be unserializable!");
 }
 
 comptime {
-    if (TestPool.serializeable != true)
+    if (TestPool.serializable != true)
         @compileError("TestPool is required to be serializable!");
 }
 
@@ -547,7 +547,7 @@ comptime {
         }
     };
 
-    if (ObjectPool([_]type{ TestObject, Unserializable }).serializeable != false)
+    if (ObjectPool([_]type{ TestObject, Unserializable }).serializable != false)
         @compileError("Unserializable detection doesn't work!");
 }
 

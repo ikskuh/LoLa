@@ -15,6 +15,16 @@ else if (@hasDecl(root, "ObjectPool"))
 else
     @compileError("Please define and use a global ObjectPool type to use the runtime classes.");
 
+comptime {
+    const T = lola.runtime.ObjectPool([_]type{
+        LoLaList,
+        LoLaDictionary,
+    });
+
+    if (!T.serializable)
+        @compileError("Both LoLaList and LoLaDictionary must be serializable!");
+}
+
 /// Installs the LoLa standard library into the given environment,
 /// providing it with a basic set of functions.
 /// `allocator` will be used to perform new allocations for the environment.
@@ -188,7 +198,10 @@ const sync_functions = struct {
 
         if (args.len > 0) {
             const array = args[0].toArray() catch unreachable;
+
+            errdefer list.data.deinit();
             try list.data.resize(array.contents.len);
+
             for (list.data.items) |*item| {
                 item.* = .void;
             }
@@ -252,6 +265,37 @@ pub const LoLaList = struct {
         }
         self.data.deinit();
         self.allocator.destroy(self);
+    }
+
+    pub fn serializeObject(writer: lola.runtime.OutputStream.Writer, object: *Self) !void {
+        try writer.writeIntLittle(u32, @intCast(u32, object.data.items.len));
+        for (object.data.items) |item| {
+            try item.serialize(writer);
+        }
+    }
+
+    pub fn deserializeObject(allocator: *std.mem.Allocator, reader: lola.runtime.InputStream.Reader) !*Self {
+        const item_count = try reader.readIntLittle(u32);
+        var list = try allocator.create(Self);
+        list.* = Self{
+            .allocator = allocator,
+            .data = std.ArrayList(lola.runtime.Value).init(allocator),
+        };
+        errdefer list.destroyObject(); // this will also free memory!
+
+        try list.data.resize(item_count);
+
+        // sane init to make destroyObject not explode
+        // (deinit a void value is a no-op)
+        for (list.data.items) |*item| {
+            item.* = .void;
+        }
+
+        for (list.data.items) |*item| {
+            item.* = try lola.runtime.Value.deserialize(reader, allocator);
+        }
+
+        return list;
     }
 
     const funcs = struct {
@@ -466,6 +510,42 @@ pub const LoLaDictionary = struct {
         }
         self.data.deinit();
         self.allocator.destroy(self);
+    }
+
+    pub fn serializeObject(writer: lola.runtime.OutputStream.Writer, object: *Self) !void {
+        try writer.writeIntLittle(u32, @intCast(u32, object.data.items.len));
+        for (object.data.items) |item| {
+            try item.key.serialize(writer);
+            try item.value.serialize(writer);
+        }
+    }
+
+    pub fn deserializeObject(allocator: *std.mem.Allocator, reader: lola.runtime.InputStream.Reader) !*Self {
+        const item_count = try reader.readIntLittle(u32);
+        var list = try allocator.create(Self);
+        list.* = Self{
+            .allocator = allocator,
+            .data = std.ArrayList(KV).init(allocator),
+        };
+        errdefer list.destroyObject(); // this will also free memory!
+
+        try list.data.resize(item_count);
+
+        // sane init to make destroyObject not explode
+        // (deinit a void value is a no-op)
+        for (list.data.items) |*item| {
+            item.* = KV{
+                .key = .void,
+                .value = .void,
+            };
+        }
+
+        for (list.data.items) |*item| {
+            item.key = try lola.runtime.Value.deserialize(reader, allocator);
+            item.value = try lola.runtime.Value.deserialize(reader, allocator);
+        }
+
+        return list;
     }
 
     const funcs = struct {
