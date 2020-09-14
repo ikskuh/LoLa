@@ -1,6 +1,20 @@
 const std = @import("std");
 const Builder = std.build.Builder;
 
+pub fn createPackage(comptime root: []const u8) std.build.Pkg {
+    return std.build.Pkg{
+        .name = "lola",
+        .path = root ++ "/src/library/main.zig",
+        .dependencies = &[_]std.build.Pkg{
+            std.build.Pkg{
+                .name = "interface",
+                .path = root ++ "/libs/interface.zig/interface.zig",
+                .dependencies = &[_]std.build.Pkg{},
+            },
+        },
+    };
+}
+
 const linkPcre = @import("libs/koino/vendor/libpcre.zig/build.zig").linkPcre;
 
 const pkgs = struct {

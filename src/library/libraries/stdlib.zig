@@ -552,12 +552,12 @@ const sync_functions = struct {
         return lola.runtime.Value.initNumber(std.math.exp(try args[0].toNumber()));
     }
 
-    fn Timestamp(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
-        const allocator = context.get(std.mem.Allocator);
-        if (args.len != 0)
-            return error.InvalidArgs;
-        return lola.runtime.Value.initNumber(@intToFloat(f64, std.time.milliTimestamp()) / 1000.0);
-    }
+    // fn Timestamp(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+    //     const allocator = context.get(std.mem.Allocator);
+    //     if (args.len != 0)
+    //         return error.InvalidArgs;
+    //     return lola.runtime.Value.initNumber(@intToFloat(f64, std.time.milliTimestamp()) / 1000.0);
+    // }
 
     fn TypeOf(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
         const allocator = context.get(std.mem.Allocator);
