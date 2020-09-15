@@ -198,6 +198,116 @@ pub const Function = union(enum) {
         };
     }
 
+    fn zigTypeToLoLa(comptime T: type) TypeId {
+        const info = @typeInfo(T);
+        if (info == .Int)
+            return TypeId.number;
+        if (info == .Float)
+            return TypeId.number;
+        return switch (T) {
+            bool => TypeId.boolean,
+            ObjectHandle => TypeId.object,
+            void => TypeId.void,
+            []const u8 => TypeId.string,
+            else => @compileError(@typeName(T) ++ " is not a wrappable type!"),
+        };
+    }
+
+    fn convertToZigValue(comptime Target: type, value: Value) !Target {
+        const info = @typeInfo(Target);
+        if (info == .Int)
+            return try value.toInteger(Target);
+        if (info == .Float)
+            return try value.toNumber();
+        return switch (Target) {
+            bool => try value.toBoolean(),
+            ObjectHandle => try value.toObject(),
+            void => try value.toVoid(),
+            []const u8 => value.toString(),
+            else => @compileError(@typeName(T) ++ " is not a wrappable type!"),
+        };
+    }
+
+    fn convertToLoLaValue(allocator: *std.mem.Allocator, value: anytype) Value {
+        const T = @TypeOf(value);
+        const info = @typeInfo(T);
+        if (info == .Int)
+            return Value.initInteger(T, value);
+        if (info == .Float)
+            return Value.initNumber(value);
+        return switch (T) {
+            bool => Value.initBoolean(value),
+            ObjectHandle => Value.initObject(value),
+            void => .void,
+            []const u8 => Value.initString(allocator, value),
+            else => @compileError(@typeName(T) ++ " is not a wrappable type!"),
+        };
+    }
+
+    pub fn wrap(comptime function: anytype) Function {
+        const F = @TypeOf(function);
+        const info = @typeInfo(F);
+        if (info != .Fn)
+            @compileError("Function.wrap expects a function!");
+
+        const function_info = info.Fn;
+        if (function_info.is_generic)
+            @compileError("Cannot wrap generic functions!");
+        if (function_info.is_var_args)
+            @compileError("Cannot wrap functions with variadic arguments!");
+
+        inline for (function_info.args) |arg, i| {
+            _ = zigTypeToLoLa(arg.arg_type.?);
+        }
+
+        const Impl = struct {
+            fn invoke(env: *Environment, context: Context, args: []const Value) anyerror!Value {
+                if (args.len != function_info.args.len)
+                    return error.InvalidArgs;
+
+                const args_def = function_info.args;
+                var zig_args = switch (args_def.len) {
+                    0 => .{},
+                    1 => .{
+                        try convertToZigValue(args_def[0].arg_type.?, args[0]),
+                    },
+                    2 => .{
+                        try convertToZigValue(args_def[0].arg_type.?, args[0]),
+                        try convertToZigValue(args_def[1].arg_type.?, args[1]),
+                    },
+                    3 => .{
+                        try convertToZigValue(args_def[0].arg_type.?, args[0]),
+                        try convertToZigValue(args_def[1].arg_type.?, args[1]),
+                        try convertToZigValue(args_def[2].arg_type.?, args[2]),
+                    },
+                    4 => .{
+                        try convertToZigValue(args_def[0].arg_type.?, args[0]),
+                        try convertToZigValue(args_def[1].arg_type.?, args[1]),
+                        try convertToZigValue(args_def[2].arg_type.?, args[2]),
+                        try convertToZigValue(args_def[3].arg_type.?, args[3]),
+                    },
+                    else => @compileError("Unsupported number of args!"),
+                };
+
+                const ReturnType = function_info.return_type.?;
+
+                const ActualReturnType = switch (@typeInfo(ReturnType)) {
+                    .ErrorUnion => |eu| eu.payload,
+                    else => ReturnType,
+                };
+
+                var result: ActualReturnType = if (ReturnType != ActualReturnType)
+                    try @call(.{}, function, zig_args)
+                else
+                    @call(.{}, function, zig_args);
+
+                return convertToLoLaValue(env.allocator, result);
+            }
+        };
+
+        return initSimpleUser(Impl.invoke);
+    }
+
     pub fn deinit(self: *@This()) void {
         switch (self.*) {
             .script => {},
