@@ -59,3 +59,10 @@ a.button {
   text-decoration: none;
   color: initial;
 }
+
+#output {
+  font-family: monospace;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  word-wrap: break-word;
+}

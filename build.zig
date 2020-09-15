@@ -48,6 +48,11 @@ const pkgs = struct {
             std.build.Pkg{ .name = "zunicode", .path = "libs/koino/vendor/zunicode/src/zunicode.zig" },
         },
     };
+
+    const zee_alloc = std.build.Pkg{
+        .name = "zee_alloc",
+        .path = "libs/zee_alloc/src/main.zig",
+    };
 };
 
 const Example = struct {
@@ -97,6 +102,7 @@ pub fn build(b: *Builder) !void {
 
     const wasm_runtime = b.addStaticLibrary("lola", "src/wasm-compiler/main.zig");
     wasm_runtime.addPackage(pkgs.lola);
+    wasm_runtime.addPackage(pkgs.zee_alloc);
     wasm_runtime.setTarget(.{ .cpu_arch = .wasm32, .os_tag = .freestanding });
     wasm_runtime.setBuildMode(.ReleaseSafe);
     wasm_runtime.install();

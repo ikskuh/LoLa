@@ -11,17 +11,66 @@ const templates = [
 function loadTemplate(id) {
   editor.session.setValue(templates[id].text);
 }
+const utf8_enc = new TextEncoder('utf-8');
+const utf8_dec = new TextDecoder('utf-8');
 
 function validateCode() {
   const code = editor.session.getValue();
 
-  console.log('validate', code);
+  var encoded_text = utf8_enc.encode(code);
+
+  const string_ptr = wasmContext.instance.exports.malloc(encoded_text.length);
+
+  let byteView = new Uint8Array(
+      wasmContext.instance.exports.memory.buffer, string_ptr,
+      encoded_text.length);
+
+  let i = 0;
+  while (i < encoded_text.length) {
+    byteView[i] = encoded_text[i];
+    i += 1;
+  }
+
+  const result =
+      wasmContext.instance.exports.validate(string_ptr, encoded_text.length);
+
+  wasmContext.instance.exports.free(string_ptr, encoded_text.length);
+
+  if (result != 0) console.log('failed to validate code!');
 }
 
 function runCode() {
   const code = editor.session.getValue();
 
-  console.log('run', code);
+  var encoded_text = utf8_enc.encode(code);
+
+  const string_ptr = wasmContext.instance.exports.malloc(encoded_text.length);
+
+  let byteView = new Uint8Array(
+      wasmContext.instance.exports.memory.buffer, string_ptr,
+      encoded_text.length);
+
+  let i = 0;
+  while (i < encoded_text.length) {
+    byteView[i] = encoded_text[i];
+    i += 1;
+  }
+
+  if (!wasmContext.instance.exports.isInterpreterDone()) {
+    wasmContext.instance.exports.deinitInterpreter();
+    wasmContext.is_running = false;
+  }
+
+  const result = wasmContext.instance.exports.initInterpreter(
+      string_ptr, encoded_text.length);
+  wasmContext.instance.exports.free(string_ptr, encoded_text.length);
+
+  if (result != 0) {
+    console.log('failed to compile code!');
+  } else {
+    // kick off interpreter loop
+    window.requestAnimationFrame(stepRuntime);
+  }
 }
 
 function showHelp() {
@@ -46,39 +95,19 @@ window.addEventListener('DOMContentLoaded', (ev) => {
 var wasmContext = {
   instance: null,
   inputBuffer: '',
-  is_running: false,
 };
 
 const wasmImports = {
   env: {
-      // serialRead: (data, len) => {
-      //   let byteView =
-      //       new Uint8Array(wasmContext.instance.exports.memory.buffer, data,
-      //       len);
+    compileLog: (data, len) => {
+      let byteView =
+          new Uint8Array(wasmContext.instance.exports.memory.buffer, data, len);
 
-      //   let i = 0;
-      //   while (wasmContext.inputBuffer.length > 0 && i < len) {
-      //     const c = wasmContext.inputBuffer.charCodeAt(0);
+      let s = utf8_dec.decode(byteView);
 
-      //     byteView[i] = c;
-
-      //     i += 1;
-      //     wasmContext.inputBuffer = wasmContext.inputBuffer.substr(1);
-      //   }
-
-      //   return i;
-      // },
-      // serialWrite: (data, len) => {
-      //   const decoder = new TextDecoder('utf-8');
-
-      //   let byteView =
-      //       new Uint8Array(wasmContext.instance.exports.memory.buffer, data,
-      //       len);
-
-      //   let s = decoder.decode(byteView);
-
-      //   term.write(s);
-      // }
+      // TODO: Change this
+      document.getElementById('output').innerText += s;
+    }
   }
 };
 
@@ -92,18 +121,14 @@ function translateEmulatorError(ind) {
 }
 
 function stepRuntime(time) {
-  if (wasmContext.is_running) {
-    // validate
-    // initInterpreter
-    // deinitInterpreter
-    // stepInterpreter
-
-    const success = wasmContext.instance.exports.run(4096);
+  if (!wasmContext.instance.exports.isInterpreterDone()) {
+    const success = wasmContext.instance.exports.stepInterpreter(100000);
     if (success == 0) {
       // continue
       window.requestAnimationFrame(stepRuntime);
     } else {
-      alert('emulator failed: ', translateEmulatorError(success));
+      console.log(success);
+      alert('emulator failed: ' + translateEmulatorError(success));
     }
   }
 }
@@ -118,14 +143,13 @@ fetch('lola.wasm')
 
       // this initialize the allocator and such
       results.instance.exports.initialize();
-
-      window.requestAnimationFrame(stepRuntime);
     });
 
 templates.push({
   name: 'Bubblesort',
-  text: `function BubbleSort(arr)
+  text: `function BubbleSort(const_arr)
 {
+  var arr = const_arr;
   var len = Length(arr);
 
   var n = len;
