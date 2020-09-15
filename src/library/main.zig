@@ -23,6 +23,7 @@ pub const libs = @import("libraries/libs.zig");
 /// Contains functions and structures to compile LoLa code.
 pub const compiler = struct {
     pub const Diagnostics = @import("compiler/diagnostics.zig").Diagnostics;
+    pub const Location = @import("compiler/location.zig").Location;
     pub const tokenizer = @import("compiler/tokenizer.zig");
     pub const parser = @import("compiler/parser.zig");
     pub const ast = @import("compiler/ast.zig");
