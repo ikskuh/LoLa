@@ -7,3 +7,6 @@
 [submodule "libs/interface.zig"]
 	path = libs/interface.zig
 	url = https://github.com/alexnask/interface.zig
+[submodule "libs/ace-builds"]
+	path = libs/ace-builds
+	url = https://github.com/ajaxorg/ace-builds

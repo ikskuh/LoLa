@@ -95,6 +95,12 @@ pub fn build(b: *Builder) !void {
     exe.addBuildOption([]const u8, "version", version_tag orelse "development");
     exe.install();
 
+    const wasm_runtime = b.addStaticLibrary("lola", "src/wasm-compiler/main.zig");
+    wasm_runtime.addPackage(pkgs.lola);
+    wasm_runtime.setTarget(.{ .cpu_arch = .wasm32, .os_tag = .freestanding });
+    wasm_runtime.setBuildMode(.ReleaseSafe);
+    wasm_runtime.install();
+
     const examples_step = b.step("examples", "Compiles all examples");
     inline for (examples) |example| {
         const example_exe = b.addExecutable("example-" ++ example.name, example.path);
@@ -236,9 +242,14 @@ pub fn build(b: *Builder) !void {
         try linkPcre(md_renderer);
 
         const render = md_renderer.run();
-
         render.addArg(version_tag orelse "development");
-
         gen_website_step.dependOn(&render.step);
+
+        const copy_wasm_runtime = b.addSystemCommand(&[_][]const u8{
+            "cp",
+        });
+        copy_wasm_runtime.addArtifactArg(wasm_runtime);
+        copy_wasm_runtime.addArg("website/lola.wasm");
+        gen_website_step.dependOn(&copy_wasm_runtime.step);
     }
 }

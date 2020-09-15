@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <title>LoLa Playground</title>
+  <link rel="stylesheet" href="playground.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <script src="libs/ace.js" type="text/javascript" charset="utf-8"></script>
+  <script src="playground.js" type="text/javascript" charset="utf-8"></script>
+</head>
+
+<body>
+  <nav id="toolbar">
+    <img id="icon" src="img/logo.png" />
+    <span>LoLa Playground</span>
+    <button onclick="validateCode()">Validate</button>
+    <button onclick="runCode()">Run</button>
+    <div class="spanner"></div>
+    <select id="examples" onchange="loadTemplate(this.selectedIndex)">
+      <option>Hello, World</option>
+      <option>Bubblesort</option>
+      <option>Forth</option>
+      <option>Game</option>
+    </select>
+    <button onclick="showHelp()">Help</button>
+  </nav>
+  <div id="editor">Print("Hello, World!");</div>
+  <div id="output">
+
+  </div>
+
+  <script>
+    editor = ace.edit("editor");
+    // editor.setTheme("ace/theme/vibrant_ink");
+    editor.session.setMode("ace/mode/javascript");
+  </script>
+
+</body>
+
+</html>

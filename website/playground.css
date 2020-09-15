@@ -1,0 +1,61 @@
+* {
+  box-sizing: border-box;
+}
+
+#toolbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3rem;
+  padding: 0;
+  display: flex;
+  background: linear-gradient(0deg, #EEE, #FFF);
+  border-bottom: 1px solid #DDD;
+}
+
+#toolbar img {
+  height: 100%;
+}
+
+#toolbar span, #toolbar button, #toolbar select {
+  margin: 0.5rem;
+}
+
+#toolbar span {
+  align-items: center;
+  display: inline-flex;
+  font-family: sans-serif;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+#toolbar .spanner {
+  flex: 1;
+}
+
+#editor {
+  position: fixed;
+  top: 3rem;
+  left: 0;
+  right: 0;
+  bottom: 20rem;
+  font-size: 1.0rem;
+}
+
+#output {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 20rem;
+  border-top: 1px solid #DDD;
+}
+
+a.button {
+  -webkit-appearance: button;
+  -moz-appearance: button;
+  appearance: button;
+  text-decoration: none;
+  color: initial;
+}
