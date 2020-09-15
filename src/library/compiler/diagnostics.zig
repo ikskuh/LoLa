@@ -2,26 +2,26 @@ const std = @import("std");
 
 const Location = @import("location.zig").Location;
 
-pub const MessageKind = enum {
-    @"error", warning, notice
-};
-
-pub const Message = struct {
-    kind: MessageKind,
-    location: Location,
-    message: []const u8,
-
-    pub fn format(value: @This(), comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
-        try writer.print("{}: {}: {}", .{
-            value.location,
-            @tagName(value.kind),
-            value.message,
-        });
-    }
-};
-
 pub const Diagnostics = struct {
     const Self = @This();
+
+    pub const MessageKind = enum {
+        @"error", warning, notice
+    };
+
+    pub const Message = struct {
+        kind: MessageKind,
+        location: Location,
+        message: []const u8,
+
+        pub fn format(value: @This(), comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
+            try writer.print("{}: {}: {}", .{
+                value.location,
+                @tagName(value.kind),
+                value.message,
+            });
+        }
+    };
 
     arena: std.heap.ArenaAllocator,
     messages: std.ArrayList(Message),

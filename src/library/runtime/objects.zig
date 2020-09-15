@@ -529,29 +529,33 @@ const TestObject = struct {
 const TestPool = ObjectPool([_]type{TestObject});
 
 comptime {
-    if (ObjectPool([_]type{}).serializable != false)
-        @compileError("Empty ObjectPool is required to be unserializable!");
-}
-
-comptime {
-    if (TestPool.serializable != true)
-        @compileError("TestPool is required to be serializable!");
-}
-
-comptime {
-    const Unserializable = struct {
-        const Self = @This();
-        pub fn getMethod(self: *Self, name: []const u8) ?Function {
-            unreachable;
+    if (std.builtin.is_test) {
+        {
+            if (ObjectPool([_]type{}).serializable != false)
+                @compileError("Empty ObjectPool is required to be unserializable!");
         }
 
-        pub fn destroyObject(self: *Self) void {
-            unreachable;
+        {
+            if (TestPool.serializable != true)
+                @compileError("TestPool is required to be serializable!");
         }
-    };
 
-    if (ObjectPool([_]type{ TestObject, Unserializable }).serializable != false)
-        @compileError("Unserializable detection doesn't work!");
+        {
+            const Unserializable = struct {
+                const Self = @This();
+                pub fn getMethod(self: *Self, name: []const u8) ?Function {
+                    unreachable;
+                }
+
+                pub fn destroyObject(self: *Self) void {
+                    unreachable;
+                }
+            };
+
+            if (ObjectPool([_]type{ TestObject, Unserializable }).serializable != false)
+                @compileError("Unserializable detection doesn't work!");
+        }
+    }
 }
 
 test "Object" {
