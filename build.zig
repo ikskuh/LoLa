@@ -50,6 +50,10 @@ const examples = [_]Example{
         .name = "multi-environment",
         .path = "examples/host/multi-environment/main.zig",
     },
+    Example{
+        .name = "serialization",
+        .path = "examples/host/serialization/main.zig",
+    },
 };
 
 pub fn build(b: *Builder) !void {
@@ -78,12 +82,13 @@ pub fn build(b: *Builder) !void {
     exe.install();
 
     const examples_step = b.step("examples", "Compiles all examples");
-    for (examples) |example| {
-        const example_exe = b.addExecutable(example.name, example.path);
+    inline for (examples) |example| {
+        const example_exe = b.addExecutable("example-" ++ example.name, example.path);
         example_exe.setBuildMode(mode);
         example_exe.setTarget(target);
         example_exe.addPackage(pkgs.lola);
-        examples_step.dependOn(&example_exe.step);
+
+        examples_step.dependOn(&b.addInstallArtifact(example_exe).step);
     }
 
     var main_tests = b.addTest("src/library/test.zig");
