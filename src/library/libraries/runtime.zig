@@ -16,13 +16,15 @@ else
     @compileError("Please define and use a global ObjectPool type to use the runtime classes.");
 
 comptime {
-    const T = lola.runtime.ObjectPool([_]type{
-        LoLaList,
-        LoLaDictionary,
-    });
+    if (std.builtin.is_test) {
+        const T = lola.runtime.ObjectPool([_]type{
+            LoLaList,
+            LoLaDictionary,
+        });
 
-    if (!T.serializable)
-        @compileError("Both LoLaList and LoLaDictionary must be serializable!");
+        if (!T.serializable)
+            @compileError("Both LoLaList and LoLaDictionary must be serializable!");
+    }
 }
 
 /// Installs the LoLa standard library into the given environment,

@@ -12,6 +12,16 @@ const whitespace = [_]u8{
     0x20, // space
 };
 
+const root = @import("root");
+
+const milliTimestamp = if (std.builtin.os.tag == .freestanding)
+    if (@hasDecl(root, "milliTimestamp"))
+        root.milliTimestamp
+    else
+        @compileError("Please provide milliTimestamp in the root file for freestanding targets!")
+else
+    std.time.milliTimestamp;
+
 /// Installs the LoLa standard library into the given environment,
 /// providing it with a basic set of functions.
 /// `allocator` will be used to perform new allocations for the environment.
@@ -77,7 +87,7 @@ const async_functions = struct {
         const ptr = try allocator.create(Context);
         ptr.* = Context{
             .allocator = allocator,
-            .end_time = @intToFloat(f64, std.time.milliTimestamp()) + 1000.0 * seconds,
+            .end_time = @intToFloat(f64, milliTimestamp()) + 1000.0 * seconds,
         };
 
         return lola.runtime.AsyncFunctionCall{
@@ -92,7 +102,7 @@ const async_functions = struct {
                 fn execute(exec_context: lola.runtime.Context) anyerror!?lola.runtime.Value {
                     const ctx = exec_context.get(Context);
 
-                    if (ctx.end_time < @intToFloat(f64, std.time.milliTimestamp())) {
+                    if (ctx.end_time < @intToFloat(f64, milliTimestamp())) {
                         return .void;
                     } else {
                         return null;
@@ -101,7 +111,6 @@ const async_functions = struct {
             }.execute,
         };
     }
-
     fn Yield(call_context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.AsyncFunctionCall {
         const allocator = call_context.get(std.mem.Allocator);
 
@@ -552,12 +561,12 @@ const sync_functions = struct {
         return lola.runtime.Value.initNumber(std.math.exp(try args[0].toNumber()));
     }
 
-    // fn Timestamp(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
-    //     const allocator = context.get(std.mem.Allocator);
-    //     if (args.len != 0)
-    //         return error.InvalidArgs;
-    //     return lola.runtime.Value.initNumber(@intToFloat(f64, std.time.milliTimestamp()) / 1000.0);
-    // }
+    fn Timestamp(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+        const allocator = context.get(std.mem.Allocator);
+        if (args.len != 0)
+            return error.InvalidArgs;
+        return lola.runtime.Value.initNumber(@intToFloat(f64, milliTimestamp()) / 1000.0);
+    }
 
     fn TypeOf(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
         const allocator = context.get(std.mem.Allocator);

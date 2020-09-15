@@ -58,33 +58,35 @@ pub const compiler = struct {
 };
 
 comptime {
-    // include tests
-    _ = @import("libraries/stdlib.zig");
-    _ = @import("libraries/runtime.zig");
-    _ = @import("compiler/diagnostics.zig");
-    _ = @import("compiler/string-escaping.zig");
-    _ = @import("compiler/codegen.zig");
-    _ = @import("compiler/code-writer.zig");
-    _ = @import("compiler/typeset.zig");
-    _ = @import("compiler/analysis.zig");
-    _ = @import("compiler/tokenizer.zig");
-    _ = @import("compiler/parser.zig");
-    _ = @import("compiler/location.zig");
-    _ = @import("compiler/ast.zig");
-    _ = @import("compiler/scope.zig");
-    _ = @import("runtime/vm.zig");
-    _ = @import("runtime/objects.zig");
-    _ = @import("runtime/environment.zig");
-    _ = @import("runtime/value.zig");
-    _ = @import("runtime/context.zig");
-    _ = @import("runtime/named_global.zig");
-    _ = @import("common/decoder.zig");
-    _ = @import("common/disassembler.zig");
-    _ = @import("common/utility.zig");
-    _ = @import("common/ir.zig");
-    _ = @import("common/compile-unit.zig");
-    _ = compiler.compile;
+    if (zig_std.builtin.is_test) {
+        // include tests
+        _ = @import("libraries/stdlib.zig");
+        _ = @import("libraries/runtime.zig");
+        _ = @import("compiler/diagnostics.zig");
+        _ = @import("compiler/string-escaping.zig");
+        _ = @import("compiler/codegen.zig");
+        _ = @import("compiler/code-writer.zig");
+        _ = @import("compiler/typeset.zig");
+        _ = @import("compiler/analysis.zig");
+        _ = @import("compiler/tokenizer.zig");
+        _ = @import("compiler/parser.zig");
+        _ = @import("compiler/location.zig");
+        _ = @import("compiler/ast.zig");
+        _ = @import("compiler/scope.zig");
+        _ = @import("runtime/vm.zig");
+        _ = @import("runtime/objects.zig");
+        _ = @import("runtime/environment.zig");
+        _ = @import("runtime/value.zig");
+        _ = @import("runtime/context.zig");
+        _ = @import("runtime/named_global.zig");
+        _ = @import("common/decoder.zig");
+        _ = @import("common/disassembler.zig");
+        _ = @import("common/utility.zig");
+        _ = @import("common/ir.zig");
+        _ = @import("common/compile-unit.zig");
+        _ = compiler.compile;
 
-    _ = libs.runtime;
-    _ = libs.std;
+        _ = libs.runtime;
+        _ = libs.std;
+    }
 }
