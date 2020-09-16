@@ -6,7 +6,8 @@ const templates = [
   },
 ];
 
-
+var terminal;
+var editor;
 
 function loadTemplate(id) {
   editor.session.setValue(templates[id].text);
@@ -58,7 +59,6 @@ function runCode() {
 
   if (!wasmContext.instance.exports.isInterpreterDone()) {
     wasmContext.instance.exports.deinitInterpreter();
-    wasmContext.is_running = false;
   }
 
   const result = wasmContext.instance.exports.initInterpreter(
@@ -69,6 +69,8 @@ function runCode() {
     console.log('failed to compile code!');
   } else {
     // kick off interpreter loop
+    terminal.clear();
+    wasmContext.start_time = Date.now();
     window.requestAnimationFrame(stepRuntime);
   }
 }
@@ -79,15 +81,31 @@ function showHelp() {
 
 // run this when the site is fully loaded
 window.addEventListener('DOMContentLoaded', (ev) => {
-  const examples = document.getElementById('examples');
+  // Initialize editor
+  editor = ace.edit('editor');
+  // editor.setTheme("ace/theme/vibrant_ink");
+  editor.session.setMode('ace/mode/javascript');
 
-  examples.options.length = 0;
-  for (const index in templates) {
-    examples.options.add(new Option(templates[index].name, String(index)));
+  // Initialize terminal
+  {
+    terminal = new Terminal();
+    const fitAddon = new FitAddon.FitAddon();
+    terminal.loadAddon(fitAddon);
+    terminal.open(document.getElementById('output'));
+    fitAddon.fit();
   }
-  loadTemplate(0);
 
-  console.log();
+
+  // Initialize samples dropdown
+  {
+    const examples = document.getElementById('examples');
+
+    examples.options.length = 0;
+    for (const index in templates) {
+      examples.options.add(new Option(templates[index].name, String(index)));
+    }
+    loadTemplate(0);
+  }
 });
 
 
@@ -95,6 +113,7 @@ window.addEventListener('DOMContentLoaded', (ev) => {
 var wasmContext = {
   instance: null,
   inputBuffer: '',
+  start_time: 0,
 };
 
 const wasmImports = {
@@ -105,9 +124,11 @@ const wasmImports = {
 
       let s = utf8_dec.decode(byteView);
 
-      // TODO: Change this
-      document.getElementById('output').innerText += s;
-    }
+      terminal.write(s);
+    },
+    millis: () => {
+      return Date.now() - wasmContext.start_time;
+    },
   }
 };
 
@@ -187,4 +208,12 @@ Print(BubbleSort([
   "boresighting",
   "postfix"
 ]));`,
+});
+
+templates.push({
+  name: 'Simple Timer',
+  text: `while(true) {
+  Print(Timestamp());
+  Yield();
+}`
 });

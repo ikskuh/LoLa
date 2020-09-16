@@ -62,7 +62,7 @@ a.button {
 
 #output {
   font-family: monospace;
-  overflow-y: scroll;
+  overflow-y: hidden;
   overflow-x: hidden;
   word-wrap: break-word;
 }

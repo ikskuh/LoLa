@@ -3,11 +3,19 @@
 
 <head>
   <title>LoLa Playground</title>
-  <link rel="stylesheet" href="playground.css">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="playground.css">
+  <link rel="stylesheet" href="libs/xterm.css" />
+
+  <!-- External Libraries -->
   <script src="libs/ace.js" type="text/javascript" charset="utf-8"></script>
+  <script src="libs/xterm.js" type="text/javascript" charset="utf-8"></script>
+  <script src="libs/xterm-addon-fit.js" type="text/javascript" charset="utf-8"></script>
+
+  <!-- Source -->
   <script src="playground.js" type="text/javascript" charset="utf-8"></script>
 </head>
 
@@ -27,15 +35,7 @@
     <button onclick="showHelp()">Help</button>
   </nav>
   <div id="editor">Print("Hello, World!");</div>
-  <div id="output">
-
-  </div>
-
-  <script>
-    editor = ace.edit("editor");
-    // editor.setTheme("ace/theme/vibrant_ink");
-    editor.session.setMode("ace/mode/javascript");
-  </script>
+  <div id="output"></div>
 
 </body>
 

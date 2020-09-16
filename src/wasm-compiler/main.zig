@@ -17,12 +17,13 @@ var vm: lola.runtime.VM = undefined;
 var is_done: bool = true;
 
 pub fn milliTimestamp() usize {
-    // Implement this!
-    return 0;
+    return JS.millis();
 }
 
 const JS = struct {
     extern fn compileLog(data: [*]const u8, len: u32) void;
+
+    extern fn millis() usize;
 };
 
 const API = struct {
@@ -35,36 +36,33 @@ const API = struct {
 
     fn validate(source: []const u8) !void {
         var diagnostics = lola.compiler.Diagnostics.init(allocator);
-        defer {
-            for (diagnostics.messages.items) |msg| {
-                std.fmt.format(debug_writer, "{}\n", .{msg}) catch unreachable;
-            }
-            diagnostics.deinit();
-        }
+        defer diagnostics.deinit();
 
         // This compiles a piece of source code into a compile unit.
         // A compile unit is a piece of LoLa IR code with metadata for
         // all existing functions, debug symbols and so on. It can be loaded into
         // a environment and be executed.
-        var temp_compile_unit = (try lola.compiler.compile(allocator, &diagnostics, "example_source", source)) orelse {
-            // TODO: std.debug.print("failed to compile example_source!\n", .{});
-            return;
-        };
-        temp_compile_unit.deinit();
+        var temp_compile_unit = try lola.compiler.compile(allocator, &diagnostics, "code", source);
+
+        for (diagnostics.messages.items) |msg| {
+            std.fmt.format(debug_writer, "{}\n", .{msg}) catch unreachable;
+        }
+
+        if (temp_compile_unit) |*unit|
+            unit.deinit();
     }
 
     fn initInterpreter(source: []const u8) !void {
         var diagnostics = lola.compiler.Diagnostics.init(allocator);
-        defer {
-            for (diagnostics.messages.items) |msg| {
-                std.fmt.format(debug_writer, "{}\n", .{msg}) catch unreachable;
-            }
-            diagnostics.deinit();
+        diagnostics.deinit();
+
+        const compile_unit_or_none = try lola.compiler.compile(allocator, &diagnostics, "code", source);
+
+        for (diagnostics.messages.items) |msg| {
+            std.fmt.format(debug_writer, "{}\n", .{msg}) catch unreachable;
         }
 
-        compile_unit = (try lola.compiler.compile(allocator, &diagnostics, "example_source", source)) orelse {
-            return error.FailedToCompile;
-        };
+        compile_unit = compile_unit_or_none orelse return error.FailedToCompile;
         errdefer compile_unit.deinit();
 
         pool = ObjectPool.init(allocator);
@@ -85,24 +83,44 @@ const API = struct {
                         else => try debug_writer.print("{}", .{value}),
                     }
                 }
-                try debug_writer.writeAll("\n");
+                try debug_writer.writeAll("\r\n");
                 return .void;
             }
         }.Print));
 
+        try environment.installFunction("Write", lola.runtime.Function.initSimpleUser(struct {
+            fn Write(_environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+                // const allocator = context.get(std.mem.Allocator);
+                for (args) |value, i| {
+                    switch (value) {
+                        .string => |str| try debug_writer.writeAll(str.contents),
+                        else => try debug_writer.print("{}", .{value}),
+                    }
+                }
+                return .void;
+            }
+        }.Write));
+
         vm = try lola.runtime.VM.init(allocator, &environment);
+        errdefer vm.deinit();
+
         is_done = false;
     }
 
     fn deinitInterpreter() void {
-        vm.deinit();
-        environment.deinit();
-        pool.deinit();
-        compile_unit.deinit();
+        if (!is_done) {
+            vm.deinit();
+            environment.deinit();
+            pool.deinit();
+            compile_unit.deinit();
+        }
         is_done = true;
     }
 
     fn stepInterpreter(steps: u32) !void {
+        if (is_done)
+            return error.InvalidInterpreterState;
+
         // Run the virtual machine for up to 150 instructions
         var result = vm.execute(150) catch |err| {
             // When the virtua machine panics, we receive a Zig error
@@ -126,7 +144,9 @@ const API = struct {
             // This means that our script execution has ended and
             // the top-level code has come to an end
             .completed => {
-                is_done = true;
+                // deinitialize everything, stop execution
+                deinitInterpreter();
+                return;
             },
 
             // This means the VM has exhausted its provided instruction quota
@@ -170,6 +190,8 @@ const LoLaError = error{
 
     AlreadyExists,
     InvalidObject,
+
+    InvalidInterpreterState,
 };
 fn mapError(err: LoLaError) u8 {
     return switch (err) {
@@ -188,6 +210,7 @@ fn mapError(err: LoLaError) u8 {
         error.AlreadyExists => 3,
         error.LoLaPanic => 4,
         error.InvalidObject => 5,
+        error.InvalidInterpreterState => 6,
     };
 }
 
