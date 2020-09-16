@@ -2,7 +2,10 @@
 const templates = [
   {
     name: 'Hello, World!',
-    text: 'Print("Hello, World!");',
+    text:
+        `// Enter LoLa code here and press [Run] above to compile & execute the code!
+Print("Hello, World!");
+`,
   },
 ];
 
@@ -40,6 +43,11 @@ function validateCode() {
   if (result != 0) console.log('failed to validate code!');
 }
 
+function stopCode() {
+  wasmContext.instance.exports.deinitInterpreter();
+  document.getElementById('stopButton').classList.add('hidden');
+}
+
 function runCode() {
   const code = editor.session.getValue();
 
@@ -58,7 +66,7 @@ function runCode() {
   }
 
   if (!wasmContext.instance.exports.isInterpreterDone()) {
-    wasmContext.instance.exports.deinitInterpreter();
+    stopCode();
   }
 
   const result = wasmContext.instance.exports.initInterpreter(
@@ -71,9 +79,12 @@ function runCode() {
     // kick off interpreter loop
     terminal.clear();
     wasmContext.start_time = Date.now();
+    wasmContext.input_buffer = '';
+    document.getElementById('stopButton').classList.remove('hidden');
     window.requestAnimationFrame(stepRuntime);
   }
 }
+
 
 function showHelp() {
   window.open('docs/language.htm', '_blank');
@@ -95,6 +106,9 @@ window.addEventListener('DOMContentLoaded', (ev) => {
     fitAddon.fit();
   }
 
+  terminal.write(`Your program output will appear here!\r\n`);
+
+  // terminal.onData(data => console.log(data));
 
   // Initialize samples dropdown
   {
@@ -112,17 +126,39 @@ window.addEventListener('DOMContentLoaded', (ev) => {
 
 var wasmContext = {
   instance: null,
-  inputBuffer: '',
+  input_buffer: '',
   start_time: 0,
 };
 
 const wasmImports = {
   env: {
-    compileLog: (data, len) => {
-      let byteView =
-          new Uint8Array(wasmContext.instance.exports.memory.buffer, data, len);
+    readString: (data, len) => {
+      let target_buffer = new Uint8Array(
+          wasmContext.instance.exports.memory.buffer,
+          data,
+          len,
+      );
 
-      let s = utf8_dec.decode(byteView);
+      let i = 0;
+      while (wasmContext.input_buffer.length > 0 && i < len) {
+        const c = wasmContext.input_buffer.charCodeAt(0);
+
+        target_buffer[i] = c;
+
+        i += 1;
+        wasmContext.input_buffer = wasmContext.input_buffer.substr(1);
+      }
+
+      return i;
+    },
+    writeString: (data, len) => {
+      let source_buffer = new Uint8Array(
+          wasmContext.instance.exports.memory.buffer,
+          data,
+          len,
+      );
+
+      let s = utf8_dec.decode(source_buffer);
 
       terminal.write(s);
     },
@@ -144,6 +180,11 @@ function translateEmulatorError(ind) {
 function stepRuntime(time) {
   if (!wasmContext.instance.exports.isInterpreterDone()) {
     const success = wasmContext.instance.exports.stepInterpreter(100000);
+
+    if (wasmContext.instance.exports.isInterpreterDone()) {
+      document.getElementById('stopButton').classList.add('hidden');
+    }
+
     if (success == 0) {
       // continue
       window.requestAnimationFrame(stepRuntime);

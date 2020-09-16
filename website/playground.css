@@ -22,6 +22,10 @@
   margin: 0.5rem;
 }
 
+#toolbar button.hidden {
+  display: none;
+}
+
 #toolbar span {
   align-items: center;
   display: inline-flex;
@@ -64,5 +68,6 @@ a.button {
   font-family: monospace;
   overflow-y: hidden;
   overflow-x: hidden;
-  word-wrap: break-word;
+  padding: 0.5rem;
+  background-color: black;
 }

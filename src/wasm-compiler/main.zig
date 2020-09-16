@@ -21,14 +21,16 @@ pub fn milliTimestamp() usize {
 }
 
 const JS = struct {
-    extern fn compileLog(data: [*]const u8, len: u32) void;
+    extern fn writeString(data: [*]const u8, len: u32) void;
+
+    extern fn readString(sdata: [*]u8, len: usize) usize;
 
     extern fn millis() usize;
 };
 
 const API = struct {
     fn writeLog(_: void, str: []const u8) !usize {
-        JS.compileLog(str.ptr, @intCast(u32, str.len));
+        JS.writeString(str.ptr, @intCast(u32, str.len));
         return str.len;
     }
 
