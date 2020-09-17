@@ -218,17 +218,28 @@ pub const Function = union(enum) {
         if (info == .Int)
             return try value.toInteger(Target);
         if (info == .Float)
-            return try value.toNumber();
+            return @floatCast(Target, try value.toNumber());
         return switch (Target) {
-            bool => try value.toBoolean(),
-            ObjectHandle => try value.toObject(),
+            // Native types
             void => try value.toVoid(),
+            bool => try value.toBoolean(),
             []const u8 => value.toString(),
+
+            // LoLa types
+            ObjectHandle => try value.toObject(),
+            String => if (value == .string)
+                value.string
+            else
+                return error.TypeMismatch,
+            Array => value.toArray(),
+
+            Value => value,
+
             else => @compileError(@typeName(T) ++ " is not a wrappable type!"),
         };
     }
 
-    fn convertToLoLaValue(allocator: *std.mem.Allocator, value: anytype) Value {
+    fn convertToLoLaValue(allocator: *std.mem.Allocator, value: anytype) !Value {
         const T = @TypeOf(value);
         const info = @typeInfo(T);
         if (info == .Int)
@@ -236,19 +247,36 @@ pub const Function = union(enum) {
         if (info == .Float)
             return Value.initNumber(value);
         return switch (T) {
-            bool => Value.initBoolean(value),
-            ObjectHandle => Value.initObject(value),
+            // Native types
             void => .void,
-            []const u8 => Value.initString(allocator, value),
+            bool => Value.initBoolean(value),
+            []const u8 => try Value.initString(allocator, value),
+
+            // LoLa types
+            ObjectHandle => Value.initObject(value),
+            String => Value.fromString(value),
+            Array => Value.fromArray(value),
+
+            Value => value,
+
             else => @compileError(@typeName(T) ++ " is not a wrappable type!"),
         };
     }
 
-    fn tupleFieldName(comptime i: usize) []const u8 {
-        var buf: [std.math.log10(i)]u8 = undefined;
-        return std.fmt.bufPrint(&buf, "{d}", i) catch unreachable;
-    }
-
+    /// Wraps a native zig function into a LoLa function.
+    /// The function may take any number of arguments of supported types and return one of those as well.
+    /// Supported types are:
+    /// - `lola.runtime.Value`
+    /// - `lola.runtime.String`
+    /// - `lola.runtime.Array`
+    /// - `lola.runtime.ObjectHandle`
+    /// - any integer type
+    /// - any floating point type
+    /// - `bool`
+    /// - `void`
+    /// - `[]const u8`
+    /// Note that when you receive arguments, you don't own them. Do not free or store String or Array values.
+    /// When you return a String or Array, you hand over ownership of that value to the LoLa vm.
     pub fn wrap(comptime function: anytype) Function {
         const F = @TypeOf(function);
         const info = @typeInfo(F);
@@ -261,27 +289,27 @@ pub const Function = union(enum) {
         if (function_info.is_var_args)
             @compileError("Cannot wrap functions with variadic arguments!");
 
-        comptime var args: [function_info.args.len]std.builtin.TypeInfo.StructField = undefined;
+        const ArgsTuple = comptime blk: {
+            var argument_field_list: [function_info.args.len]std.builtin.TypeInfo.StructField = undefined;
+            inline for (function_info.args) |arg, i| {
+                var num_buf: [128]u8 = undefined;
+                argument_field_list[i] = std.builtin.TypeInfo.StructField{
+                    .name = std.fmt.bufPrint(&num_buf, "{d}", .{i}) catch unreachable,
+                    .field_type = arg.arg_type.?,
+                    .default_value = @as(?(arg.arg_type.?), null),
+                    .is_comptime = false,
+                };
+            }
 
-        inline for (function_info.args) |arg, i| {
-            _ = zigTypeToLoLa(arg.arg_type.?);
-            args[i] = std.builtin.TypeInfo.StructField{
-                .name = tupleFieldName(i),
-                .field_type = arg.arg_type.?,
-                .default_value = null,
-                .is_comptime = false,
-            };
-        }
-
-        const arg_tuple_definition = std.builtin.TypeInfo.Struct{
-            .is_tuple = true,
-            .layout = .Auto,
-            .decls = &[_]std.builtin.TypeInfo.Declaration{},
-            .fields = &[_]std.builtin.TypeInfo.StructField{},
+            break :blk @Type(std.builtin.TypeInfo{
+                .Struct = std.builtin.TypeInfo.Struct{
+                    .is_tuple = true,
+                    .layout = .Auto,
+                    .decls = &[_]std.builtin.TypeInfo.Declaration{},
+                    .fields = &argument_field_list,
+                },
+            });
         };
-        const ArgsTuple = @Type(std.builtin.TypeInfo{
-            .Struct = arg_tuple_definition,
-        });
 
         const Impl = struct {
             fn invoke(env: *Environment, context: Context, args: []const Value) anyerror!Value {
@@ -289,8 +317,11 @@ pub const Function = union(enum) {
                     return error.InvalidArgs;
 
                 var zig_args: ArgsTuple = undefined;
-                inline for (zig_args) |*fld, i| {
-                    fld.* = try convertToZigValue(function_info.args[i].arg_type.?, args[0]);
+
+                comptime var index = 0;
+                while (index < function_info.args.len) : (index += 1) {
+                    const T = function_info.args[index].arg_type.?;
+                    zig_args[index] = try convertToZigValue(T, args[index]);
                 }
 
                 const ReturnType = function_info.return_type.?;
@@ -305,7 +336,7 @@ pub const Function = union(enum) {
                 else
                     @call(.{}, function, zig_args);
 
-                return convertToLoLaValue(env.allocator, result);
+                return try convertToLoLaValue(env.allocator, result);
             }
         };
 
@@ -496,4 +527,96 @@ test "Environment" {
     std.testing.expectEqual(@as(usize, 32), f3.script.entryPoint);
     std.testing.expectEqual(@as(usize, 3), f3.script.localCount);
     std.testing.expectEqual(&env, f3.script.environment.?);
+}
+
+test "Function.wrap" {
+    const Funcs = struct {
+        fn returnVoid() void {
+            unreachable;
+        }
+        fn returnValue() Value {
+            unreachable;
+        }
+        fn returnString() String {
+            unreachable;
+        }
+        fn returnArray() Array {
+            unreachable;
+        }
+        fn returnObjectHandle() ObjectHandle {
+            unreachable;
+        }
+        fn returnInt8() u8 {
+            unreachable;
+        }
+        fn returnInt63() i63 {
+            unreachable;
+        }
+        fn returnF64() f64 {
+            unreachable;
+        }
+        fn returnF16() f16 {
+            unreachable;
+        }
+        fn returnBool() bool {
+            unreachable;
+        }
+        fn returnStringLit() []const u8 {
+            unreachable;
+        }
+
+        fn takeVoid(value: void) void {
+            unreachable;
+        }
+        fn takeValue(value: Value) void {
+            unreachable;
+        }
+        fn takeString(value: String) void {
+            unreachable;
+        }
+        fn takeArray(value: Array) void {
+            unreachable;
+        }
+        fn takeObjectHandle(value: ObjectHandle) void {
+            unreachable;
+        }
+        fn takeInt8(value: u8) void {
+            unreachable;
+        }
+        fn takeInt63(value: i63) void {
+            unreachable;
+        }
+        fn takeF64(value: f64) void {
+            unreachable;
+        }
+        fn takeF16(value: f16) void {
+            unreachable;
+        }
+        fn takeBool(value: bool) void {
+            unreachable;
+        }
+        fn takeStringLit(value: []const u8) void {
+            unreachable;
+        }
+
+        fn takeAll(
+            a0: Value,
+            a1: String,
+            a2: Array,
+            a3: ObjectHandle,
+            a4_1: u7,
+            a4_2: i33,
+            a5_1: f32,
+            a5_2: f16,
+            a6: bool,
+            a7: void,
+            a8: []const u8,
+        ) void {
+            unreachable;
+        }
+    };
+
+    inline for (std.meta.declarations(Funcs)) |fun| {
+        _ = Function.wrap(@field(Funcs, fun.name));
+    }
 }
