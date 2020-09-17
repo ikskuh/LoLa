@@ -12,6 +12,14 @@ Print("Hello, World!");
 var terminal;
 var editor;
 
+
+var concatArrayBuffers = function(buffer1, buffer2) {
+  var tmp = new Uint8Array(buffer1.length + buffer2.length);
+  tmp.set(buffer1, 0);
+  tmp.set(buffer2, buffer1.length);
+  return tmp;
+};
+
 function loadTemplate(id) {
   editor.session.setValue(templates[id].text);
 }
@@ -79,9 +87,11 @@ function runCode() {
     // kick off interpreter loop
     terminal.clear();
     wasmContext.start_time = Date.now();
-    wasmContext.input_buffer = '';
+    wasmContext.input_buffer = new Uint8Array();
     document.getElementById('stopButton').classList.remove('hidden');
     window.requestAnimationFrame(stepRuntime);
+
+    terminal.focus();
   }
 }
 
@@ -108,7 +118,14 @@ window.addEventListener('DOMContentLoaded', (ev) => {
 
   terminal.write(`Your program output will appear here!\r\n`);
 
-  // terminal.onData(data => console.log(data));
+  terminal.onData(data => {
+    if (!wasmContext.instance.exports.isInterpreterDone()) {
+      wasmContext.input_buffer = concatArrayBuffers(
+          wasmContext.input_buffer,
+          utf8_enc.encode(data),
+      );
+    }
+  });
 
   // Initialize samples dropdown
   {
@@ -118,15 +135,30 @@ window.addEventListener('DOMContentLoaded', (ev) => {
     for (const index in templates) {
       examples.options.add(new Option(templates[index].name, String(index)));
     }
-    loadTemplate(0);
   }
+
+  editor.session.setValue(
+      `// Enter LoLa code here and press [Run] above to compile & execute the code!
+Print("Hello, World!");
+while(true) {
+  var str = Read();
+  if(str != "")
+    Write("[", str, "]");
+}
+
+// Available functions are:
+// - All of the standard library (see [Help])
+// - "Print(…): void" Prints all arguments, then writes a new line
+// - "Write(…): void" Prints all arguments without appending a new line
+// - "Read(): string" Reads all available text from the terminal.
+`);
 });
 
 
 
 var wasmContext = {
   instance: null,
-  input_buffer: '',
+  input_buffer: new Uint8Array(),
   start_time: 0,
 };
 
@@ -139,15 +171,13 @@ const wasmImports = {
           len,
       );
 
-      let i = 0;
-      while (wasmContext.input_buffer.length > 0 && i < len) {
-        const c = wasmContext.input_buffer.charCodeAt(0);
+      let actual_len = Math.min(wasmContext.input_buffer.length, len);
 
-        target_buffer[i] = c;
-
-        i += 1;
-        wasmContext.input_buffer = wasmContext.input_buffer.substr(1);
+      for (var i = 0; i < actual_len; i++) {
+        target_buffer[i] = wasmContext.input_buffer[i];
       }
+
+      wasmContext.input_buffer = wasmContext.input_buffer.slice(actual_len);
 
       return i;
     },
@@ -172,6 +202,18 @@ function translateEmulatorError(ind) {
   switch (ind) {
     case 0:
       return 'success';
+    case 1:
+      return 'out of memory';
+    case 2:
+      return 'compilation error';
+    case 3:
+      return 'compilation error';
+    case 4:
+      return 'panic';
+    case 5:
+      return 'invalid object';
+    case 6:
+      return 'invalid interpreter state';
     default:
       return 'unknown';
   }
@@ -188,6 +230,8 @@ function stepRuntime(time) {
     if (success == 0) {
       // continue
       window.requestAnimationFrame(stepRuntime);
+    } else if (success == 4) {
+      // that's a panic, we just use the message printed from within the VM
     } else {
       console.log(success);
       alert('emulator failed: ' + translateEmulatorError(success));
@@ -257,4 +301,21 @@ templates.push({
   Print(Timestamp());
   Yield();
 }`
+});
+
+templates.push({
+  name: 'Stack Trace',
+  text: `function Nested() {
+    Boom();
+}
+
+function Deeply() {
+    Nested();
+}
+
+function Within() {
+    Deeply();
+}
+
+Within();`
 });

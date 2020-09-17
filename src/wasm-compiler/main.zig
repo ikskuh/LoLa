@@ -23,7 +23,7 @@ pub fn milliTimestamp() usize {
 const JS = struct {
     extern fn writeString(data: [*]const u8, len: u32) void;
 
-    extern fn readString(sdata: [*]u8, len: usize) usize;
+    extern fn readString(data: [*]u8, len: usize) usize;
 
     extern fn millis() usize;
 };
@@ -36,6 +36,23 @@ const API = struct {
 
     var debug_writer = std.io.Writer(void, error{}, writeLog){ .context = {} };
 
+    fn writeLogNL(_: void, str: []const u8) !usize {
+        var rest = str;
+
+        while (std.mem.indexOf(u8, rest, "\n")) |off| {
+            var mid = rest[0..off];
+            JS.writeString(mid.ptr, @intCast(u32, mid.len));
+            JS.writeString("\r\n", 2);
+            rest = rest[off + 1 ..];
+        }
+
+        JS.writeString(rest.ptr, @intCast(u32, rest.len));
+        return str.len;
+    }
+
+    /// debug writer that patches LF into CRLF
+    var debug_writer_lf = std.io.Writer(void, error{}, writeLogNL){ .context = {} };
+
     fn validate(source: []const u8) !void {
         var diagnostics = lola.compiler.Diagnostics.init(allocator);
         defer diagnostics.deinit();
@@ -47,7 +64,7 @@ const API = struct {
         var temp_compile_unit = try lola.compiler.compile(allocator, &diagnostics, "code", source);
 
         for (diagnostics.messages.items) |msg| {
-            std.fmt.format(debug_writer, "{}\n", .{msg}) catch unreachable;
+            std.fmt.format(debug_writer_lf, "{}\n", .{msg}) catch unreachable;
         }
 
         if (temp_compile_unit) |*unit|
@@ -61,7 +78,7 @@ const API = struct {
         const compile_unit_or_none = try lola.compiler.compile(allocator, &diagnostics, "code", source);
 
         for (diagnostics.messages.items) |msg| {
-            std.fmt.format(debug_writer, "{}\n", .{msg}) catch unreachable;
+            std.fmt.format(debug_writer_lf, "{}\n", .{msg}) catch unreachable;
         }
 
         compile_unit = compile_unit_or_none orelse return error.FailedToCompile;
@@ -103,6 +120,29 @@ const API = struct {
             }
         }.Write));
 
+        try environment.installFunction("Read", lola.runtime.Function.initSimpleUser(struct {
+            fn Read(_environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+                if (args.len != 0)
+                    return error.InvalidArgs;
+
+                var buffer = std.ArrayList(u8).init(allocator);
+                defer buffer.deinit();
+
+                while (true) {
+                    var temp: [256]u8 = undefined;
+                    const len = JS.readString(&temp, temp.len);
+                    if (len == 0)
+                        break;
+                    try buffer.appendSlice(temp[0..len]);
+                }
+
+                return lola.runtime.Value.fromString(lola.runtime.String.initFromOwned(
+                    allocator,
+                    buffer.toOwnedSlice(),
+                ));
+            }
+        }.Read));
+
         vm = try lola.runtime.VM.init(allocator, &environment);
         errdefer vm.deinit();
 
@@ -126,7 +166,10 @@ const API = struct {
         // Run the virtual machine for up to 150 instructions
         var result = vm.execute(150) catch |err| {
             // When the virtua machine panics, we receive a Zig error
-            try std.fmt.format(debug_writer, "LoLa panic: {}\n", .{@errorName(err)});
+            try std.fmt.format(debug_writer_lf, "\x1B[91mLoLa Panic: {}\x1B[m\n", .{@errorName(err)});
+
+            try vm.printStackTrace(debug_writer_lf);
+
             return error.LoLaPanic;
         };
 

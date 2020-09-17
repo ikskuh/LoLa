@@ -53,7 +53,7 @@ pub const compiler = struct {
         if (!valid_program)
             return null;
 
-        return try generateIR(allocator, pgm, "test unit");
+        return try generateIR(allocator, pgm, chunk_name);
     }
 };
 
