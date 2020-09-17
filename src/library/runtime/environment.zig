@@ -244,6 +244,11 @@ pub const Function = union(enum) {
         };
     }
 
+    fn tupleFieldName(comptime i: usize) []const u8 {
+        var buf: [std.math.log10(i)]u8 = undefined;
+        return std.fmt.bufPrint(&buf, "{d}", i) catch unreachable;
+    }
+
     pub fn wrap(comptime function: anytype) Function {
         const F = @TypeOf(function);
         const info = @typeInfo(F);
@@ -256,38 +261,37 @@ pub const Function = union(enum) {
         if (function_info.is_var_args)
             @compileError("Cannot wrap functions with variadic arguments!");
 
+        comptime var args: [function_info.args.len]std.builtin.TypeInfo.StructField = undefined;
+
         inline for (function_info.args) |arg, i| {
             _ = zigTypeToLoLa(arg.arg_type.?);
+            args[i] = std.builtin.TypeInfo.StructField{
+                .name = tupleFieldName(i),
+                .field_type = arg.arg_type.?,
+                .default_value = null,
+                .is_comptime = false,
+            };
         }
+
+        const arg_tuple_definition = std.builtin.TypeInfo.Struct{
+            .is_tuple = true,
+            .layout = .Auto,
+            .decls = &[_]std.builtin.TypeInfo.Declaration{},
+            .fields = &[_]std.builtin.TypeInfo.StructField{},
+        };
+        const ArgsTuple = @Type(std.builtin.TypeInfo{
+            .Struct = arg_tuple_definition,
+        });
 
         const Impl = struct {
             fn invoke(env: *Environment, context: Context, args: []const Value) anyerror!Value {
                 if (args.len != function_info.args.len)
                     return error.InvalidArgs;
 
-                const args_def = function_info.args;
-                var zig_args = switch (args_def.len) {
-                    0 => .{},
-                    1 => .{
-                        try convertToZigValue(args_def[0].arg_type.?, args[0]),
-                    },
-                    2 => .{
-                        try convertToZigValue(args_def[0].arg_type.?, args[0]),
-                        try convertToZigValue(args_def[1].arg_type.?, args[1]),
-                    },
-                    3 => .{
-                        try convertToZigValue(args_def[0].arg_type.?, args[0]),
-                        try convertToZigValue(args_def[1].arg_type.?, args[1]),
-                        try convertToZigValue(args_def[2].arg_type.?, args[2]),
-                    },
-                    4 => .{
-                        try convertToZigValue(args_def[0].arg_type.?, args[0]),
-                        try convertToZigValue(args_def[1].arg_type.?, args[1]),
-                        try convertToZigValue(args_def[2].arg_type.?, args[2]),
-                        try convertToZigValue(args_def[3].arg_type.?, args[3]),
-                    },
-                    else => @compileError("Unsupported number of args!"),
-                };
+                var zig_args: ArgsTuple = undefined;
+                inline for (zig_args) |*fld, i| {
+                    fld.* = try convertToZigValue(function_info.args[i].arg_type.?, args[0]);
+                }
 
                 const ReturnType = function_info.return_type.?;
 
