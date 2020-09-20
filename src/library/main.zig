@@ -15,6 +15,7 @@ pub const runtime = struct {
     usingnamespace @import("runtime/vm.zig");
     usingnamespace @import("runtime/context.zig");
     usingnamespace @import("runtime/objects.zig");
+    pub const EnvironmentMap = @import("runtime/environmentmap.zig").EnvironmentMap;
 };
 
 /// LoLa libraries that provide pre-defined functions and variables.
@@ -76,6 +77,7 @@ comptime {
         _ = @import("runtime/vm.zig");
         _ = @import("runtime/objects.zig");
         _ = @import("runtime/environment.zig");
+        _ = @import("runtime/environmentmap.zig");
         _ = @import("runtime/value.zig");
         _ = @import("runtime/context.zig");
         _ = @import("runtime/named_global.zig");

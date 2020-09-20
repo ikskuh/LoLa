@@ -1,4 +1,5 @@
 const std = @import("std");
+const lola = @import("../main.zig");
 usingnamespace @import("value.zig");
 usingnamespace @import("../common/ir.zig");
 usingnamespace @import("../common/compile-unit.zig");
@@ -803,6 +804,95 @@ pub const VM = struct {
                 current_fun,
             });
         }
+    }
+
+    pub fn serialize(self: Self, envmap: *lola.runtime.EnvironmentMap, stream: anytype) !void {
+        if (self.currentAsynCall != null)
+            return error.NotSupportedYet; // we cannot serialize async function that are in-flight atm
+
+        try stream.writeIntLittle(u64, self.stack.items.len);
+        try stream.writeIntLittle(u64, self.calls.items.len);
+
+        for (self.stack.items) |item| {
+            try item.serialize(stream);
+        }
+
+        for (self.calls.items) |item| {
+            try stream.writeIntLittle(u16, @intCast(u16, item.locals.len));
+            try stream.writeIntLittle(u32, item.decoder.offset); // we don't need to store the CompileUnit of the decoder, as it is implicitly referenced by the environment
+            try stream.writeIntLittle(u32, @intCast(u32, item.stackBalance));
+            if (envmap.queryByPtr(item.environment)) |env_id| {
+                try stream.writeIntLittle(u32, env_id);
+            } else {
+                return error.UnregisteredEnvironmentPointer;
+            }
+            for (item.locals) |loc| {
+                try loc.serialize(stream);
+            }
+        }
+    }
+
+    pub fn deserialize(allocator: *std.mem.Allocator, envmap: *lola.runtime.EnvironmentMap, stream: anytype) !Self {
+        const stack_size = try stream.readIntLittle(u64);
+        const call_size = try stream.readIntLittle(u64);
+
+        var vm = Self{
+            .allocator = allocator,
+            .stack = std.ArrayList(Value).init(allocator),
+            .calls = std.ArrayList(Context).init(allocator),
+            .currentAsynCall = null,
+            .objectPool = undefined,
+        };
+        errdefer vm.stack.deinit();
+        errdefer vm.calls.deinit();
+
+        try vm.stack.ensureCapacity(std.math.min(stack_size, 128));
+        try vm.calls.ensureCapacity(std.math.min(call_size, 32));
+
+        try vm.stack.resize(stack_size);
+        for (vm.stack.items) |*item| {
+            item.* = .void;
+        }
+        errdefer for (vm.stack.items) |*item| {
+            item.deinit();
+        };
+        for (vm.stack.items) |*item| {
+            item.* = try Value.deserialize(stream, allocator);
+        }
+
+        {
+            var i: usize = 0;
+            while (i < call_size) : (i += 1) {
+                const local_count = try stream.readIntLittle(u16);
+                const offset = try stream.readIntLittle(u32);
+                const stack_balance = try stream.readIntLittle(u32);
+                const env_id = try stream.readIntLittle(u32);
+
+                const env = envmap.queryById(env_id) orelse return error.UnregisteredEnvironmentPointer;
+
+                if (i == 0) {
+                    // first call defines which environment we use for our
+                    // object pool reference:
+                    vm.objectPool = env.objectPool;
+                }
+
+                var ctx = try vm.createContext(ScriptFunction{
+                    .environment = env,
+                    .entryPoint = offset,
+                    .localCount = local_count,
+                });
+                ctx.stackBalance = stack_balance;
+                errdefer vm.deinitContext(&ctx);
+
+                for (ctx.locals) |*local| {
+                    local.* = try Value.deserialize(stream, allocator);
+                }
+
+                try vm.calls.append(ctx);
+            }
+        }
+
+        return vm;
     }
 };
 

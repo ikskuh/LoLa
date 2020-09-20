@@ -243,7 +243,13 @@ pub const Value = union(TypeId) {
                     try item.serialize(writer);
                 }
             },
-            .enumerator => return error.NotSupported,
+            .enumerator => |e| {
+                try writer.writeIntLittle(u32, std.math.cast(u32, e.array.contents.len) catch return error.ObjectTooLarge);
+                try writer.writeIntLittle(u32, std.math.cast(u32, e.index) catch return error.ObjectTooLarge);
+                for (e.array.contents) |item| {
+                    try item.serialize(writer);
+                }
+            },
         }
     }
 
@@ -284,7 +290,22 @@ pub const Value = union(TypeId) {
 
                 break :blk fromArray(array);
             },
-            .enumerator => return error.NotSupported,
+            .enumerator => blk: {
+                const size = try reader.readIntLittle(u32);
+                const index = try reader.readIntLittle(u32);
+
+                var array = try Array.init(allocator, size);
+                errdefer array.deinit();
+
+                for (array.contents) |*item| {
+                    item.* = try deserialize(reader, allocator);
+                }
+
+                break :blk fromEnumerator(Enumerator{
+                    .array = array,
+                    .index = index,
+                });
+            },
         };
     }
 };

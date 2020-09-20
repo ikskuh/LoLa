@@ -67,7 +67,6 @@ fn run_serialization(allocator: *std.mem.Allocator) !void {
     std.debug.assert(result == .exhausted); // we didn't finish running our nice example
 
     var stdout = std.io.getStdOut().writer();
-
     try stdout.writeAll("Suspend at\n");
     try vm.printStackTrace(stdout);
 
@@ -84,10 +83,15 @@ fn run_serialization(allocator: *std.mem.Allocator) !void {
         // this saves all global variables saved in the environment
         try env.serialize(writer);
 
-        // This saves the current virtual machine state
-        // TODO: try vm.serialize(writer);
+        var registry = lola.runtime.EnvironmentMap.init(allocator);
+        defer registry.deinit();
 
-        std.debug.print("saved state to {} bytes!\n", .{
+        try registry.add(1234, &env);
+
+        // This saves the current virtual machine state
+        try vm.serialize(&registry, writer);
+
+        try stdout.print("saved state to {} bytes!\n", .{
             stream.getWritten().len,
         });
     }
@@ -127,9 +131,28 @@ fn run_deserialization(allocator: *std.mem.Allocator) !void {
     // time. All globals will be restored here.
     try env.deserialize(reader);
 
-    // This saves the current virtual machine state
-    // var vm = try lola.runtime.VM.deserialize(reader);
-    // defer vm.deinit();
+    // This is needed for deserialization:
+    // We need means to have a unique Environment <-> ID mapping
+    // which is persistent over the serialization process.
+    var registry = lola.runtime.EnvironmentMap.init(allocator);
+    defer registry.deinit();
 
-    // _ = try vm.execute(null);
+    // Here we need to add all environments that were previously serialized with
+    // the same IDs as before.
+    try registry.add(1234, &env);
+
+    // Restore the virtual machine with all function calls.
+    var vm = try lola.runtime.VM.deserialize(allocator, &registry, reader);
+    defer vm.deinit();
+
+    var stdout = std.io.getStdOut().writer();
+    try stdout.print("restored state with {} bytes!\n", .{
+        stream.getWritten().len,
+    });
+
+    try stdout.writeAll("Resume at\n");
+    try vm.printStackTrace(stdout);
+
+    // let the program finish
+    _ = try vm.execute(null);
 }
