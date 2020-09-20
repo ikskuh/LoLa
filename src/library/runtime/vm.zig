@@ -37,7 +37,7 @@ pub const VM = struct {
         stackBalance: usize,
 
         /// The script function which this context is currently executing
-        function: ScriptFunction,
+        environment: *Environment,
     };
 
     allocator: *std.mem.Allocator,
@@ -109,7 +109,7 @@ pub const VM = struct {
             .decoder = Decoder.init(fun.environment.?.compileUnit.code),
             .stackBalance = self.stack.items.len,
             .locals = undefined,
-            .function = fun,
+            .environment = fun.environment.?,
         };
         ctx.decoder.offset = fun.entryPoint;
         ctx.locals = try self.allocator.alloc(Value, fun.localCount);
@@ -200,7 +200,7 @@ pub const VM = struct {
 
         const ctx = &self.calls.items[self.calls.items.len - 1];
 
-        const environment = ctx.function.environment.?;
+        const environment = ctx.environment;
 
         // std.debug.warn("execute 0x{X}…\n", .{ctx.decoder.offset});
 
@@ -783,7 +783,7 @@ pub const VM = struct {
             i -= 1;
             const call = self.calls.items[i];
 
-            const stack_compile_unit = call.function.environment.?.compileUnit;
+            const stack_compile_unit = call.environment.compileUnit;
 
             const location = stack_compile_unit.lookUp(call.decoder.offset);
 

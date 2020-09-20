@@ -82,7 +82,7 @@ fn run_serialization(allocator: *std.mem.Allocator) !void {
         try pool.serialize(writer);
 
         // this saves all global variables saved in the environment
-        // TODO: try env.serialize(writer);
+        try env.serialize(writer);
 
         // This saves the current virtual machine state
         // TODO: try vm.serialize(writer);
@@ -94,5 +94,42 @@ fn run_serialization(allocator: *std.mem.Allocator) !void {
 }
 
 fn run_deserialization(allocator: *std.mem.Allocator) !void {
-    unreachable;
+    var stream = std.io.fixedBufferStream(&serialization_buffer);
+    var reader = stream.reader();
+
+    // Trivial deserialization:
+    // Just load the compile unit from disk again
+    var compile_unit = try lola.CompileUnit.loadFromStream(allocator, reader);
+    defer compile_unit.deinit();
+
+    // This is the reason we need to specialize lola.runtime.ObjectPool() on
+    // a type list:
+    // We need a way to do generic deserialization (arbitrary types) and it requires
+    // a way to get a runtime type-handle and turn it back into a deserialization function.
+    // this is done by storing the type indices per created object which can then be turned back
+    // into a real lola.runtime.Object.
+    var object_pool = try ObjectPool.deserialize(allocator, reader);
+    defer object_pool.deinit();
+
+    // Environments cannot be deserialized directly from a stream:
+    // Each environment contains function pointers and references its compile unit.
+    // Both of these things cannot be done by a pure stream serialization.
+    // Thus, we need to restore the constant part of the environment by hand and
+    // install all functions as well:
+    var env = try lola.runtime.Environment.init(allocator, &compile_unit, object_pool.interface());
+    defer env.deinit();
+
+    // Installs the functions back into the environment.
+    try lola.libs.std.install(&env, allocator);
+    try lola.libs.runtime.install(&env, allocator);
+
+    // This will restore the whole environment state back to how it was at serialization
+    // time. All globals will be restored here.
+    try env.deserialize(reader);
+
+    // This saves the current virtual machine state
+    // var vm = try lola.runtime.VM.deserialize(reader);
+    // defer vm.deinit();
+
+    // _ = try vm.execute(null);
 }

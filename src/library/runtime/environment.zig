@@ -474,6 +474,58 @@ pub const Environment = struct {
             dtor(self);
         }
     }
+
+    /// Computes a unique signature for this environment based on
+    /// the size and functions stored in the environment. This is used
+    /// for serialization to ensure that Environments are restored into same
+    /// state is it was serialized from previously.
+    fn computeSignature(self: Self) u64 {
+        var hasher = std.hash.SipHash64(2, 4).init("Environment Serialization Version 1");
+
+        // Hash all function names to create reproducability
+        {
+            var iter = self.functions.iterator();
+            while (iter.next()) |item| {
+                hasher.update(item.key);
+            }
+        }
+
+        // safe the length of the script globals as a bad signature for
+        // the comileUnit
+        {
+            var buf: [8]u8 = undefined;
+            std.mem.writeIntLittle(u64, &buf, self.scriptGlobals.len);
+            hasher.update(&buf);
+        }
+
+        return hasher.finalInt();
+    }
+
+    /// Serializes the environment globals in a way that these
+    /// are restorable later.
+    pub fn serialize(self: Self, stream: anytype) !void {
+        const sig = self.computeSignature();
+        try stream.writeIntLittle(u64, sig);
+
+        for (self.scriptGlobals) |glob| {
+            try glob.serialize(stream);
+        }
+    }
+
+    /// Deserializes the environment globals. This might fail with
+    /// `error.SignatureMismatch` when a environment with a different signature
+    /// is restored.
+    pub fn deserialize(self: *Self, stream: anytype) !void {
+        const sig_env = self.computeSignature();
+        const sig_ser = try stream.readIntLittle(u64);
+        if (sig_env != sig_ser)
+            return error.SignatureMismatch;
+
+        for (self.scriptGlobals) |*glob| {
+            const val = try Value.deserialize(stream, self.allocator);
+            glob.replaceWith(val);
+        }
+    }
 };
 
 test "Environment" {
