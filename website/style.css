@@ -1,5 +1,20 @@
 @import url('https://fonts.googleapis.com/css2?family=PT+Sans&family=Source+Code+Pro&display=swap');
 
+@font-face {
+  font-family: 'PT Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('PT Sans'), local('PTSans-Regular'), url(fonts/PT_Sans/PTSans-Regular.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Source Code Pro';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Source Code Pro Regular'), local('SourceCodePro-Regular'), url(fonts/Source_Code_Pro/SourceCodePro-Regular.ttf) format('truetype');
+}
+
 * {
   box-sizing: border-box;
 }
