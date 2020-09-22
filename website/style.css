@@ -1,3 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=PT+Sans&family=Source+Code+Pro&display=swap');
+
+@font-face {
+  font-family: 'PT Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('PT Sans'), local('PTSans-Regular'), url(fonts/PT_Sans/PTSans-Regular.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Source Code Pro';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Source Code Pro Regular'), local('SourceCodePro-Regular'), url(fonts/Source_Code_Pro/SourceCodePro-Regular.ttf) format('truetype');
+}
+
 * {
   box-sizing: border-box;
 }
@@ -5,7 +22,7 @@
 html {
   margin: 0;
   padding: 0;
-  font-family: sans-serif;
+  font-family: 'PT Sans', sans-serif;
 }
 
 body {
@@ -29,9 +46,13 @@ nav {
   background-color: white;
   padding: 0;
   margin: 0;
+  margin-top: 1vw;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
+
+  box-shadow: 0px 0.4vw 1vw -.1vw rgba(0, 0, 54, 0.2);
+  border-radius: .5vw .5vw .5vw .5vw;
 }
 
 nav a {
@@ -39,9 +60,14 @@ nav a {
   color: black;
 }
 
-nav a:hover {
+a {
+  transition: text-shadow 0.2s linear;
+  text-shadow: 0vw 0vw 0vw rgba(0,0,0,0);
+}
+
+a:hover {
   text-decoration: underline;
-  color: blue;
+  text-shadow: 0.01vw 0.2vw 0.5vw rgba(0,0,0,0.2);
 }
 
 nav h1 {
@@ -72,26 +98,37 @@ nav ul li {
 }
 
 .teaser {
-  background: linear-gradient(10deg, cornflowerblue, #EEF);
+  background: linear-gradient(to bottom, rgba(75,75,232,0.3) 0%, rgba(32,124,229,0.3) 100%);
   font-size: 1.2em;
   padding-top: 3em;
   padding-bottom: 3em;
   display: flex;
   flex-wrap: wrap-reverse;
   justify-content: center;
+
+  box-shadow: 0px 0.6vw 1vw -.1vw rgba(0, 0, 54, 0.2);
+  border-radius: .5vw .5vw .5vw .5vw;
+
+  margin-top: 0.75vw;
+  margin-bottom: 0.75vw;
 }
 
 .teaser .text {
   flex: 1;
 }
 
+a {
+  color: blueviolet;
+  font-weight: bold;
+}
+
 .teaser .logo {
   width: 10em;
   height: 10em;
+  border-radius: .5vw .5vw .5vw .5vw;
 }
 
 .features {
-  background-color: whitesmoke;
   padding-top: 1em;
   padding-bottom: 1em;
 }
@@ -126,12 +163,16 @@ nav ul li {
 }
 
 .features .group .preview {
-  border: 1px solid black;
   display: block;
   width: 30%;
   min-width: 20em;
   padding: 0.5em;
-  background-color: white;
+  background-color: rgba(32,124,229,0.2);
+  color: rgb(0, 0, 0);
+  font-family: 'Source Code Pro', monospace;
+
+  box-shadow: 0px 0.2vw 1vw -.1vw rgba(0, 0, 54, 0.1);
+  border-radius: .5vw .5vw .5vw .5vw;
 }
 
 .features .preview pre {
@@ -152,6 +193,7 @@ nav ul li {
   clear: both;
   margin-top: 1em;
   margin-bottom: 1em;
+  color: rgb(37, 0, 78);
 }
 
 .content p {
@@ -163,13 +205,13 @@ nav ul li {
 }
 
 code .kw {
-  color: blue;
+  color: #a52fff;
 }
 
 code .string {
-  color: darkred;
+  color: #ff6ba1;
 }
 
 code .comment {
-  color: blue;
+  color: rgb(255, 91, 159);
 }
