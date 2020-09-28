@@ -179,13 +179,6 @@ pub const Value = union(TypeId) {
         return &self.array;
     }
 
-    /// Gets the contained string or fails.
-    pub fn getString(self: *Self) ConversionError!*String {
-        if (self.* != .string)
-            return error.TypeMismatch;
-        return &self.string;
-    }
-
     /// Gets the contained enumerator or fails.
     pub fn getEnumerator(self: *Self) ConversionError!*Enumerator {
         if (self.* != .enumerator)
@@ -417,13 +410,27 @@ pub const String = struct {
 
     allocator: *std.mem.Allocator,
     contents: []const u8,
+    refcount: ?*usize,
 
     /// Clones `text` with the given parameter and stores the
     /// duplicated value.
     pub fn init(allocator: *std.mem.Allocator, text: []const u8) !Self {
+        const alignment = @alignOf(usize);
+
+        const ptr_offset = std.mem.alignForward(text.len, alignment);
+        const buffer = try allocator.allocAdvanced(
+            u8,
+            alignment,
+            ptr_offset + @sizeOf(usize),
+            .exact,
+        );
+        std.mem.copy(u8, buffer, text);
+        std.mem.writeIntNative(usize, buffer[ptr_offset..][0..@sizeOf(usize)], 1);
+
         return Self{
             .allocator = allocator,
-            .contents = try std.mem.dupe(allocator, u8, text),
+            .contents = buffer[0..text.len],
+            .refcount = @ptrCast(*usize, @alignCast(alignment, buffer.ptr + ptr_offset)),
         };
     }
 
@@ -433,14 +440,20 @@ pub const String = struct {
         return Self{
             .allocator = allocator,
             .contents = text,
+            .refcount = null,
         };
     }
 
     pub fn clone(self: Self) error{OutOfMemory}!Self {
-        return Self{
-            .allocator = self.allocator,
-            .contents = try std.mem.dupe(self.allocator, u8, self.contents),
-        };
+        if (self.refcount) |rc| {
+            // we can just increase reference count here
+            rc.* += 1;
+            return self;
+        } else {
+            // otherwise, return a new copy which is now reference-counted
+            // -> performance opt-in
+            return try init(self.allocator, self.contents);
+        }
     }
 
     pub fn eql(lhs: Self, rhs: Self) bool {
@@ -448,6 +461,16 @@ pub const String = struct {
     }
 
     pub fn deinit(self: *Self) void {
+        if (self.refcount) |rc| {
+            std.debug.assert(rc.* > 0);
+            rc.* -= 1;
+
+            if (rc.* > 0)
+                return;
+
+            // patch-up the old length so the allocator will know what happened
+            self.contents.len = std.mem.alignForward(self.contents.len, @alignOf(usize)) + @sizeOf(usize);
+        }
         self.allocator.free(self.contents);
         self.* = undefined;
     }

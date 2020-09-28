@@ -522,10 +522,10 @@ pub const VM = struct {
                         std.mem.copy(u8, result[0..lstr.len], lstr);
                         std.mem.copy(u8, result[lstr.len..result.len], rstr);
 
-                        try self.push(Value.fromString(String{
-                            .allocator = self.allocator,
-                            .contents = result,
-                        }));
+                        try self.push(Value.fromString(String.initFromOwned(
+                            self.allocator,
+                            result,
+                        )));
                     },
 
                     .array => {

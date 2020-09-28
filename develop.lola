@@ -1,5 +1,24 @@
 
+// Without optimizations:
+//     Number of runs:     100
+//     Mean time:          74276.98325 µs
+//     Mean #instructions: 1122
+//     Mean #stalls:       0
+//     Mean instruction/s: 15105.621565480044
 
+// With string-copy-removal:
+//     Number of runs:     100
+//     Mean time:          19746.62485 µs
+//     Mean #instructions: 1122
+//     Mean #stalls:       0
+//     Mean instruction/s: 56819.83673275689
+
+// Make clone() return a refcounted string instead of a flat clone:
+//     Number of runs:     100
+//     Mean time:          17273.46292 µs
+//     Mean #instructions: 1122
+//     Mean #stalls:       0
+//     Mean instruction/s: 64955.128291090805
 
 function dump(str) { }
 
@@ -33,3 +52,48 @@ dump("hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "he
 dump("hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello");
 dump("hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello");
 dump("hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello");
+
+var deep_copy = [
+  [ "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello" ],
+  [ "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello" ],
+  [ "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello" ],
+  [ "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello" ],
+  [ "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello" ],
+  [ "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello" ],
+  [ "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello" ],
+  [ "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello" ],
+  [ "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello" ],
+  [ "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello" ],
+  [ "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello" ],
+  [ "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello" ]
+];
+
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
+dump(deep_copy, deep_copy, deep_copy, deep_copy, deep_copy, deep_copy);
