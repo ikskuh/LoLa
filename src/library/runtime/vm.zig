@@ -516,16 +516,15 @@ pub const VM = struct {
                         const lstr = lhs.string.contents;
                         const rstr = rhs.string.contents;
 
-                        const result = try self.allocator.alloc(u8, lstr.len + rstr.len);
-                        errdefer self.allocator.free(result);
+                        var string = try String.initUninitialized(self.allocator, lstr.len + rstr.len);
+                        errdefer string.deinit();
 
-                        std.mem.copy(u8, result[0..lstr.len], lstr);
-                        std.mem.copy(u8, result[lstr.len..result.len], rstr);
+                        const buffer = try string.obtainMutableStorage();
 
-                        try self.push(Value.fromString(String.initFromOwned(
-                            self.allocator,
-                            result,
-                        )));
+                        std.mem.copy(u8, buffer[0..lstr.len], lstr);
+                        std.mem.copy(u8, buffer[lstr.len..buffer.len], rstr);
+
+                        try self.push(Value.fromString(string));
                     },
 
                     .array => {

@@ -412,6 +412,26 @@ pub const String = struct {
     contents: []const u8,
     refcount: ?*usize,
 
+    /// Creates a new, uninitialized string
+    pub fn initUninitialized(allocator: *std.mem.Allocator, length: usize) !Self {
+        const alignment = @alignOf(usize);
+
+        const ptr_offset = std.mem.alignForward(length, alignment);
+        const buffer = try allocator.allocAdvanced(
+            u8,
+            alignment,
+            ptr_offset + @sizeOf(usize),
+            .exact,
+        );
+        std.mem.writeIntNative(usize, buffer[ptr_offset..][0..@sizeOf(usize)], 1);
+
+        return Self{
+            .allocator = allocator,
+            .contents = buffer[0..length],
+            .refcount = @ptrCast(*usize, @alignCast(alignment, buffer.ptr + ptr_offset)),
+        };
+    }
+
     /// Clones `text` with the given parameter and stores the
     /// duplicated value.
     pub fn init(allocator: *std.mem.Allocator, text: []const u8) !Self {
@@ -442,6 +462,18 @@ pub const String = struct {
             .contents = text,
             .refcount = null,
         };
+    }
+
+    /// Returns a muable slice of the string elements.
+    /// This may fail with `error.Forbidden` when the string is referenced more than once.
+    pub fn obtainMutableStorage(self: *Self) error{Forbidden}![]u8 {
+        if (self.refcount) |rc| {
+            std.debug.assert(rc.* > 0);
+            if (rc.* > 1)
+                return error.Forbidden;
+        }
+        // this is safe as we allocated the memory, so it is actually mutable
+        return @intToPtr([*]u8, @ptrToInt(self.contents.ptr))[0..self.contents.len];
     }
 
     pub fn clone(self: Self) error{OutOfMemory}!Self {
