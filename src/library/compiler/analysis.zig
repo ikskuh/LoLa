@@ -323,12 +323,6 @@ fn validateStatement(state: *AnalysisState, diagnostics: *Diagnostics, scope: *S
                 });
             }
         },
-        .extern_variable => |name| {
-            scope.declareExtern(name) catch |err| switch (err) {
-                error.TooManyVariables => try emitTooManyVariables(diagnostics, stmt.location),
-                else => |e| return e,
-            };
-        },
         .block => |blk| {
             try scope.enter();
             for (blk) |sub_stmt| {

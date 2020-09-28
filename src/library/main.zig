@@ -10,7 +10,6 @@ pub usingnamespace @import("common/decoder.zig");
 /// Contains functions and structures for executing LoLa code.
 pub const runtime = struct {
     usingnamespace @import("runtime/value.zig");
-    usingnamespace @import("runtime/named_global.zig");
     usingnamespace @import("runtime/environment.zig");
     usingnamespace @import("runtime/vm.zig");
     usingnamespace @import("runtime/context.zig");
@@ -80,7 +79,6 @@ comptime {
         _ = @import("runtime/environmentmap.zig");
         _ = @import("runtime/value.zig");
         _ = @import("runtime/context.zig");
-        _ = @import("runtime/named_global.zig");
         _ = @import("common/decoder.zig");
         _ = @import("common/disassembler.zig");
         _ = @import("common/utility.zig");

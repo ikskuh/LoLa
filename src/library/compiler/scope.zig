@@ -4,7 +4,7 @@ const Type = @import("typeset.zig").Type;
 const TypeSet = @import("typeset.zig").TypeSet;
 
 /// A scope structure that can be used to manage variable
-/// allocation with different scopes (global, extern, local).
+/// allocation with different scopes (global, local).
 pub const Scope = struct {
     const Self = @This();
 
@@ -12,13 +12,12 @@ pub const Scope = struct {
         /// This is the offset of the variables
         name: []const u8,
         storage_slot: u16,
-        type: enum { local, global, @"extern" },
+        type: enum { local, global },
         possible_types: TypeSet = TypeSet.any,
         is_const: bool,
     };
 
     arena: std.heap.ArenaAllocator,
-    extern_variables: std.ArrayList(Variable),
     local_variables: std.ArrayList(Variable),
     global_variables: std.ArrayList(Variable),
     return_point: std.ArrayList(usize),
@@ -37,11 +36,10 @@ pub const Scope = struct {
 
     /// Creates a new scope.
     /// `global_scope` is a reference towards a scope that will provide references to a encasing scope.
-    /// This scope must only provide `global` or `extern` variables.
+    /// This scope must only provide `global` variables.
     pub fn init(allocator: *std.mem.Allocator, global_scope: ?*Self, is_global: bool) Self {
         return Self{
             .arena = std.heap.ArenaAllocator.init(allocator),
-            .extern_variables = std.ArrayList(Variable).init(allocator),
             .local_variables = std.ArrayList(Variable).init(allocator),
             .global_variables = std.ArrayList(Variable).init(allocator),
             .return_point = std.ArrayList(usize).init(allocator),
@@ -51,7 +49,6 @@ pub const Scope = struct {
     }
 
     pub fn deinit(self: *Self) void {
-        self.extern_variables.deinit();
         self.local_variables.deinit();
         self.global_variables.deinit();
         self.return_point.deinit();
@@ -73,9 +70,7 @@ pub const Scope = struct {
         self.local_variables.shrink(self.return_point.pop());
     }
 
-    /// Declares are new variable. Depending on the state of the scope,
-    /// it will either be a global or a local variable, but will never be a
-    /// extern variable.
+    /// Declares are new variable.
     pub fn declare(self: *Self, name: []const u8, is_const: bool) !void {
         if (self.is_global and (self.return_point.items.len == 0)) {
             // a variable is only global when the scope is a global scope and
@@ -109,27 +104,8 @@ pub const Scope = struct {
         }
     }
 
-    /// Declares a extern variable
-    pub fn declareExtern(self: *Self, name: []const u8) !void {
-        // Search if an extern with this name was already declared:
-        // If so, we're done
-        for (self.extern_variables.items) |variable| {
-            if (std.mem.eql(u8, variable.name, name))
-                return;
-        }
-
-        if (self.extern_variables.items.len == std.math.maxInt(u16))
-            return error.TooManyVariables;
-        try self.extern_variables.append(Variable{
-            .storage_slot = undefined,
-            .name = try self.arena.allocator.dupe(u8, name),
-            .type = .@"extern",
-            .is_const = false,
-        });
-    }
-
     /// Tries to return a variable named `name`. This will first search in the
-    /// local variables, then in the global ones and then in extern variables.
+    /// local variables, then in the global ones.
     /// Will return `null` when a variable is not found.
     pub fn get(self: Self, name: []const u8) ?*Variable {
         var i: usize = undefined;
@@ -156,13 +132,6 @@ pub const Scope = struct {
             }
         }
 
-        // Extern variables don't have a defined order as they are referenced by-name and
-        // don't have a storage slot assigned.
-        for (self.extern_variables.items) |*variable| {
-            if (std.mem.eql(u8, variable.name, name))
-                return variable;
-        }
-
         if (self.global_scope) |globals| {
             const global = globals.get(name);
 
@@ -186,8 +155,6 @@ test "scope declare/get" {
     var scope = Scope.init(std.testing.allocator, null, true);
     defer scope.deinit();
 
-    try scope.declareExtern("baz");
-
     try scope.declare("foo", true);
 
     std.testing.expectError(error.AlreadyDeclared, scope.declare("foo", true));
@@ -196,14 +163,12 @@ test "scope declare/get" {
 
     try scope.declare("bar", true);
 
-    std.testing.expect(scope.get("baz").?.type == .@"extern");
     std.testing.expect(scope.get("foo").?.type == .global);
     std.testing.expect(scope.get("bar").?.type == .local);
     std.testing.expect(scope.get("bam") == null);
 
     try scope.leave();
 
-    std.testing.expect(scope.get("baz").?.type == .@"extern");
     std.testing.expect(scope.get("foo").?.type == .global);
     std.testing.expect(scope.get("bar") == null);
     std.testing.expect(scope.get("bam") == null);

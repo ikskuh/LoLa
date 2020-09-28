@@ -4,7 +4,6 @@ usingnamespace @import("value.zig");
 usingnamespace @import("../common/ir.zig");
 usingnamespace @import("../common/compile-unit.zig");
 usingnamespace @import("../common/decoder.zig");
-usingnamespace @import("named_global.zig");
 usingnamespace @import("environment.zig");
 usingnamespace @import("objects.zig");
 
@@ -281,30 +280,6 @@ pub const VM = struct {
                     return error.InvalidLocalVariable;
 
                 var value = try ctx.locals[i.value].clone();
-                errdefer value.deinit();
-
-                try self.push(value);
-            },
-
-            .store_global_name => |i| {
-                const global_kv = environment.namedGlobals.getEntry(i.value);
-                if (global_kv == null)
-                    return error.InvalidGlobalVariable;
-                const global = &global_kv.?.value;
-
-                var value = try self.pop();
-                errdefer value.deinit();
-
-                try global.set(value);
-            },
-
-            .load_global_name => |i| {
-                const global_kv = environment.namedGlobals.getEntry(i.value);
-                if (global_kv == null)
-                    return error.InvalidGlobalVariable;
-                const global = &global_kv.?.value;
-
-                var value = try global.get();
                 errdefer value.deinit();
 
                 try self.push(value);
@@ -633,14 +608,12 @@ pub const VM = struct {
             .greater_eq => try self.executeCompareValues(.gt, true),
 
             // Deperecated Section:
-            .scope_push, .scope_pop, .declare => return error.DeprectedInstruction,
-
-            // else => {
-            //     std.debug.warn("Instruction `{}` not implemented yet!\n", .{
-            //         @tagName(@as(InstructionName, instruction)),
-            //     });
-            //     return error.NotImplementedYet; // @panic("Not implemented yet!"),
-            // },
+            .scope_push,
+            .scope_pop,
+            .declare,
+            .store_global_name,
+            .load_global_name,
+            => return error.DeprectedInstruction,
         }
 
         return null;

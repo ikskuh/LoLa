@@ -104,21 +104,16 @@ var y = 10; // Initialized global variable
   var z;     // Unitialized local variable
   var w = 0; // Initialized local variable
 }
-
-extern foo; // External variable
 ```
 
 There are three kind of variables in LoLa:
 
 - Global Variables
 - Local Variables
-- External Variables
 
 Global variables are accessible from any scope and are stored in the execution environment. **If a global variable has no initializer, it's value is preserved over multiple calls of the script.**
 
 Local variables could also be called temporary variables as they are only alive for a short time. A local variables is any variable declared in brackets, so explicit declared locals, loop variables and function parameters.
-
-External variables are special variables that have no defined storage in the script. They are provided by the executing environment. The contents and semantics of those variables is documented by the environment.
 
 All variables are dynamically typed and may change the type of the stored value on assignment.
 
@@ -462,7 +457,6 @@ It is still possible to create user-defined objects and classes though: The scri
 - `const`
 - `continue`
 - `else`
-- `extern`
 - `for`
 - `function`
 - `if`

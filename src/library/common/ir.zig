@@ -4,8 +4,8 @@ pub const InstructionName = enum(u8) {
     scope_push = 1, // deprecated
     scope_pop = 2, // deprecated
     declare = 3, // deprecated
-    store_global_name = 4,
-    load_global_name = 5,
+    store_global_name = 4, // deprecated
+    load_global_name = 5, // deprecated
     push_str = 6,
     push_num = 7,
     array_pack = 8,
@@ -53,7 +53,7 @@ pub const InstructionName = enum(u8) {
 pub const Instruction = union(InstructionName) {
     pub const Deprecated = struct {};
     pub const NoArg = struct {};
-    
+
     fn SingleArg(comptime T: type) type {
         return struct { value: T };
     }
@@ -67,8 +67,8 @@ pub const Instruction = union(InstructionName) {
     scope_push: Deprecated,
     scope_pop: Deprecated,
     declare: Deprecated,
-    store_global_name: SingleArg([]const u8),
-    load_global_name: SingleArg([]const u8),
+    store_global_name: Deprecated,
+    load_global_name: Deprecated,
     push_str: SingleArg([]const u8),
     push_num: SingleArg(f64),
     array_pack: SingleArg(u16),

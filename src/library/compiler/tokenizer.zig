@@ -19,7 +19,6 @@ pub const TokenType = enum {
     @"[",
     @"var",
     @"const",
-    @"extern",
     @"for",
     @"while",
     @"if",
@@ -65,7 +64,6 @@ pub const TokenType = enum {
 
 const keywords = [_][]const u8{
     "var",
-    "extern",
     "for",
     "while",
     "if",

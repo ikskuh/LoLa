@@ -45,8 +45,6 @@ pub fn install(environment: *lola.runtime.Environment, allocator: *std.mem.Alloc
             },
         });
     }
-
-    try environment.addGlobal("Pi", lola.runtime.Value.initNumber(std.math.pi));
 }
 
 /// empty compile unit for testing purposes

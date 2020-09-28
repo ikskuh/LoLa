@@ -6,7 +6,6 @@ const utility = @import("utility.zig");
 // Import modules to reduce file size
 usingnamespace @import("value.zig");
 usingnamespace @import("../common/compile-unit.zig");
-usingnamespace @import("named_global.zig");
 usingnamespace @import("context.zig");
 usingnamespace @import("vm.zig");
 usingnamespace @import("objects.zig");
@@ -371,11 +370,6 @@ pub const Environment = struct {
     /// Object interface to
     objectPool: ObjectPoolInterface,
 
-    /// Stores all available named globals.
-    /// Globals will be contained in this unit and will be deinitialized,
-    /// the name must be kept alive until end of the environment.
-    namedGlobals: std.StringHashMap(NamedGlobal),
-
     /// Stores all available global functions.
     /// Functions will be contained in this unit and will be deinitialized,
     /// the name must be kept alive until end of the environment.
@@ -390,7 +384,6 @@ pub const Environment = struct {
             .compileUnit = compileUnit,
             .objectPool = object_pool,
             .scriptGlobals = undefined,
-            .namedGlobals = undefined,
             .functions = undefined,
             .destructor = null,
         };
@@ -416,9 +409,6 @@ pub const Environment = struct {
             _ = try self.functions.put(srcfun.name, fun);
         }
 
-        self.namedGlobals = std.StringHashMap(NamedGlobal).init(allocator);
-        errdefer self.namedGlobals.deinit();
-
         return self;
     }
 
@@ -432,7 +422,6 @@ pub const Environment = struct {
             glob.deinit();
         }
 
-        self.namedGlobals.deinit();
         self.functions.deinit();
         self.allocator.free(self.scriptGlobals);
 
@@ -445,15 +434,6 @@ pub const Environment = struct {
         if (result.found_existing)
             return error.AlreadyExists;
         result.entry.value = function;
-    }
-
-    /// Adds a named global to the environment and makes it available for the script.
-    /// Import this with `extern`
-    pub fn addGlobal(self: *Self, name: []const u8, value: Value) !void {
-        var result = try self.namedGlobals.getOrPut(name);
-        if (result.found_existing)
-            return error.AlreadyExists;
-        result.entry.value = NamedGlobal.initStored(value);
     }
 
     // Implementation to make a Environment a valid LoLa object:

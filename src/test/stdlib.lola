@@ -150,10 +150,8 @@ ExpectEqual(LastIndexOf([1,2,3,1,2,3], 4), void);
 // Math
 
 // this should be enough precision testing
-extern Pi;
-Expect(Pi > 3.1415);
-Expect(Pi < 3.1416);
 
+const Pi = 3.141592653589;
 var delta = 0.00001;
 
 Expect(DeltaEqual(0.000001, 0.000002, delta));

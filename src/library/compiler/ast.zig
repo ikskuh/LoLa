@@ -121,7 +121,6 @@ pub const Statement = struct {
             initial_value: ?Expression,
             is_const: bool,
         },
-        extern_variable: []const u8,
         block: []Statement,
         @"break": void,
         @"continue": void,

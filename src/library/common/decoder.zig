@@ -226,8 +226,6 @@ test "Decoder.read(Instruction)" {
         .{ .text = "\x01", .instr = error.DeprecatedInstruction },
         .{ .text = "\x02", .instr = error.DeprecatedInstruction },
         .{ .text = "\x03", .instr = error.DeprecatedInstruction },
-        .{ .text = "\x04\x01\x00X", .instr = Instruction{ .store_global_name = .{ .value = "X" } } },
-        .{ .text = "\x05\x02\x00YZ", .instr = Instruction{ .load_global_name = .{ .value = "YZ" } } },
         .{ .text = "\x06\x03\x00ABC", .instr = Instruction{ .push_str = .{ .value = "ABC" } } },
         .{ .text = "\x07\x00\x00\x00\x00\x00\x00\x00\x00", .instr = Instruction{ .push_num = .{ .value = 0 } } },
         .{ .text = "\x08\x00\x10", .instr = Instruction{ .array_pack = .{ .value = 0x1000 } } },

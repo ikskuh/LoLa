@@ -87,7 +87,7 @@ first.
 
 **Elements:**
 - scope (`{ … }`)
-- var declaration (`var x;`, `var x = expr;`, `extern x;` …)
+- var declaration (`var x;`, `var x = expr;` …)
 - function call (`f();`, …)
 - assignment (`lval = rval;`, `lval[expr] = rval;`, …)
 - for loop (`for(x in expr) { … }`)

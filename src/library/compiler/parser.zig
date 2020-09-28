@@ -333,19 +333,6 @@ pub fn parse(
                     }
                 },
 
-                .@"extern" => {
-                    _ = try self.accept(is(.@"extern"));
-                    const name = try self.accept(is(.identifier));
-                    _ = try self.accept(is(.@";"));
-
-                    return ast.Statement{
-                        .location = start.location.merge(name.location),
-                        .type = .{
-                            .extern_variable = name.text,
-                        },
-                    };
-                },
-
                 .@"var", .@"const" => {
                     const decl_type = try self.accept(oneOf(.{ .@"var", .@"const" }));
 
@@ -1172,17 +1159,6 @@ test "parsing return (value)" {
 
     std.testing.expectEqual(ast.Statement.Type.return_expr, pgm.root_script[0].type);
     std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.return_expr.type);
-}
-
-test "parsing extern declaration" {
-    var pgm = try parseTest("extern name;");
-    defer pgm.deinit();
-
-    std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
-    std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
-
-    std.testing.expectEqual(ast.Statement.Type.extern_variable, pgm.root_script[0].type);
-    std.testing.expectEqualStrings("name", pgm.root_script[0].type.extern_variable);
 }
 
 test "parsing var declaration (no value)" {

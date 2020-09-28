@@ -64,9 +64,6 @@ fn emitStore(debug_symbols: *DebugSyms, scope: *Scope, writer: *CodeWriter, expr
                     .local => try writer.emitInstruction(Instruction{
                         .store_local = .{ .value = v.storage_slot },
                     }),
-                    .@"extern" => try writer.emitInstruction(Instruction{
-                        .store_global_name = .{ .value = variable_name },
-                    }),
                 }
             }
         },
@@ -105,9 +102,6 @@ fn emitExpression(debug_symbols: *DebugSyms, scope: *Scope, writer: *CodeWriter,
                     }),
                     .local => try writer.emitInstruction(Instruction{
                         .load_local = .{ .value = v.storage_slot },
-                    }),
-                    .@"extern" => try writer.emitInstruction(Instruction{
-                        .load_global_name = .{ .value = variable_name },
                     }),
                 }
             }
@@ -334,12 +328,8 @@ fn emitStatement(debug_symbols: *DebugSyms, scope: *Scope, writer: *CodeWriter, 
                             .value = v.storage_slot,
                         },
                     }),
-                    .@"extern" => unreachable,
                 }
             }
-        },
-        .extern_variable => |name| {
-            try scope.declareExtern(name);
         },
         .block => |blk| {
             try scope.enter();
