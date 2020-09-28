@@ -94,6 +94,8 @@ pub fn print_usage() !void {
         \\                                     a precompiled module or if it should autodetect the file type.
         \\  --no-stdlib                        Removes the standard library from the environment.
         \\  --no-runtime                       Removes the system runtime from the environment.
+        \\  --benchmark                        Runs the script 100 times, measuring the duration of each run and
+        \\                                     will print a benchmark result in the end.
         \\
     ;
     // \\  -S                      Intermixes the disassembly with the original source code if possible.
@@ -238,10 +240,11 @@ fn compile(options: CompileCLI, files: []const []const u8) !u8 {
 }
 
 const RunCLI = struct {
-    @"limit": ?u32 = null,
-    @"mode": enum { autodetect, source, module } = .autodetect,
+    limit: ?u32 = null,
+    mode: enum { autodetect, source, module } = .autodetect,
     @"no-stdlib": bool = false,
     @"no-runtime": bool = false,
+    benchmark: bool = false,
 };
 
 fn autoLoadModule(allocator: *std.mem.Allocator, options: RunCLI, file: []const u8) !lola.CompileUnit {
@@ -327,40 +330,107 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
         }.call));
     }
 
-    var vm = try lola.runtime.VM.init(allocator, &env);
-    defer vm.deinit();
+    if (options.benchmark == false) {
+        var vm = try lola.runtime.VM.init(allocator, &env);
+        defer vm.deinit();
 
-    while (true) {
-        var result = vm.execute(options.limit) catch |err| {
-            var stderr = std.io.getStdErr().writer();
-            try stderr.print("Panic during execution: {}\n", .{@errorName(err)});
-            try stderr.print("Call stack:\n", .{});
+        while (true) {
+            var result = vm.execute(options.limit) catch |err| {
+                var stderr = std.io.getStdErr().writer();
+                try stderr.print("Panic during execution: {}\n", .{@errorName(err)});
+                try stderr.print("Call stack:\n", .{});
 
-            try vm.printStackTrace(stderr);
+                try vm.printStackTrace(stderr);
 
-            return 1;
-        };
-
-        pool.clearUsageCounters();
-
-        try pool.walkEnvironment(env);
-        try pool.walkVM(vm);
-
-        pool.collectGarbage();
-
-        switch (result) {
-            .completed => return 0,
-            .exhausted => {
-                try std.io.getStdErr().writer().print("Execution exhausted after {} instructions!\n", .{
-                    options.limit,
-                });
                 return 1;
-            },
-            .paused => {
-                // continue execution here
-                std.time.sleep(100); // sleep at least 100 ns and return control to scheduler
-            },
+            };
+
+            pool.clearUsageCounters();
+
+            try pool.walkEnvironment(env);
+            try pool.walkVM(vm);
+
+            pool.collectGarbage();
+
+            switch (result) {
+                .completed => return 0,
+                .exhausted => {
+                    try std.io.getStdErr().writer().print("Execution exhausted after {} instructions!\n", .{
+                        options.limit,
+                    });
+                    return 1;
+                },
+                .paused => {
+                    // continue execution here
+                    std.time.sleep(100); // sleep at least 100 ns and return control to scheduler
+                },
+            }
         }
+    } else {
+        var cycle: usize = 0;
+        var stats = lola.runtime.VM.Statistics{};
+        var total_time: u64 = 0;
+
+        var total_timer = try std.time.Timer.start();
+
+        // Run at least one second
+        while ((cycle < 100) or (total_timer.read() < std.time.ns_per_s)) : (cycle += 1) {
+            var vm = try lola.runtime.VM.init(allocator, &env);
+            defer vm.deinit();
+
+            var timer = try std.time.Timer.start();
+
+            emulation: while (true) {
+                var result = vm.execute(options.limit) catch |err| {
+                    var stderr = std.io.getStdErr().writer();
+                    try stderr.print("Panic during execution: {}\n", .{@errorName(err)});
+                    try stderr.print("Call stack:\n", .{});
+
+                    try vm.printStackTrace(stderr);
+
+                    return 1;
+                };
+
+                pool.clearUsageCounters();
+
+                try pool.walkEnvironment(env);
+                try pool.walkVM(vm);
+
+                pool.collectGarbage();
+
+                switch (result) {
+                    .completed => break :emulation,
+                    .exhausted => {
+                        try std.io.getStdErr().writer().print("Execution exhausted after {} instructions!\n", .{
+                            options.limit,
+                        });
+                        return 1;
+                    },
+                    .paused => {},
+                }
+            }
+
+            total_time += timer.lap();
+
+            stats.instructions += vm.stats.instructions;
+            stats.stalls += vm.stats.stalls;
+        }
+
+        try std.io.getStdErr().writer().print(
+            \\Benchmark result:
+            \\    Number of runs:     {}
+            \\    Mean time:          {d} µs
+            \\    Mean #instructions: {d}
+            \\    Mean #stalls:       {d}
+            \\    Mean instruction/s: {d}
+            \\
+        , .{
+            cycle,
+            (@intToFloat(f64, total_time) / @intToFloat(f64, cycle)) / std.time.ns_per_us,
+            @intToFloat(f64, stats.instructions) / @intToFloat(f64, cycle),
+            @intToFloat(f64, stats.stalls) / @intToFloat(f64, cycle),
+            std.time.ns_per_s * @intToFloat(f64, stats.instructions) / @intToFloat(f64, total_time),
+        });
     }
 
     return 0;

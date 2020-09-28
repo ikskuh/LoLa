@@ -41,11 +41,21 @@ pub const VM = struct {
         environment: *Environment,
     };
 
+    /// Describes a set of statistics for the virtual machine. Can be useful for benchmarking.
+    pub const Statistics = struct {
+        /// Number of instructions executed in total.
+        instructions: usize = 0,
+
+        /// Number of executions which were stalled by a asynchronous function
+        stalls: usize = 0,
+    };
+
     allocator: *std.mem.Allocator,
     stack: std.ArrayList(Value),
     calls: std.ArrayList(Context),
     currentAsynCall: ?AsyncFunctionCall,
     objectPool: ObjectPoolInterface,
+    stats: Statistics = Statistics{},
 
     /// Initialize a new virtual machine that will run the given environment.
     pub fn init(allocator: *std.mem.Allocator, environment: *Environment) !Self {
@@ -195,6 +205,7 @@ pub const VM = struct {
                 try self.push(result.*);
             } else {
                 // We are not finished, continue later...
+                self.stats.stalls += 1;
                 return .yield;
             }
         }
@@ -209,6 +220,9 @@ pub const VM = struct {
             error.EndOfStream => error.InvalidJump,
             else => error.InvalidBytecode,
         };
+
+        self.stats.instructions += 1;
+
         switch (instruction) {
 
             // Auxiliary Section:
