@@ -144,7 +144,7 @@ LoLa provides several operators that execute arithmetic, logic or comparison ope
 | `a <= b` | `number` |Less-or-equal test|`(3 <= 2) == false`|
 | `a > b` | `number` |Greater-than test|`(3 > 2) == true`|
 | `a < b` | `number` |Less-than test|`(3 < 2) == false`|
-| `a[i]` | `array` | Array index | `([1,2,3])[1] == 2` |
+| `a[i]` | `array`, `string` | Array index, string index | `([1,2,3])[1] == 2` |
 
 ### Operator Precedence 
 

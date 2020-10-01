@@ -435,23 +435,13 @@ pub const String = struct {
     /// Clones `text` with the given parameter and stores the
     /// duplicated value.
     pub fn init(allocator: *std.mem.Allocator, text: []const u8) !Self {
-        const alignment = @alignOf(usize);
-
-        const ptr_offset = std.mem.alignForward(text.len, alignment);
-        const buffer = try allocator.allocAdvanced(
+        var string = try initUninitialized(allocator, text.len);
+        std.mem.copy(
             u8,
-            alignment,
-            ptr_offset + @sizeOf(usize),
-            .exact,
+            string.obtainMutableStorage() catch unreachable,
+            text,
         );
-        std.mem.copy(u8, buffer, text);
-        std.mem.writeIntNative(usize, buffer[ptr_offset..][0..@sizeOf(usize)], 1);
-
-        return Self{
-            .allocator = allocator,
-            .contents = buffer[0..text.len],
-            .refcount = @ptrCast(*usize, @alignCast(alignment, buffer.ptr + ptr_offset)),
-        };
+        return string;
     }
 
     /// Returns a string that will take ownership of the passed `text` and

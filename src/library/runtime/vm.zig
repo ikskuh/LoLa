@@ -302,40 +302,81 @@ pub const VM = struct {
             },
 
             .array_load => {
-                var array_val = try self.pop();
-                defer array_val.deinit();
+                var indexed_val = try self.pop();
+                defer indexed_val.deinit();
 
                 var index_val = try self.pop();
                 defer index_val.deinit();
 
-                const item = try getArrayItem(&array_val, index_val);
+                const index = try index_val.toInteger(usize);
 
-                var dupe = try item.clone();
+                var dupe: Value = switch (indexed_val) {
+                    .array => |arr| blk: {
+                        if (index >= arr.contents.len)
+                            return error.IndexOutOfRange;
+
+                        break :blk try arr.contents[index].clone();
+                    },
+                    .string => |str| blk: {
+                        if (index >= str.contents.len)
+                            return error.IndexOutOfRange;
+
+                        break :blk Value.initInteger(u8, str.contents[index]);
+                    },
+                    else => return error.TypeMismatch,
+                };
+
                 errdefer dupe.deinit();
 
                 try self.push(dupe);
             },
 
             .array_store => {
-                var array_val = try self.pop();
-                errdefer array_val.deinit();
+                var indexed_val = try self.pop();
+                errdefer indexed_val.deinit();
 
                 var index_val = try self.pop();
                 defer index_val.deinit();
 
-                var value = try self.pop();
-                {
+                if (indexed_val == .array) {
+                    var value = try self.pop();
                     // only destroy value when we fail to get the array item,
                     // otherwise the value is stored in the array and must not
                     // be deinitialized after that
                     errdefer value.deinit();
 
-                    const item = try getArrayItem(&array_val, index_val);
+                    const index = try index_val.toInteger(usize);
+                    if (index >= indexed_val.array.contents.len)
+                        return error.IndexOutOfRange;
 
-                    item.replaceWith(value);
+                    indexed_val.array.contents[index].replaceWith(value);
+                } else if (indexed_val == .string) {
+                    var value = try self.pop();
+                    defer value.deinit();
+
+                    const string = &indexed_val.string;
+
+                    const byte = try value.toInteger(u8);
+
+                    const index = try index_val.toInteger(usize);
+                    if (index >= string.contents.len)
+                        return error.IndexOutOfRange;
+
+                    if (string.refcount != null and string.refcount.?.* > 1) {
+                        var new_string = try String.init(self.allocator, string.contents);
+
+                        string.deinit();
+                        string.* = new_string;
+                    }
+                    std.debug.assert(string.refcount == null or string.refcount.?.* == 1);
+
+                    const contents = try string.obtainMutableStorage();
+                    contents[index] = byte;
+                } else {
+                    return error.TypeMismatch;
                 }
 
-                try self.push(array_val);
+                try self.push(indexed_val);
             },
 
             // Iterator Section:
@@ -711,33 +752,6 @@ pub const VM = struct {
         try self.push(Value.initBoolean(
             if (order == .eq and allowEql) true else order == wantedOrder,
         ));
-    }
-
-    fn getArrayItem(array_val: *Value, index_val: Value) !*Value {
-        const array = try array_val.getArray();
-        const flt_index = try index_val.toNumber();
-
-        if (flt_index < 0)
-            return error.IndexOutOfRange;
-
-        const index = try floatToInt(usize, std.math.trunc(flt_index));
-        std.debug.assert(index >= 0);
-        if (index >= array.contents.len)
-            return error.IndexOutOfRange;
-
-        return &array.contents[index];
-    }
-
-    fn floatToInt(comptime T: type, flt: anytype) error{Overflow}!T {
-        comptime std.debug.assert(@typeInfo(T) == .Int); // must pass an integer
-        comptime std.debug.assert(@typeInfo(@TypeOf(flt)) == .Float); // must pass a float
-        if (flt > std.math.maxInt(T)) {
-            return error.Overflow;
-        } else if (flt < std.math.minInt(T)) {
-            return error.Overflow;
-        } else {
-            return @floatToInt(T, flt);
-        }
     }
 
     const SingleResult = enum {

@@ -21,6 +21,8 @@ const AnalysisState = struct {
 
 const ValidationError = error{OutOfMemory};
 
+const array_or_string = TypeSet.init(.{ .array, .string });
+
 fn expressionTypeToString(src: ast.Expression.Type) []const u8 {
     return switch (src) {
         .array_indexer => "array indexer",
@@ -56,10 +58,20 @@ fn validateExpression(state: *AnalysisState, diagnostics: *Diagnostics, scope: *
             const array_type = try validateExpression(state, diagnostics, scope, indexer.value.*);
             const index_type = try validateExpression(state, diagnostics, scope, indexer.index.*);
 
-            try performTypeCheck(diagnostics, indexer.value.location, TypeSet.from(.array), array_type);
+            try performTypeCheck(diagnostics, indexer.value.location, array_or_string, array_type);
             try performTypeCheck(diagnostics, indexer.index.location, TypeSet.from(.number), index_type);
 
-            return TypeSet.any;
+            if (array_type.contains(.array)) {
+                // when we're possibly indexing an array,
+                // we return a value of type `any`
+                return TypeSet.any;
+            } else if (array_type.contains(.string)) {
+                // when we are not an array, but a string,
+                // we can only return a number.
+                return TypeSet.from(.number);
+            } else {
+                return TypeSet.empty;
+            }
         },
 
         .variable_expr => |variable_name| {
@@ -178,17 +190,24 @@ fn validateStore(state: *AnalysisState, diagnostics: *Diagnostics, scope: *Scope
         });
         return;
     }
+
     switch (expression.type) {
         .array_indexer => |indexer| {
             const array_val = try validateExpression(state, diagnostics, scope, indexer.value.*);
             const index_val = try validateExpression(state, diagnostics, scope, indexer.index.*);
 
-            try performTypeCheck(diagnostics, indexer.value.location, TypeSet.from(.array), array_val);
+            try performTypeCheck(diagnostics, indexer.value.location, array_or_string, array_val);
             try performTypeCheck(diagnostics, indexer.index.location, TypeSet.from(.number), index_val);
+
+            if (array_val.contains(.string) and !array_val.contains(.array)) {
+                // when we are sure we write into a string, but definitly not an array
+                // check if we're writing a number.
+                try performTypeCheck(diagnostics, expression.location, TypeSet.from(.number), type_hint);
+            }
 
             // now propagate the store validation back to the lvalue.
             // Note that we can assume that the lvalue _is_ a array, as it would be a type mismatch otherwise.
-            try validateStore(state, diagnostics, scope, indexer.value.*, TypeSet.from(.array));
+            try validateStore(state, diagnostics, scope, indexer.value.*, array_or_string.intersection(array_val));
         },
 
         .variable_expr => |variable_name| {

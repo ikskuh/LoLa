@@ -337,7 +337,16 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
         while (true) {
             var result = vm.execute(options.limit) catch |err| {
                 var stderr = std.io.getStdErr().writer();
-                try stderr.print("Panic during execution: {}\n", .{@errorName(err)});
+
+                if (std.builtin.mode == .Debug) {
+                    if (@errorReturnTrace()) |err_trace| {
+                        std.debug.dumpStackTrace(err_trace.*);
+                    } else {
+                        try stderr.print("Panic during execution: {}\n", .{@errorName(err)});
+                    }
+                } else {
+                    try stderr.print("Panic during execution: {}\n", .{@errorName(err)});
+                }
                 try stderr.print("Call stack:\n", .{});
 
                 try vm.printStackTrace(stderr);

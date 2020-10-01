@@ -259,4 +259,19 @@ ExpectEqual('💩', 0x1F4A9);
 ExpectEqual('\xF3', 0xF3);
 ExpectEqual('\xf0\x9f\x92\xa9', 0x1F4A9); // handcrafted utf8 escape sequence
 
+// String indexing
+ExpectEqual("a"[0], 'a');
+ExpectEqual("ab"[0], 'a');
+ExpectEqual("ab"[1], 'b');
+{
+  var mut = "abc";
+  ExpectEqual(mut, "abc");
+  mut[0] = '1';
+  ExpectEqual(mut, "1bc");
+  mut[1] = '2';
+  ExpectEqual(mut, "12c");
+  mut[2] = '3';
+  ExpectEqual(mut, "123");
+}
+
 Print("Behaviour test suite passed.");
