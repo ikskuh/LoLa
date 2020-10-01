@@ -5,7 +5,7 @@ const lola = @import("../main.zig");
 const root = @import("root");
 
 const GlobalObjectPool = if (std.builtin.is_test)
-// we need to do a workaround here for testing purposes
+    // we need to do a workaround here for testing purposes
     lola.runtime.ObjectPool([_]type{
         LoLaList,
         LoLaDictionary,
@@ -148,7 +148,7 @@ const sync_functions = struct {
         defer file.close();
 
         // 2 GB
-        var contents = try file.reader().readAllAlloc(allocator, 2 << 30);
+        var contents = try file.readToEndAlloc(allocator, 2 << 30);
 
         return lola.runtime.Value.fromString(lola.runtime.String.initFromOwned(allocator, contents));
     }
