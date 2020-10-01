@@ -343,6 +343,15 @@ fn validateStatement(state: *AnalysisState, diagnostics: *Diagnostics, scope: *S
     }
 }
 
+fn getErrorCount(diagnostics: *const Diagnostics) usize {
+    var res: usize = 0;
+    for (diagnostics.messages.items) |msg| {
+        if (msg.kind == .@"error")
+            res += 1;
+    }
+    return res;
+}
+
 /// Validates the `program` against programming mistakes and filles `diagnostics` with the findings.
 /// Note that the function will always succeed when no `OutOfMemory` happens. To see if the program
 /// is semantically sound, check `diagnostics` for error messages.
@@ -350,7 +359,7 @@ pub fn validate(allocator: *std.mem.Allocator, diagnostics: *Diagnostics, progra
     var global_scope = Scope.init(allocator, null, true);
     defer global_scope.deinit();
 
-    const inital_messages = diagnostics.messages.items.len;
+    const initial_errc = getErrorCount(diagnostics);
 
     for (program.root_script) |stmt| {
         var state = AnalysisState{
@@ -391,7 +400,7 @@ pub fn validate(allocator: *std.mem.Allocator, diagnostics: *Diagnostics, progra
         try validateStatement(&state, diagnostics, &local_scope, function.body);
     }
 
-    return (inital_messages == diagnostics.messages.items.len);
+    return (getErrorCount(diagnostics) == initial_errc);
 }
 
 test "validate correct program" {
