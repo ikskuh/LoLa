@@ -288,28 +288,7 @@ pub const Function = union(enum) {
         if (function_info.is_var_args)
             @compileError("Cannot wrap functions with variadic arguments!");
 
-        const ArgsTuple = comptime blk: {
-            var argument_field_list: [function_info.args.len]std.builtin.TypeInfo.StructField = undefined;
-            inline for (function_info.args) |arg, i| {
-                @setEvalBranchQuota(10_000);
-                var num_buf: [128]u8 = undefined;
-                argument_field_list[i] = std.builtin.TypeInfo.StructField{
-                    .name = std.fmt.bufPrint(&num_buf, "{d}", .{i}) catch unreachable,
-                    .field_type = arg.arg_type.?,
-                    .default_value = @as(?(arg.arg_type.?), null),
-                    .is_comptime = false,
-                };
-            }
-
-            break :blk @Type(std.builtin.TypeInfo{
-                .Struct = std.builtin.TypeInfo.Struct{
-                    .is_tuple = true,
-                    .layout = .Auto,
-                    .decls = &[_]std.builtin.TypeInfo.Declaration{},
-                    .fields = &argument_field_list,
-                },
-            });
-        };
+        const ArgsTuple = std.meta.ArgsTuple(F);
 
         const Impl = struct {
             fn invoke(env: *Environment, context: Context, args: []const Value) anyerror!Value {
