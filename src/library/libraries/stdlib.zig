@@ -70,7 +70,7 @@ test "stdlib.install" {
 }
 
 const async_functions = struct {
-    fn Sleep(call_context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.AsyncFunctionCall {
+    fn Sleep(env: *lola.runtime.Environment, call_context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.AsyncFunctionCall {
         const allocator = call_context.get(std.mem.Allocator);
 
         if (args.len != 1)
@@ -109,7 +109,7 @@ const async_functions = struct {
             }.execute,
         };
     }
-    fn Yield(call_context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.AsyncFunctionCall {
+    fn Yield(env: *lola.runtime.Environment, call_context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.AsyncFunctionCall {
         const allocator = call_context.get(std.mem.Allocator);
 
         if (args.len != 0)

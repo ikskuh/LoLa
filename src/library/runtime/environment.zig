@@ -71,6 +71,12 @@ test "UserFunction (destructor)" {
     defer uf2.deinit();
 }
 
+pub const AsyncUserFunctionCall = fn (
+    environment: *Environment,
+    context: Context,
+    args: []const Value,
+) anyerror!AsyncFunctionCall;
+
 /// An asynchronous function that yields execution of the VM
 /// and can be resumed later.
 pub const AsyncUserFunction = struct {
@@ -82,7 +88,7 @@ pub const AsyncUserFunction = struct {
     /// Begins execution of this function.
     /// After the initialization, the return value will be invoked once
     /// to check if the function can finish synchronously.
-    call: fn (context: Context, args: []const Value) anyerror!AsyncFunctionCall,
+    call: AsyncUserFunctionCall,
 
     /// Optional destructor that may free the memory stored in `context`.
     /// Is called when the function call is deinitialized.

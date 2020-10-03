@@ -711,7 +711,7 @@ pub const VM = struct {
 
                 try self.readLocals(call, locals);
 
-                self.currentAsynCall = try fun.call(fun.context, locals);
+                self.currentAsynCall = try fun.call(environment, fun.context, locals);
                 self.currentAsynCall.?.object = object;
 
                 break :blk true;
