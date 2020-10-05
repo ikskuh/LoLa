@@ -248,6 +248,14 @@ pub const Function = union(enum) {
                 return try convertToLoLaValue(allocator, unwrapped);
             return .void;
         }
+
+        if (info == .ErrorUnion) {
+            return try convertToLoLaValue(allocator, try value);
+        }
+        if (info == .ErrorSet) {
+            return value;
+        }
+
         return switch (T) {
             // Native types
             void => .void,
