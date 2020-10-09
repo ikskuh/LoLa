@@ -3,7 +3,7 @@ const std = @import("std");
 /// A wrapper for a nullable pointer type that can be passed to LoLa functions.
 pub const Context = union(enum) {
     const Self = @This();
-    const Opaque = @Type(.Opaque);
+    const Opaque = opaque{};
 
     empty: void,
     content: *Opaque,

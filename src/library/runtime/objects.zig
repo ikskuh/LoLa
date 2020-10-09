@@ -49,7 +49,7 @@ pub const ObjectHandle = enum(u64) {
 
 pub const InputStream = struct {
     const Self = @This();
-    pub const ErasedSelf = @Type(.Opaque);
+    pub const ErasedSelf = opaque{};
 
     self: *const ErasedSelf,
     read: fn (self: *const ErasedSelf, buf: []u8) anyerror!usize,
@@ -81,7 +81,7 @@ pub const InputStream = struct {
 
 pub const OutputStream = struct {
     const Self = @This();
-    pub const ErasedSelf = @Type(.Opaque);
+    pub const ErasedSelf = opaque{};
 
     self: *const ErasedSelf,
     write: fn (self: *const ErasedSelf, buf: []const u8) anyerror!usize,
@@ -114,7 +114,7 @@ pub const OutputStream = struct {
 const ObjectGetError = error{InvalidObject};
 
 pub const ObjectPoolInterface = struct {
-    const ErasedSelf = @Type(.Opaque);
+    const ErasedSelf = opaque{};
 
     self: *ErasedSelf,
 
