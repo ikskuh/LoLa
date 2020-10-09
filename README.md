@@ -176,7 +176,7 @@ Note that this is a fairly new feature, it does not catch all your type mismatch
 
 To get familiar with LoLa, you can check out these starting points:
 
-- [Documentation](Documentation/README.md)
+- [Documentation](documentation/README.md)
 - [LoLa Examples](examples/lola/README.md)
 - [Script Host Examples](examples/host)
 
