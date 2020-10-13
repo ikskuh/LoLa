@@ -20,26 +20,40 @@ pub const ObjectPool = lola.runtime.ObjectPool([_]type{
     lola.libs.runtime.LoLaList,
 });
 
-// this will store our intermediate data
-var serialization_buffer: [4096]u8 = undefined;
-
 pub fn main() anyerror!void {
+
+    // this will store our intermediate data
+    var serialization_buffer: [4096]u8 = undefined;
+
     {
         var gpa_state = std.heap.GeneralPurposeAllocator(.{}){};
         defer _ = gpa_state.deinit();
 
-        try run_serialization(&gpa_state.allocator);
+        try run_serialization(
+            &gpa_state.allocator,
+            &serialization_buffer,
+        );
+    }
+
+    {
+        var stdout = std.io.getStdOut().writer();
+        try stdout.writeAll("\n");
+        try stdout.writeAll("-----------------------------------\n");
+        try stdout.writeAll("\n");
     }
 
     {
         var gpa_state = std.heap.GeneralPurposeAllocator(.{}){};
         defer _ = gpa_state.deinit();
 
-        try run_deserialization(&gpa_state.allocator);
+        try run_deserialization(
+            &gpa_state.allocator,
+            &serialization_buffer,
+        );
     }
 }
 
-fn run_serialization(allocator: *std.mem.Allocator) !void {
+fn run_serialization(allocator: *std.mem.Allocator, serialization_buffer: []u8) !void {
     var diagnostics = lola.compiler.Diagnostics.init(allocator);
     defer {
         for (diagnostics.messages.items) |msg| {
@@ -71,7 +85,7 @@ fn run_serialization(allocator: *std.mem.Allocator) !void {
     try vm.printStackTrace(stdout);
 
     {
-        var stream = std.io.fixedBufferStream(&serialization_buffer);
+        var stream = std.io.fixedBufferStream(serialization_buffer);
         var writer = stream.writer();
 
         try compile_unit.saveToStream(writer);
@@ -97,8 +111,8 @@ fn run_serialization(allocator: *std.mem.Allocator) !void {
     }
 }
 
-fn run_deserialization(allocator: *std.mem.Allocator) !void {
-    var stream = std.io.fixedBufferStream(&serialization_buffer);
+fn run_deserialization(allocator: *std.mem.Allocator, serialization_buffer: []u8) !void {
+    var stream = std.io.fixedBufferStream(serialization_buffer);
     var reader = stream.reader();
 
     // Trivial deserialization:
