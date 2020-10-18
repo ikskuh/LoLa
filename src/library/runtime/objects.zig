@@ -49,7 +49,7 @@ pub const ObjectHandle = enum(u64) {
 
 pub const InputStream = struct {
     const Self = @This();
-    pub const ErasedSelf = opaque{};
+    pub const ErasedSelf = opaque {};
 
     self: *const ErasedSelf,
     read: fn (self: *const ErasedSelf, buf: []u8) anyerror!usize,
@@ -81,7 +81,7 @@ pub const InputStream = struct {
 
 pub const OutputStream = struct {
     const Self = @This();
-    pub const ErasedSelf = opaque{};
+    pub const ErasedSelf = opaque {};
 
     self: *const ErasedSelf,
     write: fn (self: *const ErasedSelf, buf: []const u8) anyerror!usize,
@@ -114,7 +114,7 @@ pub const OutputStream = struct {
 const ObjectGetError = error{InvalidObject};
 
 pub const ObjectPoolInterface = struct {
-    const ErasedSelf = opaque{};
+    const ErasedSelf = opaque {};
 
     self: *ErasedSelf,
 
@@ -158,8 +158,8 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
     for (classes_list) |item, i| {
         classes[i] = item;
     }
-
-    comptime var hasher = std.hash.SipHash64(2, 4).init("ObjectPool Serialization Version 1");
+    //                                                   ----XXXX----XXXX
+    comptime var hasher = std.hash.SipHash64(2, 4).init("OP SER Version 1");
 
     comptime var all_classes_can_serialize = (classes.len > 0);
 
@@ -176,7 +176,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
     }
 
     const TypeIndex = std.meta.Int(
-        false,
+        .unsigned,
         // We need 1 extra value, so 0xFFFF… is never a valid type index
         // this marks the end of objects in the stream
         std.mem.alignForward(std.math.log2_int_ceil(usize, classes.len + 1), 8),
