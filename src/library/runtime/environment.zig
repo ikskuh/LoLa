@@ -311,7 +311,7 @@ pub const Function = union(enum) {
                 comptime var index = 0;
                 inline while (index < function_info.args.len) : (index += 1) {
                     const T = function_info.args[index].arg_type.?;
-                    zig_args[index] = try convertToZigValue(T, args[i]);
+                    zig_args[index] = try convertToZigValue(T, args[index]);
                 }
 
                 const ReturnType = function_info.return_type.?;
