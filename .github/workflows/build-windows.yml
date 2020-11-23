@@ -18,7 +18,7 @@ jobs:
         submodules: 'recursive'
 
     - name: Setup Zig
-      uses: goto-bus-stop/setup-zig@v1.2.3
+      uses: goto-bus-stop/setup-zig@v1
       with:
         version: master
     
