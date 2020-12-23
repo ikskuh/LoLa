@@ -204,36 +204,40 @@ pub const Function = union(enum) {
     }
 
     fn convertToZigValue(comptime Target: type, value: Value) !Target {
-        const info = @typeInfo(Target);
-        if (info == .Int)
-            return try value.toInteger(Target);
-        if (info == .Float)
-            return @floatCast(Target, try value.toNumber());
+        if (Target == Value) {
+            return value;
+        } else {
+            const info = @typeInfo(Target);
+            switch (info) {
+                .Int => return try value.toInteger(Target),
+                .Float => return @floatCast(Target, try value.toNumber()),
 
-        if (info == .Optional) {
-            if (value == .void)
-                return null;
-            return try convertToZigValue(std.meta.Child(Target), value);
+                .Optional => {
+                    if (value == .void)
+                        return null;
+                    return try convertToZigValue(std.meta.Child(Target), value);
+                },
+
+                else => return switch (Target) {
+                    // Native types
+                    void => try value.toVoid(),
+                    bool => try value.toBoolean(),
+                    []const u8 => value.toString(),
+
+                    // LoLa types
+                    ObjectHandle => try value.toObject(),
+                    String => if (value == .string)
+                        value.string
+                    else
+                        return error.TypeMismatch,
+                    Array => value.toArray(),
+
+                    Value => unreachable,
+
+                    else => @compileError(@typeName(Target) ++ " is not a wrappable type!"),
+                },
+            }
         }
-
-        return switch (Target) {
-            // Native types
-            void => try value.toVoid(),
-            bool => try value.toBoolean(),
-            []const u8 => value.toString(),
-
-            // LoLa types
-            ObjectHandle => try value.toObject(),
-            String => if (value == .string)
-                value.string
-            else
-                return error.TypeMismatch,
-            Array => value.toArray(),
-
-            Value => value,
-
-            else => @compileError(@typeName(Target) ++ " is not a wrappable type!"),
-        };
     }
 
     fn convertToLoLaValue(allocator: *std.mem.Allocator, value: anytype) !Value {
@@ -311,7 +315,12 @@ pub const Function = union(enum) {
                 comptime var index = 0;
                 inline while (index < function_info.args.len) : (index += 1) {
                     const T = function_info.args[index].arg_type.?;
-                    zig_args[index] = try convertToZigValue(T, args[index]);
+                    const value = args[index];
+                    if (T == Value) {
+                        zig_args[index] = value;
+                    } else {
+                        zig_args[index] = try convertToZigValue(T, value);
+                    }
                 }
 
                 const ReturnType = function_info.return_type.?;
@@ -505,7 +514,7 @@ pub const Environment = struct {
     /// for serialization to ensure that Environments are restored into same
     /// state is it was serialized from previously.
     fn computeSignature(self: Self) u64 {
-        var hasher = std.hash.SipHash64(2, 4).init("Environment Serialization Version 1");
+        var hasher = std.hash.SipHash64(2, 4).init("Environment Seri");
 
         // Hash all function names to create reproducability
         {
