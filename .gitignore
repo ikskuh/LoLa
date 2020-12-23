@@ -2,3 +2,4 @@
 *.lm
 zig-cache
 scratchpad
+docs/

@@ -218,23 +218,6 @@ pub fn build(b: *Builder) !void {
         // Generates documentation and future files.
         const gen_website_step = b.step("website", "Generates the website and all required resources.");
 
-        // TODO: Figure out how to emit docs into the right directory
-        var gen_docs_runner = b.addTest(pkgs.lola.path);
-        gen_docs_runner.emit_bin = false;
-        gen_docs_runner.emit_asm = false;
-        gen_docs_runner.emit_bin = false;
-        gen_docs_runner.emit_docs = true;
-        gen_docs_runner.emit_h = false;
-        gen_docs_runner.emit_llvm_ir = false;
-        gen_docs_runner.addPackage(pkgs.interface);
-        gen_docs_runner.setOutputDir("./website");
-        gen_docs_runner.setBuildMode(mode);
-
-        // Only  generates documentation
-        const gen_docs_step = b.step("docs", "Generate the code documentation");
-        gen_docs_step.dependOn(&gen_docs_runner.step);
-        gen_website_step.dependOn(&gen_docs_runner.step);
-
         const md_renderer = b.addExecutable("markdown-md-page", "src/tools/render-md-page.zig");
         md_renderer.addPackage(pkgs.koino);
         try linkPcre(md_renderer);
@@ -249,5 +232,29 @@ pub fn build(b: *Builder) !void {
         copy_wasm_runtime.addArtifactArg(wasm_runtime);
         copy_wasm_runtime.addArg("website/lola.wasm");
         gen_website_step.dependOn(&copy_wasm_runtime.step);
+
+        var gen_docs_runner = b.addTest(pkgs.lola.path);
+        gen_docs_runner.emit_bin = false;
+        gen_docs_runner.emit_asm = false;
+        gen_docs_runner.emit_bin = false;
+        gen_docs_runner.emit_docs = true;
+        gen_docs_runner.emit_h = false;
+        gen_docs_runner.emit_llvm_ir = false;
+        gen_docs_runner.addPackage(pkgs.interface);
+        gen_docs_runner.setBuildMode(mode);
+
+        const move_docs = b.addSystemCommand(&[_][]const u8{
+            "cp",
+            "docs/index.html",
+            "docs/data.js",
+            "docs/main.js",
+            "website/docs/",
+        });
+        move_docs.step.dependOn(&gen_docs_runner.step);
+        gen_website_step.dependOn(&move_docs.step);
+
+        // Only generates documentation
+        const gen_docs_step = b.step("docs", "Generate the code documentation");
+        gen_docs_step.dependOn(&gen_docs_runner.step);
     }
 }
