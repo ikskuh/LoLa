@@ -212,12 +212,12 @@ fn validateStore(state: *AnalysisState, diagnostics: *Diagnostics, scope: *Scope
 
         .variable_expr => |variable_name| {
             if (std.mem.eql(u8, variable_name, "true") or std.mem.eql(u8, variable_name, "false") or std.mem.eql(u8, variable_name, "void")) {
-                try diagnostics.emit(.@"error", expression.location, "Expected array indexer or a variable, got {}", .{
+                try diagnostics.emit(.@"error", expression.location, "Expected array indexer or a variable, got {s}", .{
                     variable_name,
                 });
             } else if (scope.get(variable_name)) |variable| {
                 if (variable.is_const) {
-                    try diagnostics.emit(.@"error", expression.location, "Assignment to constant {} not allowed.", .{
+                    try diagnostics.emit(.@"error", expression.location, "Assignment to constant {s} not allowed.", .{
                         variable_name,
                     });
                 }
@@ -328,7 +328,7 @@ fn validateStatement(state: *AnalysisState, diagnostics: *Diagnostics, scope: *S
                 null;
 
             scope.declare(decl.variable, decl.is_const) catch |err| switch (err) {
-                error.AlreadyDeclared => try diagnostics.emit(.@"error", stmt.location, "Global variable {} is already declared!", .{decl.variable}),
+                error.AlreadyDeclared => try diagnostics.emit(.@"error", stmt.location, "Global variable {s} is already declared!", .{decl.variable}),
                 error.TooManyVariables => try emitTooManyVariables(diagnostics, stmt.location),
                 else => |e| return e,
             };
@@ -337,7 +337,7 @@ fn validateStatement(state: *AnalysisState, diagnostics: *Diagnostics, scope: *S
                 scope.get(decl.variable).?.possible_types = init_val;
 
             if (decl.is_const and decl.initial_value == null) {
-                try diagnostics.emit(.@"error", stmt.location, "Constant {} must be initialized!", .{
+                try diagnostics.emit(.@"error", stmt.location, "Constant {s} must be initialized!", .{
                     decl.variable,
                 });
             }
@@ -395,7 +395,7 @@ pub fn validate(allocator: *std.mem.Allocator, diagnostics: *Diagnostics, progra
     for (program.functions) |function, i| {
         for (program.functions[0..i]) |other_fn| {
             if (std.mem.eql(u8, function.name, other_fn.name)) {
-                try diagnostics.emit(.@"error", function.location, "A function with the name {} was already declared!", .{function.name});
+                try diagnostics.emit(.@"error", function.location, "A function with the name {s} was already declared!", .{function.name});
                 break;
             }
         }
@@ -405,7 +405,7 @@ pub fn validate(allocator: *std.mem.Allocator, diagnostics: *Diagnostics, progra
 
         for (function.parameters) |param| {
             local_scope.declare(param, true) catch |err| switch (err) {
-                error.AlreadyDeclared => try diagnostics.emit(.@"error", function.location, "A parameter {} is already declared!", .{param}),
+                error.AlreadyDeclared => try diagnostics.emit(.@"error", function.location, "A parameter {s} is already declared!", .{param}),
                 error.TooManyVariables => try emitTooManyVariables(diagnostics, function.location),
                 else => |e| return e,
             };
@@ -437,7 +437,7 @@ test "validate correct program" {
     std.testing.expectEqual(true, try validate(std.testing.allocator, &diagnostics, pgm));
 
     for (diagnostics.messages.items) |msg| {
-        std.debug.warn("{}\n", .{msg});
+        std.debug.print("{s}\n", .{msg});
     }
 
     std.testing.expectEqual(@as(usize, 0), diagnostics.messages.items.len);

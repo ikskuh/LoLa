@@ -208,11 +208,9 @@ pub const Value = union(TypeId) {
             .number => |n| stream.print("{d}", .{n}),
             .object => |o| stream.print("${d}", .{o}),
             .boolean => |b| if (b) stream.writeAll("true") else stream.writeAll("false"),
-            .string => |s| stream.print("\"{}\"", .{s.contents}),
+            .string => |s| stream.print("\"{s}\"", .{s.contents}),
             .array => |a| formatArray(a, stream),
-            .enumerator => |e| {
-                try stream.print("enumerator({}/{})", .{ e.index, e.array.contents.len });
-            },
+            .enumerator => |e| stream.print("enumerator({}/{})", .{ e.index, e.array.contents.len }),
         };
     }
 

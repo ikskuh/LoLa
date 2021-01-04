@@ -74,17 +74,17 @@ test "diagnostic list" {
     std.testing.expectEqual(false, diagnostics.hasErrors());
     std.testing.expectEqual(@as(usize, 0), diagnostics.messages.items.len);
 
-    try diagnostics.emit(.warning, loc, "{}", .{"this is a warning!"});
+    try diagnostics.emit(.warning, loc, "{s}", .{"this is a warning!"});
 
     std.testing.expectEqual(false, diagnostics.hasErrors());
     std.testing.expectEqual(@as(usize, 1), diagnostics.messages.items.len);
 
-    try diagnostics.emit(.notice, loc, "{}", .{"this is a notice!"});
+    try diagnostics.emit(.notice, loc, "{s}", .{"this is a notice!"});
 
     std.testing.expectEqual(false, diagnostics.hasErrors());
     std.testing.expectEqual(@as(usize, 2), diagnostics.messages.items.len);
 
-    try diagnostics.emit(.@"error", loc, "{}", .{"this is a error!"});
+    try diagnostics.emit(.@"error", loc, "{s}", .{"this is a error!"});
 
     std.testing.expectEqual(true, diagnostics.hasErrors());
     std.testing.expectEqual(@as(usize, 3), diagnostics.messages.items.len);

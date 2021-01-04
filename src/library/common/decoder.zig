@@ -101,7 +101,7 @@ pub const Decoder = struct {
                         .argc = argc,
                     });
                 } else {
-                    const ValType = std.meta.fieldInfo(fld.field_type, "value").field_type;
+                    const ValType = std.meta.fieldInfo(fld.field_type, .value).field_type;
                     if (ValType == []const u8) {
                         return @unionInit(Instruction, fld.name, fld.field_type{
                             .value = self.readVarString() catch |err| return mapEndOfStreamToNotEnoughData(err),
@@ -201,7 +201,7 @@ test "Decoder.read(Instruction)" {
                 return false;
             inline for (std.meta.fields(InstructionName)) |fld| {
                 if (activeField == @field(InstructionName, fld.name)) {
-                    const FieldType = std.meta.fieldInfo(Instruction, fld.name).field_type;
+                    const FieldType = @TypeOf(@field(a, fld.name));
                     const lhs = @field(a, fld.name);
                     const rhs = @field(b, fld.name);
                     if ((FieldType == Instruction.Deprecated) or (FieldType == Instruction.NoArg)) {
@@ -209,7 +209,7 @@ test "Decoder.read(Instruction)" {
                     } else if (FieldType == Instruction.CallArg) {
                         return lhs.argc == rhs.argc and std.mem.eql(u8, lhs.function, rhs.function);
                     } else {
-                        const ValType = std.meta.fieldInfo(FieldType, "value").field_type;
+                        const ValType = std.meta.fieldInfo(FieldType, .value).field_type;
                         if (ValType == []const u8) {
                             return std.mem.eql(u8, lhs.value, rhs.value);
                         } else {

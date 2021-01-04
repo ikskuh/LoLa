@@ -165,7 +165,7 @@ pub const CodeWriter = struct {
                     try self.emitU8(value.argc);
                     return;
                 } else {
-                    const ValType = std.meta.fieldInfo(fld.field_type, "value").field_type;
+                    const ValType = std.meta.fieldInfo(fld.field_type, .value).field_type;
                     switch (ValType) {
                         []const u8 => try self.emitString(value.value),
                         u8 => try self.emitU8(value.value),

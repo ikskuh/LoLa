@@ -3,3 +3,5 @@
 zig-cache
 scratchpad
 docs/
+debug/
+release/
