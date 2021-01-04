@@ -48,7 +48,7 @@
       <div class="text">
         <h3>Protection against bad code</h3>
         The LoLa runtime protects the host application from misbehaving user code by slicing code execution in
-        controllable chunks. 
+        controllable chunks.
         <br>
         Even endless loops will eventually return to the host! Out-of-memory problems will be catched by the use of
         host-controlled allocators.
@@ -74,7 +74,7 @@
         <h3>Asynchronous execution</h3>
         LoLa code is designed to suspend at any time and return control back to the host. In this example,
         <code>WaitForKey</code> will immediately return control to the host, eating no CPU time until the host decides
-        that the script should continue. 
+        that the script should continue.
         <br> Most other scripting languages don't allow that behaviour, enforcing multithreading or
         other workarounds.
       </div>
@@ -84,7 +84,8 @@
       <div class="text">
         <h3>Fully serializable state</h3>
         The LoLa runtime is designed to be saved to disk at any point not executing any code. This means that you can
-        let your script execute for 1000 instructions, save the runtime state to disk and resume execution a week later on
+        let your script execute for 1000 instructions, save the runtime state to disk and resume execution a week later
+        on
         another computer, not having any problems with script resumption. This is especially useful for games which
         often want to embed the state of their scripts into the save files.
       </div>
@@ -131,9 +132,7 @@
     <h2>Releases</h2>
 
     <p>
-      <img alt="CI status (linux)" src="https://github.com/MasterQ32/LoLa/workflows/Linux%20Build/badge.svg" />
-      <img alt="CI status (macos)" src="https://github.com/MasterQ32/LoLa/workflows/MacOS%20Build/badge.svg" />
-      <img alt="CI status (windows)" src="https://github.com/MasterQ32/LoLa/workflows/Windows%20Build/badge.svg" />
+      <img alt="CI status" src="https://github.com/MasterQ32/LoLa/workflows/Build/badge.svg" />
     </p>
     <p>
       LoLa currently has no binary releases. Source code and build instructions can be gathered at
@@ -156,5 +155,5 @@
     <p>&nbsp;</p>
   </div>
 </body>
-  
+
 </html>
