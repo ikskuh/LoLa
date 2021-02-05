@@ -389,24 +389,24 @@ pub fn tokenize(allocator: *std.mem.Allocator, diagnostics: *Diagnostics, chunk_
 
 test "Tokenizer empty string" {
     var tokenizer = Tokenizer.init("??", "");
-    std.testing.expectEqual(@TagType(Tokenizer.Result).end_of_file, tokenizer.next());
+    std.testing.expectEqual(std.meta.Tag(Tokenizer.Result).end_of_file, tokenizer.next());
 }
 
 test "Tokenizer invalid bytes" {
     var tokenizer = Tokenizer.init("??", "\\``?`a##§");
     {
         const item = tokenizer.next();
-        std.testing.expectEqual(@TagType(Tokenizer.Result).invalid_sequence, item);
+        std.testing.expectEqual(std.meta.Tag(Tokenizer.Result).invalid_sequence, item);
         std.testing.expectEqualStrings("\\``?`", item.invalid_sequence);
     }
     {
         const item = tokenizer.next();
-        std.testing.expectEqual(@TagType(Tokenizer.Result).token, item);
+        std.testing.expectEqual(std.meta.Tag(Tokenizer.Result).token, item);
         std.testing.expectEqualStrings("a", item.token.text);
     }
     {
         const item = tokenizer.next();
-        std.testing.expectEqual(@TagType(Tokenizer.Result).invalid_sequence, item);
+        std.testing.expectEqual(std.meta.Tag(Tokenizer.Result).invalid_sequence, item);
         std.testing.expectEqualStrings("##§", item.invalid_sequence);
     }
 }

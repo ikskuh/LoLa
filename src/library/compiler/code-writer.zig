@@ -60,8 +60,8 @@ pub const CodeWriter = struct {
         if (self.patches.items.len != 0)
             return error.InvalidCode;
 
-        self.loops.shrink(0);
-        self.patches.shrink(0);
+        self.loops.shrinkAndFree(0);
+        self.patches.shrinkAndFree(0);
         self.labels.clearAndFree();
         return self.code.toOwnedSlice();
     }

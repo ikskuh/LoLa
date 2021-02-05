@@ -101,7 +101,7 @@ pub const Value = union(TypeId) {
 
     /// Checks if two values are equal.
     pub fn eql(lhs: Self, rhs: Self) bool {
-        const Tag = @TagType(Self);
+        const Tag = std.meta.Tag(Self);
         if (@as(Tag, lhs) != @as(Tag, rhs))
             return false;
         return switch (lhs) {
@@ -258,7 +258,7 @@ pub const Value = union(TypeId) {
 
                 break :blk initNumber(@bitCast(f64, buffer));
             },
-            .object => initObject(@intToEnum(envsrc.ObjectHandle, try reader.readIntLittle(@TagType(envsrc.ObjectHandle)))),
+            .object => initObject(@intToEnum(envsrc.ObjectHandle, try reader.readIntLittle(std.meta.Tag(envsrc.ObjectHandle)))),
             .boolean => initBoolean((try reader.readByte()) != 0),
             .string => blk: {
                 const size = try reader.readIntLittle(u32);

@@ -26,7 +26,7 @@ pub const BinaryOperator = enum {
 pub const Expression = struct {
     const Self = @This();
 
-    pub const Type = @TagType(ExprValue);
+    pub const Type = std.meta.Tag(ExprValue);
 
     /// Starting location of the statement
     location: Location,
@@ -78,7 +78,7 @@ pub const Expression = struct {
 pub const Statement = struct {
     const Self = @This();
 
-    pub const Type = @TagType(StmtValue);
+    pub const Type = std.meta.Tag(StmtValue);
 
     /// Starting location of the statement
     location: Location,

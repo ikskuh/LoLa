@@ -67,7 +67,7 @@ pub const Scope = struct {
 
     /// Leaves a sub-scope. This is usually called at the end of a block.
     pub fn leave(self: *Self) !void {
-        self.local_variables.shrink(self.return_point.pop());
+        self.local_variables.shrinkRetainingCapacity(self.return_point.pop());
     }
 
     /// Declares are new variable.

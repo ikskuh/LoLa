@@ -350,7 +350,7 @@ pub const LoLaList = struct {
             // note:
             // we don't need to deinit() excess values here as we moved them
             // above, so they are "twice" in the list.
-            list.data.shrink(dst_index);
+            list.data.shrinkRetainingCapacity(dst_index);
 
             return .void;
         }
@@ -369,7 +369,7 @@ pub const LoLaList = struct {
                     list.data.items[index..],
                     list.data.items[index + 1 ..],
                 );
-                list.data.shrink(list.data.items.len - 1);
+                list.data.shrinkRetainingCapacity(list.data.items.len - 1);
             }
 
             return .void;
@@ -448,7 +448,7 @@ pub const LoLaList = struct {
                 for (list.data.items[new_size..]) |*item| {
                     item.deinit();
                 }
-                list.data.shrink(new_size);
+                list.data.shrinkAndFree(new_size);
             } else if (new_size > old_size) {
                 try list.data.resize(new_size);
                 for (list.data.items[old_size..]) |*item| {
@@ -467,7 +467,7 @@ pub const LoLaList = struct {
             for (list.data.items) |*item| {
                 item.deinit();
             }
-            list.data.shrink(0);
+            list.data.shrinkAndFree(0);
 
             return .void;
         }
@@ -624,7 +624,7 @@ pub const LoLaDictionary = struct {
                     item.deinit();
                     const last_index = dict.data.items.len - 1;
                     dict.data.items[index] = dict.data.items[last_index];
-                    dict.data.shrink(last_index);
+                    dict.data.shrinkRetainingCapacity(last_index);
 
                     return lola.runtime.Value.initBoolean(true);
                 }
@@ -639,7 +639,7 @@ pub const LoLaDictionary = struct {
             for (dict.data.items) |*item, index| {
                 item.deinit();
             }
-            dict.data.shrink(0);
+            dict.data.shrinkAndFree(0);
             return .void;
         }
 
