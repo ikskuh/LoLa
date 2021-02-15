@@ -42,7 +42,7 @@ pub fn disassemble(stream: anytype, cu: CompileUnit, options: DisassemblerOption
                 if (fun.entryPoint == decoder.offset) {
                     if (options.addressPrefix)
                         try stream.print("{X:0>6}\t", .{decoder.offset});
-                    try stream.print("{}:\n", .{fun.name});
+                    try stream.print("{s}:\n", .{fun.name});
                 }
             }
         }
@@ -69,14 +69,14 @@ pub fn disassemble(stream: anytype, cu: CompileUnit, options: DisassemblerOption
                         // no-op
                     } else if (fld.field_type == Instruction.CallArg) {
                         const args = @field(instr, fld.name);
-                        try stream.print(" {} {}", .{ args.function, args.argc });
+                        try stream.print(" {s} {d}", .{ args.function, args.argc });
                     } else {
                         if (@TypeOf(@field(instr, fld.name).value) == f64) {
                             try stream.print(" {d}", .{@field(instr, fld.name).value});
                         } else if (instr == .jif or instr == .jmp or instr == .jnf) {
                             try stream.print(" 0x{X}", .{@field(instr, fld.name).value});
                         } else {
-                            try stream.print(" {}", .{@field(instr, fld.name).value});
+                            try stream.print(" {any}", .{@field(instr, fld.name).value});
                         }
                     }
                 }

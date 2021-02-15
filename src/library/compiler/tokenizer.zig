@@ -423,7 +423,7 @@ test "Tokenizer (tokenize compiler test suite)" {
             },
             .end_of_file => break,
             .invalid_sequence => |seq| {
-                std.debug.print("failed to parse test file at `{}`!\n", .{
+                std.debug.print("failed to parse test file at `{s}`!\n", .{
                     seq,
                 });
                 // this test should never reach this state, as the test file

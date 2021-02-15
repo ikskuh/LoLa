@@ -55,7 +55,7 @@ pub fn main() !u8 {
         return 0;
     } else {
         try std.io.getStdErr().writer().print(
-            "Unrecognized command: {}\nSee `lola help` for detailed usage information.\n",
+            "Unrecognized command: {s}\nSee `lola help` for detailed usage information.\n",
             .{
                 module,
             },
@@ -141,7 +141,7 @@ fn disassemble(options: DisassemblerCLI, files: []const []const u8) !u8 {
 
     for (files) |arg| {
         if (files.len != 1) {
-            try stream.print("Disassembly for {}:\n", .{arg});
+            try stream.print("Disassembly for {s}:\n", .{arg});
         }
 
         var arena = std.heap.ArenaAllocator.init(gpa);
@@ -159,19 +159,19 @@ fn disassemble(options: DisassemblerCLI, files: []const []const u8) !u8 {
 
         if (options.metadata) {
             try stream.writeAll("metadata:\n");
-            try stream.print("\tcomment:         {}\n", .{cu.comment});
-            try stream.print("\tcode size:       {} bytes\n", .{cu.code.len});
-            try stream.print("\tnum globals:     {}\n", .{cu.globalCount});
-            try stream.print("\tnum temporaries: {}\n", .{cu.temporaryCount});
-            try stream.print("\tnum functions:   {}\n", .{cu.functions.len});
+            try stream.print("\tcomment:         {s}\n", .{cu.comment});
+            try stream.print("\tcode size:       {d} bytes\n", .{cu.code.len});
+            try stream.print("\tnum globals:     {d}\n", .{cu.globalCount});
+            try stream.print("\tnum temporaries: {d}\n", .{cu.temporaryCount});
+            try stream.print("\tnum functions:   {d}\n", .{cu.functions.len});
             for (cu.functions) |fun| {
-                try stream.print("\t\tep={X:0>4}  lc={: >3}  {}\n", .{
+                try stream.print("\t\tep={X:0>4}  lc={: >3}  {s}\n", .{
                     fun.entryPoint,
                     fun.localCount,
                     fun.name,
                 });
             }
-            try stream.print("\tnum debug syms:  {}\n", .{cu.debugSymbols.len});
+            try stream.print("\tnum debug syms:  {d}\n", .{cu.debugSymbols.len});
 
             try stream.writeAll("disassembly:\n");
         }
@@ -270,7 +270,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
         const stderr = std.io.getStdErr().writer();
 
         if (err == error.FileNotFound) {
-            try stderr.print("Could not find '{}'. Are you sure you passed the right file?\n", .{files[0]});
+            try stderr.print("Could not find '{s}'. Are you sure you passed the right file?\n", .{files[0]});
             return 1;
         }
 
@@ -280,7 +280,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
             .source => return 1, // We already have the diagnostic output of the compiler anyways
         });
         if (err != error.InvalidFormat and err != error.CompileError) {
-            try stderr.print("The following error happened: {}\n", .{
+            try stderr.print("The following error happened: {s}\n", .{
                 @errorName(err),
             });
         }
@@ -342,10 +342,10 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
                     if (@errorReturnTrace()) |err_trace| {
                         std.debug.dumpStackTrace(err_trace.*);
                     } else {
-                        try stderr.print("Panic during execution: {}\n", .{@errorName(err)});
+                        try stderr.print("Panic during execution: {s}\n", .{@errorName(err)});
                     }
                 } else {
-                    try stderr.print("Panic during execution: {}\n", .{@errorName(err)});
+                    try stderr.print("Panic during execution: {s}\n", .{@errorName(err)});
                 }
                 try stderr.print("Call stack:\n", .{});
 
@@ -364,7 +364,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
             switch (result) {
                 .completed => return 0,
                 .exhausted => {
-                    try std.io.getStdErr().writer().print("Execution exhausted after {} instructions!\n", .{
+                    try std.io.getStdErr().writer().print("Execution exhausted after {d} instructions!\n", .{
                         options.limit,
                     });
                     return 1;
@@ -392,7 +392,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
             emulation: while (true) {
                 var result = vm.execute(options.limit) catch |err| {
                     var stderr = std.io.getStdErr().writer();
-                    try stderr.print("Panic during execution: {}\n", .{@errorName(err)});
+                    try stderr.print("Panic during execution: {s}\n", .{@errorName(err)});
                     try stderr.print("Call stack:\n", .{});
 
                     try vm.printStackTrace(stderr);
@@ -410,7 +410,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
                 switch (result) {
                     .completed => break :emulation,
                     .exhausted => {
-                        try std.io.getStdErr().writer().print("Execution exhausted after {} instructions!\n", .{
+                        try std.io.getStdErr().writer().print("Execution exhausted after {d} instructions!\n", .{
                             options.limit,
                         });
                         return 1;
@@ -427,7 +427,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
 
         try std.io.getStdErr().writer().print(
             \\Benchmark result:
-            \\    Number of runs:     {}
+            \\    Number of runs:     {d}
             \\    Mean time:          {d} µs
             \\    Mean #instructions: {d}
             \\    Mean #stalls:       {d}

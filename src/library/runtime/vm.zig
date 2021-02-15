@@ -795,7 +795,7 @@ pub const VM = struct {
                 current_fun = fun.name;
             }
 
-            try stream.print("[{}] at offset {} ({}:{}:{}) in function {}\n", .{
+            try stream.print("[{d}] at offset {d} ({s}:{d}:{d}) in function {s}\n", .{
                 i,
                 call.decoder.offset,
                 stack_compile_unit.comment,

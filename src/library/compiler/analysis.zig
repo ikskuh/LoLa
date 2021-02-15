@@ -86,7 +86,7 @@ fn validateExpression(state: *AnalysisState, diagnostics: *Diagnostics, scope: *
             }
 
             const variable = scope.get(variable_name) orelse {
-                try diagnostics.emit(.@"error", expression.location, "Use of undeclared variable {}", .{
+                try diagnostics.emit(.@"error", expression.location, "Use of undeclared variable {s}", .{
                     variable_name,
                 });
                 return TypeSet.any;
@@ -185,7 +185,7 @@ fn validateExpression(state: *AnalysisState, diagnostics: *Diagnostics, scope: *
 
 fn validateStore(state: *AnalysisState, diagnostics: *Diagnostics, scope: *Scope, expression: ast.Expression, type_hint: TypeSet) ValidationError!void {
     if (!expression.isAssignable()) {
-        try diagnostics.emit(.@"error", expression.location, "Expected array indexer or a variable, got {}", .{
+        try diagnostics.emit(.@"error", expression.location, "Expected array indexer or a variable, got {s}", .{
             expressionTypeToString(expression.type),
         });
         return;
@@ -253,7 +253,7 @@ fn validateStatement(state: *AnalysisState, diagnostics: *Diagnostics, scope: *S
             if (ass.target.isAssignable()) {
                 try validateStore(state, diagnostics, scope, ass.target, value_type);
             } else {
-                try diagnostics.emit(.@"error", ass.target.location, "Expected either a array indexer or a variable, got {}", .{
+                try diagnostics.emit(.@"error", ass.target.location, "Expected either a array indexer or a variable, got {s}", .{
                     @tagName(@as(ast.Expression.Type, ass.target.type)),
                 });
             }

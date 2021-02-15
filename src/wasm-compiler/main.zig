@@ -166,7 +166,7 @@ const API = struct {
         // Run the virtual machine for up to 150 instructions
         var result = vm.execute(150) catch |err| {
             // When the virtua machine panics, we receive a Zig error
-            try std.fmt.format(debug_writer_lf, "\x1B[91mLoLa Panic: {}\x1B[m\n", .{@errorName(err)});
+            try std.fmt.format(debug_writer_lf, "\x1B[91mLoLa Panic: {s}\x1B[m\n", .{@errorName(err)});
 
             try vm.printStackTrace(debug_writer_lf);
 

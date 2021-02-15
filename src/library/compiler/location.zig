@@ -22,7 +22,7 @@ pub const Location = struct {
     }
 
     pub fn format(self: @This(), comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
-        try writer.print("{}:{}:{}", .{ self.chunk, self.line, self.column });
+        try writer.print("{s}:{d}:{d}", .{ self.chunk, self.line, self.column });
     }
 
     pub fn merge(a: Location, b: Location) Location {

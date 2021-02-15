@@ -112,7 +112,7 @@ pub fn main() !u8 {
             else
                 "";
             try outfile.writer().print(
-                \\<li><a href="{}" {}>{}</a></li>
+                \\<li><a href="{s}" {s}>{s}</a></li>
                 \\
             , .{
                 std.fs.path.basename(menu.output_file_name),
@@ -127,7 +127,7 @@ pub fn main() !u8 {
             \\        </div>
             \\        <div id="sectInfo" class="">
             \\          <h2><span>LoLa Version</span></h2>
-            \\          <p class="str" id="tdZigVer">{}</p>
+            \\          <p class="str" id="tdZigVer">{s}</p>
             \\        </div>
             \\      </nav>
             \\    </div>

@@ -745,9 +745,9 @@ pub fn parse(
                 },
                 .number_literal => {
                     const val = if (std.mem.startsWith(u8, token.text, "0x"))
-                        @intToFloat(f64, std.fmt.parseInt(i54, token.text[2..], 16) catch return try self.emitDiagnostics("`{}` is not a valid hexadecimal number!", .{token.text}))
+                        @intToFloat(f64, std.fmt.parseInt(i54, token.text[2..], 16) catch return try self.emitDiagnostics("`{s}` is not a valid hexadecimal number!", .{token.text}))
                     else
-                        std.fmt.parseFloat(f64, token.text) catch return try self.emitDiagnostics("`{}` is not a valid number!", .{token.text});
+                        std.fmt.parseFloat(f64, token.text) catch return try self.emitDiagnostics("`{s}` is not a valid number!", .{token.text});
 
                     return ast.Expression{
                         .location = token.location,
@@ -761,14 +761,14 @@ pub fn parse(
                     return ast.Expression{
                         .location = token.location,
                         .type = .{
-                            .string_literal = self.escapeString(token.text[1 .. token.text.len - 1]) catch return try self.emitDiagnostics("Invalid escape sequence in {}!", .{token.text}),
+                            .string_literal = self.escapeString(token.text[1 .. token.text.len - 1]) catch return try self.emitDiagnostics("Invalid escape sequence in {s}!", .{token.text}),
                         },
                     };
                 },
                 .character_literal => {
                     std.debug.assert(token.text.len >= 2);
 
-                    const escaped_text = self.escapeString(token.text[1 .. token.text.len - 1]) catch return try self.emitDiagnostics("Invalid escape sequence in {}!", .{token.text});
+                    const escaped_text = self.escapeString(token.text[1 .. token.text.len - 1]) catch return try self.emitDiagnostics("Invalid escape sequence in {s}!", .{token.text});
 
                     var value: u21 = undefined;
 
@@ -779,10 +779,10 @@ pub fn parse(
                         // it's not a perfect heuristic, but it's okay.
                         value = escaped_text[0];
                     } else {
-                        const utf8_len = std.unicode.utf8ByteSequenceLength(escaped_text[0]) catch return try self.emitDiagnostics("Invalid utf8 sequence: `{}`!", .{escaped_text});
+                        const utf8_len = std.unicode.utf8ByteSequenceLength(escaped_text[0]) catch return try self.emitDiagnostics("Invalid utf8 sequence: `{s}`!", .{escaped_text});
                         if (escaped_text.len != utf8_len)
                             return error.SyntaxError;
-                        value = std.unicode.utf8Decode(escaped_text[0..utf8_len]) catch return try self.emitDiagnostics("Invalid utf8 sequence: `{}`!", .{escaped_text});
+                        value = std.unicode.utf8Decode(escaped_text[0..utf8_len]) catch return try self.emitDiagnostics("Invalid utf8 sequence: `{s}`!", .{escaped_text});
                     }
 
                     return ast.Expression{
