@@ -434,13 +434,13 @@ test "validate correct program" {
     var pgm = try @import("parser.zig").parse(std.testing.allocator, &diagnostics, seq);
     defer pgm.deinit();
 
-    std.testing.expectEqual(true, try validate(std.testing.allocator, &diagnostics, pgm));
+    try std.testing.expectEqual(true, try validate(std.testing.allocator, &diagnostics, pgm));
 
     for (diagnostics.messages.items) |msg| {
         std.debug.print("{s}\n", .{msg});
     }
 
-    std.testing.expectEqual(@as(usize, 0), diagnostics.messages.items.len);
+    try std.testing.expectEqual(@as(usize, 0), diagnostics.messages.items.len);
 }
 
 fn expectAnalysisErrors(source: []const u8, expected_messages: []const []const u8) !void {
@@ -455,11 +455,11 @@ fn expectAnalysisErrors(source: []const u8, expected_messages: []const []const u
     var pgm = try @import("parser.zig").parse(std.testing.allocator, &diagnostics, seq);
     defer pgm.deinit();
 
-    std.testing.expectEqual(false, try validate(std.testing.allocator, &diagnostics, pgm));
+    try std.testing.expectEqual(false, try validate(std.testing.allocator, &diagnostics, pgm));
 
-    std.testing.expectEqual(expected_messages.len, diagnostics.messages.items.len);
+    try std.testing.expectEqual(expected_messages.len, diagnostics.messages.items.len);
     for (expected_messages) |expected, i| {
-        std.testing.expectEqualStrings(expected, diagnostics.messages.items[i].message);
+        try std.testing.expectEqualStrings(expected, diagnostics.messages.items[i].message);
     }
 }
 

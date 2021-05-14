@@ -448,7 +448,7 @@ test "code generation" {
     var compile_unit = try generateIR(std.testing.allocator, pgm, "test unit");
     defer compile_unit.deinit();
 
-    std.testing.expectEqual(@as(usize, 0), diagnostics.messages.items.len);
+    try std.testing.expectEqual(@as(usize, 0), diagnostics.messages.items.len);
 
-    std.testing.expectEqualStrings("test unit", compile_unit.comment);
+    try std.testing.expectEqualStrings("test unit", compile_unit.comment);
 }

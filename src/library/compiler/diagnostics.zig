@@ -5,9 +5,7 @@ const Location = @import("location.zig").Location;
 pub const Diagnostics = struct {
     const Self = @This();
 
-    pub const MessageKind = enum {
-        @"error", warning, notice
-    };
+    pub const MessageKind = enum { @"error", warning, notice };
 
     pub const Message = struct {
         kind: MessageKind,
@@ -71,25 +69,25 @@ test "diagnostic list" {
     var diagnostics = Diagnostics.init(std.testing.allocator);
     defer diagnostics.deinit();
 
-    std.testing.expectEqual(false, diagnostics.hasErrors());
-    std.testing.expectEqual(@as(usize, 0), diagnostics.messages.items.len);
+    try std.testing.expectEqual(false, diagnostics.hasErrors());
+    try std.testing.expectEqual(@as(usize, 0), diagnostics.messages.items.len);
 
     try diagnostics.emit(.warning, loc, "{s}", .{"this is a warning!"});
 
-    std.testing.expectEqual(false, diagnostics.hasErrors());
-    std.testing.expectEqual(@as(usize, 1), diagnostics.messages.items.len);
+    try std.testing.expectEqual(false, diagnostics.hasErrors());
+    try std.testing.expectEqual(@as(usize, 1), diagnostics.messages.items.len);
 
     try diagnostics.emit(.notice, loc, "{s}", .{"this is a notice!"});
 
-    std.testing.expectEqual(false, diagnostics.hasErrors());
-    std.testing.expectEqual(@as(usize, 2), diagnostics.messages.items.len);
+    try std.testing.expectEqual(false, diagnostics.hasErrors());
+    try std.testing.expectEqual(@as(usize, 2), diagnostics.messages.items.len);
 
     try diagnostics.emit(.@"error", loc, "{s}", .{"this is a error!"});
 
-    std.testing.expectEqual(true, diagnostics.hasErrors());
-    std.testing.expectEqual(@as(usize, 3), diagnostics.messages.items.len);
+    try std.testing.expectEqual(true, diagnostics.hasErrors());
+    try std.testing.expectEqual(@as(usize, 3), diagnostics.messages.items.len);
 
-    std.testing.expectEqualStrings("this is a warning!", diagnostics.messages.items[0].message);
-    std.testing.expectEqualStrings("this is a notice!", diagnostics.messages.items[1].message);
-    std.testing.expectEqualStrings("this is a error!", diagnostics.messages.items[2].message);
+    try std.testing.expectEqualStrings("this is a warning!", diagnostics.messages.items[0].message);
+    try std.testing.expectEqualStrings("this is a notice!", diagnostics.messages.items[1].message);
+    try std.testing.expectEqualStrings("this is a error!", diagnostics.messages.items[2].message);
 }

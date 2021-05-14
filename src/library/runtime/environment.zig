@@ -603,17 +603,17 @@ test "Environment" {
     const f2 = env.getMethod("fun_2") orelse unreachable;
     const f3 = env.getMethod("fun 3") orelse unreachable;
 
-    std.testing.expectEqual(@as(usize, 10), f1.script.entryPoint);
-    std.testing.expectEqual(@as(usize, 5), f1.script.localCount);
-    std.testing.expectEqual(&env, f1.script.environment.?);
+    try std.testing.expectEqual(@as(usize, 10), f1.script.entryPoint);
+    try std.testing.expectEqual(@as(usize, 5), f1.script.localCount);
+    try std.testing.expectEqual(&env, f1.script.environment.?);
 
-    std.testing.expectEqual(@as(usize, 21), f2.script.entryPoint);
-    std.testing.expectEqual(@as(usize, 1), f2.script.localCount);
-    std.testing.expectEqual(&env, f2.script.environment.?);
+    try std.testing.expectEqual(@as(usize, 21), f2.script.entryPoint);
+    try std.testing.expectEqual(@as(usize, 1), f2.script.localCount);
+    try std.testing.expectEqual(&env, f2.script.environment.?);
 
-    std.testing.expectEqual(@as(usize, 32), f3.script.entryPoint);
-    std.testing.expectEqual(@as(usize, 3), f3.script.localCount);
-    std.testing.expectEqual(&env, f3.script.environment.?);
+    try std.testing.expectEqual(@as(usize, 32), f3.script.entryPoint);
+    try std.testing.expectEqual(@as(usize, 3), f3.script.localCount);
+    try std.testing.expectEqual(&env, f3.script.environment.?);
 }
 
 test "Function.wrap" {

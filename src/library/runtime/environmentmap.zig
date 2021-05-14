@@ -70,11 +70,11 @@ test "EnvironmentMap" {
     try map.add(1, &env_1);
     try map.add(2, &env_2);
 
-    std.testing.expectEqual(@as(?*lola.runtime.Environment, &env_1), map.queryById(1));
-    std.testing.expectEqual(@as(?*lola.runtime.Environment, &env_2), map.queryById(2));
-    std.testing.expectEqual(@as(?*lola.runtime.Environment, null), map.queryById(3));
+    try std.testing.expectEqual(@as(?*lola.runtime.Environment, &env_1), map.queryById(1));
+    try std.testing.expectEqual(@as(?*lola.runtime.Environment, &env_2), map.queryById(2));
+    try std.testing.expectEqual(@as(?*lola.runtime.Environment, null), map.queryById(3));
 
-    std.testing.expectEqual(@as(?u32, 1), map.queryByPtr(&env_1));
-    std.testing.expectEqual(@as(?u32, 2), map.queryByPtr(&env_2));
-    std.testing.expectEqual(@as(?u32, null), map.queryByPtr(&env_3));
+    try std.testing.expectEqual(@as(?u32, 1), map.queryByPtr(&env_1));
+    try std.testing.expectEqual(@as(?u32, 2), map.queryByPtr(&env_2));
+    try std.testing.expectEqual(@as(?u32, null), map.queryByPtr(&env_3));
 }

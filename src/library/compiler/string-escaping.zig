@@ -80,14 +80,14 @@ test "escape empty string" {
     const str = try escapeString(std.testing.allocator, "");
     defer std.testing.allocator.free(str);
 
-    std.testing.expectEqualStrings("", str);
+    try std.testing.expectEqualStrings("", str);
 }
 
 test "escape string without escape codes" {
     const str = try escapeString(std.testing.allocator, "ixtAOy9UbcIsIijUi42mtzOSwTiNolZAajBeS9W2PCgkyt7fDbuSQcjqKVRoBhalPBwThIkcVRa6W6tK2go1m7V2WoIrQNxuPzpf");
     defer std.testing.allocator.free(str);
 
-    std.testing.expectEqualStrings("ixtAOy9UbcIsIijUi42mtzOSwTiNolZAajBeS9W2PCgkyt7fDbuSQcjqKVRoBhalPBwThIkcVRa6W6tK2go1m7V2WoIrQNxuPzpf", str);
+    try std.testing.expectEqualStrings("ixtAOy9UbcIsIijUi42mtzOSwTiNolZAajBeS9W2PCgkyt7fDbuSQcjqKVRoBhalPBwThIkcVRa6W6tK2go1m7V2WoIrQNxuPzpf", str);
 }
 
 // \a 7   Alert / Bell
@@ -103,39 +103,39 @@ test "escape string with predefined escape sequences" {
     const str = try escapeString(std.testing.allocator, " \\a \\b \\t \\n \\r \\e \\\" \\' ");
     defer std.testing.allocator.free(str);
 
-    std.testing.expectEqualStrings(" \x07 \x08 \x09 \x0A \x0D \x1B \" \' ", str);
+    try std.testing.expectEqualStrings(" \x07 \x08 \x09 \x0A \x0D \x1B \" \' ", str);
 }
 
 test "escape string with hexadecimal escape sequences" {
     const str = try escapeString(std.testing.allocator, " \\xcA \\x84 \\x2d \\x75 \\xb7 \\xF1 \\xf3 \\x9e ");
     defer std.testing.allocator.free(str);
 
-    std.testing.expectEqualStrings(" \xca \x84 \x2d \x75 \xb7 \xf1 \xf3 \x9e ", str);
+    try std.testing.expectEqualStrings(" \xca \x84 \x2d \x75 \xb7 \xf1 \xf3 \x9e ", str);
 }
 
 test "incomplete normal escape sequence" {
-    std.testing.expectError(error.IncompleteEscapeSequence, escapeString(std.testing.allocator, "\\"));
+    try std.testing.expectError(error.IncompleteEscapeSequence, escapeString(std.testing.allocator, "\\"));
 }
 
 test "incomplete normal hex sequence" {
-    std.testing.expectError(error.IncompleteEscapeSequence, escapeString(std.testing.allocator, "\\x"));
-    std.testing.expectError(error.IncompleteEscapeSequence, escapeString(std.testing.allocator, "\\xA"));
+    try std.testing.expectError(error.IncompleteEscapeSequence, escapeString(std.testing.allocator, "\\x"));
+    try std.testing.expectError(error.IncompleteEscapeSequence, escapeString(std.testing.allocator, "\\xA"));
 }
 
 test "invalid hex sequence" {
-    std.testing.expectError(error.IncompleteEscapeSequence, escapeString(std.testing.allocator, "\\xXX"));
+    try std.testing.expectError(error.IncompleteEscapeSequence, escapeString(std.testing.allocator, "\\xXX"));
 }
 
 test "escape string with tight predefined escape sequence" {
     const str = try escapeString(std.testing.allocator, "\\a");
     defer std.testing.allocator.free(str);
 
-    std.testing.expectEqualStrings("\x07", str);
+    try std.testing.expectEqualStrings("\x07", str);
 }
 
 test "escape string with tight hexadecimal escape sequence" {
     const str = try escapeString(std.testing.allocator, "\\xca");
     defer std.testing.allocator.free(str);
 
-    std.testing.expectEqualStrings("\xca", str);
+    try std.testing.expectEqualStrings("\xca", str);
 }

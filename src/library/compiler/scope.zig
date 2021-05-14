@@ -157,21 +157,21 @@ test "scope declare/get" {
 
     try scope.declare("foo", true);
 
-    std.testing.expectError(error.AlreadyDeclared, scope.declare("foo", true));
+    try std.testing.expectError(error.AlreadyDeclared, scope.declare("foo", true));
 
     try scope.enter();
 
     try scope.declare("bar", true);
 
-    std.testing.expect(scope.get("foo").?.type == .global);
-    std.testing.expect(scope.get("bar").?.type == .local);
-    std.testing.expect(scope.get("bam") == null);
+    try std.testing.expect(scope.get("foo").?.type == .global);
+    try std.testing.expect(scope.get("bar").?.type == .local);
+    try std.testing.expect(scope.get("bam") == null);
 
     try scope.leave();
 
-    std.testing.expect(scope.get("foo").?.type == .global);
-    std.testing.expect(scope.get("bar") == null);
-    std.testing.expect(scope.get("bam") == null);
+    try std.testing.expect(scope.get("foo").?.type == .global);
+    try std.testing.expect(scope.get("bar") == null);
+    try std.testing.expect(scope.get("bam") == null);
 }
 
 test "variable allocation" {
@@ -182,9 +182,9 @@ test "variable allocation" {
     try scope.declare("bar", true);
     try scope.declare("bam", true);
 
-    std.testing.expect(scope.get("foo").?.storage_slot == 0);
-    std.testing.expect(scope.get("bar").?.storage_slot == 1);
-    std.testing.expect(scope.get("bam").?.storage_slot == 2);
+    try std.testing.expect(scope.get("foo").?.storage_slot == 0);
+    try std.testing.expect(scope.get("bar").?.storage_slot == 1);
+    try std.testing.expect(scope.get("bam").?.storage_slot == 2);
 
     try scope.enter();
 
@@ -195,23 +195,23 @@ test "variable allocation" {
     try scope.declare("bar", true);
     try scope.declare("bam", true);
 
-    std.testing.expect(scope.get("foo").?.storage_slot == 0);
-    std.testing.expect(scope.get("bar").?.storage_slot == 1);
-    std.testing.expect(scope.get("bam").?.storage_slot == 2);
+    try std.testing.expect(scope.get("foo").?.storage_slot == 0);
+    try std.testing.expect(scope.get("bar").?.storage_slot == 1);
+    try std.testing.expect(scope.get("bam").?.storage_slot == 2);
 
-    std.testing.expect(scope.get("foo").?.type == .local);
-    std.testing.expect(scope.get("bar").?.type == .local);
-    std.testing.expect(scope.get("bam").?.type == .local);
-
-    try scope.leave();
-
-    std.testing.expect(scope.get("foo").?.type == .local);
-    std.testing.expect(scope.get("bar").?.type == .global);
-    std.testing.expect(scope.get("bam").?.type == .global);
+    try std.testing.expect(scope.get("foo").?.type == .local);
+    try std.testing.expect(scope.get("bar").?.type == .local);
+    try std.testing.expect(scope.get("bam").?.type == .local);
 
     try scope.leave();
 
-    std.testing.expect(scope.get("foo").?.type == .global);
-    std.testing.expect(scope.get("bar").?.type == .global);
-    std.testing.expect(scope.get("bam").?.type == .global);
+    try std.testing.expect(scope.get("foo").?.type == .local);
+    try std.testing.expect(scope.get("bar").?.type == .global);
+    try std.testing.expect(scope.get("bam").?.type == .global);
+
+    try scope.leave();
+
+    try std.testing.expect(scope.get("foo").?.type == .global);
+    try std.testing.expect(scope.get("bar").?.type == .global);
+    try std.testing.expect(scope.get("bam").?.type == .global);
 }

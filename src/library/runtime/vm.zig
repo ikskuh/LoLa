@@ -932,7 +932,7 @@ test "VM basic execution" {
         fn verify(vm: *VM) !void {
             const result = try vm.execute(1);
 
-            std.testing.expectEqual(ExecutionResult.completed, result);
+            try std.testing.expectEqual(ExecutionResult.completed, result);
         }
     });
 }
@@ -949,7 +949,7 @@ test "VM endless loop exhaustion" {
 
         fn verify(vm: *VM) !void {
             const result = try vm.execute(1000);
-            std.testing.expectEqual(ExecutionResult.exhausted, result);
+            try std.testing.expectEqual(ExecutionResult.exhausted, result);
         }
     });
 }
@@ -964,7 +964,7 @@ test "VM invalid code panic" {
         };
 
         fn verify(vm: *VM) !void {
-            std.testing.expectError(error.InvalidBytecode, vm.execute(1000));
+            try std.testing.expectError(error.InvalidBytecode, vm.execute(1000));
         }
     });
 }
@@ -980,7 +980,7 @@ test "VM invalid jump panic" {
         };
 
         fn verify(vm: *VM) !void {
-            std.testing.expectError(error.InvalidJump, vm.execute(1000));
+            try std.testing.expectError(error.InvalidJump, vm.execute(1000));
         }
     });
 }

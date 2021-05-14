@@ -62,7 +62,8 @@ pub fn disassemble(stream: anytype, cu: CompileUnit, options: DisassemblerOption
             try stream.writeAll(@tagName(@as(InstructionName, instr)));
 
             inline for (std.meta.fields(Instruction)) |fld| {
-                if (instr == @field(InstructionName, fld.name)) {
+                const instr_name = @field(InstructionName, fld.name);
+                if (instr == instr_name) {
                     if (fld.field_type == Instruction.Deprecated) {
                         // no-op
                     } else if (fld.field_type == Instruction.NoArg) {
@@ -73,7 +74,7 @@ pub fn disassemble(stream: anytype, cu: CompileUnit, options: DisassemblerOption
                     } else {
                         if (@TypeOf(@field(instr, fld.name).value) == f64) {
                             try stream.print(" {d}", .{@field(instr, fld.name).value});
-                        } else if (instr == .jif or instr == .jmp or instr == .jnf) {
+                        } else if (instr_name == .jif or instr_name == .jmp or instr_name == .jnf) {
                             try stream.print(" 0x{X}", .{@field(instr, fld.name).value});
                         } else {
                             try stream.print(" {any}", .{@field(instr, fld.name).value});

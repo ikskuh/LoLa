@@ -520,7 +520,7 @@ const TestObject = struct {
     pub fn deserializeObject(allocator: *std.mem.Allocator, reader: InputStream.Reader) !*Self {
         var buf: [11]u8 = undefined;
         try reader.readNoEof(&buf);
-        std.testing.expectEqualStrings("test object", &buf);
+        try std.testing.expectEqualStrings("test object", &buf);
         deserialize_instance.was_deserialized = true;
         return &deserialize_instance;
     }
@@ -562,18 +562,18 @@ test "Object" {
     var test_obj = TestObject{};
     var object = Object.init(&test_obj);
 
-    std.testing.expectEqual(false, test_obj.got_destroy_call);
-    std.testing.expectEqual(false, test_obj.got_method_query);
+    try std.testing.expectEqual(false, test_obj.got_destroy_call);
+    try std.testing.expectEqual(false, test_obj.got_method_query);
 
     _ = object.getMethod("irrelevant");
 
-    std.testing.expectEqual(false, test_obj.got_destroy_call);
-    std.testing.expectEqual(true, test_obj.got_method_query);
+    try std.testing.expectEqual(false, test_obj.got_destroy_call);
+    try std.testing.expectEqual(true, test_obj.got_method_query);
 
     object.destroyObject();
 
-    std.testing.expectEqual(true, test_obj.got_destroy_call);
-    std.testing.expectEqual(true, test_obj.got_method_query);
+    try std.testing.expectEqual(true, test_obj.got_destroy_call);
+    try std.testing.expectEqual(true, test_obj.got_method_query);
 }
 
 test "ObjectPool basic object create/destroy cycle" {
@@ -584,22 +584,22 @@ test "ObjectPool basic object create/destroy cycle" {
 
     const handle = try pool.createObject(&test_obj);
 
-    std.testing.expectEqual(false, test_obj.got_destroy_call);
-    std.testing.expectEqual(false, test_obj.got_method_query);
+    try std.testing.expectEqual(false, test_obj.got_destroy_call);
+    try std.testing.expectEqual(false, test_obj.got_method_query);
 
-    std.testing.expectEqual(true, pool.isObjectValid(handle));
+    try std.testing.expectEqual(true, pool.isObjectValid(handle));
 
     _ = try pool.getMethod(handle, "irrelevant");
 
-    std.testing.expectEqual(false, test_obj.got_destroy_call);
-    std.testing.expectEqual(true, test_obj.got_method_query);
+    try std.testing.expectEqual(false, test_obj.got_destroy_call);
+    try std.testing.expectEqual(true, test_obj.got_method_query);
 
     pool.destroyObject(handle);
 
-    std.testing.expectEqual(true, test_obj.got_destroy_call);
-    std.testing.expectEqual(true, test_obj.got_method_query);
+    try std.testing.expectEqual(true, test_obj.got_destroy_call);
+    try std.testing.expectEqual(true, test_obj.got_method_query);
 
-    std.testing.expectEqual(false, pool.isObjectValid(handle));
+    try std.testing.expectEqual(false, pool.isObjectValid(handle));
 }
 
 test "ObjectPool automatic cleanup" {
@@ -610,15 +610,15 @@ test "ObjectPool automatic cleanup" {
 
     const handle = try pool.createObject(&test_obj);
 
-    std.testing.expectEqual(false, test_obj.got_destroy_call);
-    std.testing.expectEqual(false, test_obj.got_method_query);
+    try std.testing.expectEqual(false, test_obj.got_destroy_call);
+    try std.testing.expectEqual(false, test_obj.got_method_query);
 
-    std.testing.expectEqual(true, pool.isObjectValid(handle));
+    try std.testing.expectEqual(true, pool.isObjectValid(handle));
 
     pool.deinit();
 
-    std.testing.expectEqual(true, test_obj.got_destroy_call);
-    std.testing.expectEqual(false, test_obj.got_method_query);
+    try std.testing.expectEqual(true, test_obj.got_destroy_call);
+    try std.testing.expectEqual(false, test_obj.got_method_query);
 }
 
 test "ObjectPool garbage collection" {
@@ -629,16 +629,16 @@ test "ObjectPool garbage collection" {
 
     const handle = try pool.createObject(&test_obj);
 
-    std.testing.expectEqual(false, test_obj.got_destroy_call);
-    std.testing.expectEqual(true, pool.isObjectValid(handle));
+    try std.testing.expectEqual(false, test_obj.got_destroy_call);
+    try std.testing.expectEqual(true, pool.isObjectValid(handle));
 
     // Prevent the object from being collected because it is marked as used
     pool.clearUsageCounters();
     try pool.markUsed(handle);
     pool.collectGarbage();
 
-    std.testing.expectEqual(false, test_obj.got_destroy_call);
-    std.testing.expectEqual(true, pool.isObjectValid(handle));
+    try std.testing.expectEqual(false, test_obj.got_destroy_call);
+    try std.testing.expectEqual(true, pool.isObjectValid(handle));
 
     // Prevent the object from being collected because it is marked as referenced
     try pool.retainObject(handle);
@@ -646,15 +646,15 @@ test "ObjectPool garbage collection" {
     pool.collectGarbage();
     try pool.releaseObject(handle);
 
-    std.testing.expectEqual(false, test_obj.got_destroy_call);
-    std.testing.expectEqual(true, pool.isObjectValid(handle));
+    try std.testing.expectEqual(false, test_obj.got_destroy_call);
+    try std.testing.expectEqual(true, pool.isObjectValid(handle));
 
     // Destroy the object by not marking it referenced at last
     pool.clearUsageCounters();
     pool.collectGarbage();
 
-    std.testing.expectEqual(true, test_obj.got_destroy_call);
-    std.testing.expectEqual(false, pool.isObjectValid(handle));
+    try std.testing.expectEqual(true, test_obj.got_destroy_call);
+    try std.testing.expectEqual(false, pool.isObjectValid(handle));
 }
 
 // TODO: Write tests for walkEnvironment and walkVM
@@ -669,12 +669,12 @@ test "ObjectPool serialization" {
         var test_obj = TestObject{};
         const id = try pool.createObject(&test_obj);
 
-        std.testing.expectEqual(false, test_obj.was_serialized);
+        try std.testing.expectEqual(false, test_obj.was_serialized);
 
         var fbs = std.io.fixedBufferStream(&backing_buffer);
         try pool.serialize(fbs.writer());
 
-        std.testing.expectEqual(true, test_obj.was_serialized);
+        try std.testing.expectEqual(true, test_obj.was_serialized);
 
         break :blk id;
     };
@@ -682,13 +682,13 @@ test "ObjectPool serialization" {
     {
         var fbs = std.io.fixedBufferStream(&backing_buffer);
 
-        std.testing.expectEqual(false, TestObject.deserialize_instance.was_deserialized);
+        try std.testing.expectEqual(false, TestObject.deserialize_instance.was_deserialized);
 
         var pool = try TestPool.deserialize(std.testing.allocator, fbs.reader());
         defer pool.deinit();
 
-        std.testing.expectEqual(true, TestObject.deserialize_instance.was_deserialized);
+        try std.testing.expectEqual(true, TestObject.deserialize_instance.was_deserialized);
 
-        std.testing.expect(pool.isObjectValid(serialized_id));
+        try std.testing.expect(pool.isObjectValid(serialized_id));
     }
 }

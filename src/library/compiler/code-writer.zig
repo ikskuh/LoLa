@@ -240,7 +240,7 @@ test "empty code generation" {
     const mem = try writer.finalize();
     defer std.testing.allocator.free(mem);
 
-    std.testing.expectEqualSlices(u8, "", mem);
+    try std.testing.expectEqualSlices(u8, "", mem);
 }
 
 test "emitting primitive values" {
@@ -255,7 +255,7 @@ test "emitting primitive values" {
     const mem = try writer.finalize();
     defer std.testing.allocator.free(mem);
 
-    std.testing.expectEqualSlices(u8, "\x11\x22\x33\x44\x55\x66\x77\x1B", mem);
+    try std.testing.expectEqualSlices(u8, "\x11\x22\x33\x44\x55\x66\x77\x1B", mem);
 }
 
 test "emitting variable-width strings" {
@@ -267,7 +267,7 @@ test "emitting variable-width strings" {
     const mem = try writer.finalize();
     defer std.testing.allocator.free(mem);
 
-    std.testing.expectEqualSlices(u8, "\x05\x00Hello", mem);
+    try std.testing.expectEqualSlices(u8, "\x05\x00Hello", mem);
 }
 
 test "label handling" {
@@ -285,7 +285,7 @@ test "label handling" {
     const mem = try writer.finalize();
     defer std.testing.allocator.free(mem);
 
-    std.testing.expectEqualSlices(u8, "\x04\x00\x00\x00\x04\x00\x00\x00", mem);
+    try std.testing.expectEqualSlices(u8, "\x04\x00\x00\x00\x04\x00\x00\x00", mem);
 }
 
 test "label creation" {
@@ -296,9 +296,9 @@ test "label creation" {
     const label2 = try writer.createLabel();
     const label3 = try writer.createLabel();
 
-    std.testing.expect(label1 != label2);
-    std.testing.expect(label1 != label3);
-    std.testing.expect(label2 != label3);
+    try std.testing.expect(label1 != label2);
+    try std.testing.expect(label1 != label3);
+    try std.testing.expect(label2 != label3);
 }
 
 test "loop creation, break and continue emission" {
@@ -308,8 +308,8 @@ test "loop creation, break and continue emission" {
     const label_start = try writer.createLabel();
     const label_end = try writer.createLabel();
 
-    std.testing.expectError(error.NotInLoop, writer.emitBreak());
-    std.testing.expectError(error.NotInLoop, writer.emitContinue());
+    try std.testing.expectError(error.NotInLoop, writer.emitBreak());
+    try std.testing.expectError(error.NotInLoop, writer.emitContinue());
 
     try writer.emitRaw("A");
 
@@ -335,13 +335,13 @@ test "loop creation, break and continue emission" {
 
     writer.popLoop();
 
-    std.testing.expectError(error.NotInLoop, writer.emitBreak());
-    std.testing.expectError(error.NotInLoop, writer.emitContinue());
+    try std.testing.expectError(error.NotInLoop, writer.emitBreak());
+    try std.testing.expectError(error.NotInLoop, writer.emitContinue());
 
     const mem = try writer.finalize();
     defer std.testing.allocator.free(mem);
 
-    std.testing.expectEqualSlices(u8, "ABC\x1B\x0F\x00\x00\x00D\x1B\x02\x00\x00\x00EF", mem);
+    try std.testing.expectEqualSlices(u8, "ABC\x1B\x0F\x00\x00\x00D\x1B\x02\x00\x00\x00EF", mem);
 }
 
 test "emitting numeric value" {
@@ -353,7 +353,7 @@ test "emitting numeric value" {
     const mem = try writer.finalize();
     defer std.testing.allocator.free(mem);
 
-    std.testing.expectEqualSlices(u8, "\x00\x00\x00\x00\x00\x00\x00\x00", mem);
+    try std.testing.expectEqualSlices(u8, "\x00\x00\x00\x00\x00\x00\x00\x00", mem);
 }
 
 test "instruction emission" {
@@ -388,7 +388,7 @@ test "instruction emission" {
     const mem = try writer.finalize();
     defer std.testing.allocator.free(mem);
 
-    std.testing.expectEqualSlices(
+    try std.testing.expectEqualSlices(
         u8,
         "\x2B" ++ "\x06\x03\x00abc" ++ "\x07\x00\x00\x00\x00\x00\x00\x00\x00" ++ "\x1B\x11\x22\x33\x44" ++ "\x22\xEF\xBE",
         mem,
