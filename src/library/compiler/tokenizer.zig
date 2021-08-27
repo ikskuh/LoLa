@@ -193,6 +193,7 @@ pub const Tokenizer = struct {
     }
 
     fn any(c: u8) bool {
+        _ = c;
         return true;
     }
 

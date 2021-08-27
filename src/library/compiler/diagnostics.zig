@@ -13,6 +13,8 @@ pub const Diagnostics = struct {
         message: []const u8,
 
         pub fn format(value: @This(), comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
+            _ = fmt;
+            _ = options;
             try writer.print("{}: {s}: {s}", .{
                 value.location,
                 @tagName(value.kind),

@@ -33,17 +33,17 @@ pub fn main() !u8 {
     defer argsAllocator.free(module);
 
     if (std.mem.eql(u8, module, "compile")) {
-        const options = try argsParser.parse(CompileCLI, &args, argsAllocator);
+        const options = argsParser.parse(CompileCLI, &args, argsAllocator, .print) catch return 1;
         defer options.deinit();
 
         return try compile(options.options, options.positionals);
     } else if (std.mem.eql(u8, module, "dump")) {
-        const options = try argsParser.parse(DisassemblerCLI, &args, argsAllocator);
+        const options = argsParser.parse(DisassemblerCLI, &args, argsAllocator, .print) catch return 1;
         defer options.deinit();
 
         return try disassemble(options.options, options.positionals);
     } else if (std.mem.eql(u8, module, "run")) {
-        const options = try argsParser.parse(RunCLI, &args, argsAllocator);
+        const options = argsParser.parse(RunCLI, &args, argsAllocator, .print) catch return 1;
         defer options.deinit();
 
         return try run(options.options, options.positionals);
@@ -305,6 +305,8 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
 
         try env.installFunction("Expect", lola.runtime.Function.initSimpleUser(struct {
             fn call(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+                _ = environment;
+                _ = context;
                 if (args.len != 1)
                     return error.InvalidArgs;
                 const assertion = try args[0].toBoolean();
@@ -318,6 +320,8 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
 
         try env.installFunction("ExpectEqual", lola.runtime.Function.initSimpleUser(struct {
             fn call(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+                _ = environment;
+                _ = context;
                 if (args.len != 2)
                     return error.InvalidArgs;
                 if (!args[0].eql(args[1])) {

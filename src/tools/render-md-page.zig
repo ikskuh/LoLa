@@ -40,8 +40,6 @@ const menu_items = [_]MenuItem{
 pub fn main() !u8 {
     @setEvalBranchQuota(1500);
 
-    var stderr = std.io.getStdErr().writer();
-
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
 
@@ -163,7 +161,12 @@ fn markdownToHtmlInternal(resultAllocator: *std.mem.Allocator, internalAllocator
 
     defer doc.deinit();
 
-    return try koino.html.print(resultAllocator, p.options, doc);
+    var buffer = std.ArrayList(u8).init(resultAllocator);
+    defer buffer.deinit();
+
+    try koino.html.print(buffer.writer(), internalAllocator, p.options, doc);
+
+    return buffer.toOwnedSlice();
 }
 
 pub fn markdownToHtml(allocator: *std.mem.Allocator, options: koino.Options, markdown: []const u8) ![]u8 {

@@ -203,6 +203,8 @@ pub const Value = union(TypeId) {
 
     /// Checks if two values are equal.
     pub fn format(value: Self, comptime fmt: []const u8, options: std.fmt.FormatOptions, stream: anytype) !void {
+        _ = fmt;
+        _ = options;
         return switch (value) {
             .void => stream.writeAll("void"),
             .number => |n| stream.print("{d}", .{n}),
@@ -683,6 +685,8 @@ pub const Enumerator = struct {
 
     // Enumerators are never equal to each other.
     pub fn eql(lhs: Self, rhs: Self) bool {
+        _ = lhs;
+        _ = rhs;
         return false;
     }
 

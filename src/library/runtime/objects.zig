@@ -251,7 +251,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
         pub fn deinit(self: *Self) void {
             var iter = self.objects.iterator();
             while (iter.next()) |obj| {
-                obj.value.object.destroyObject();
+                obj.value_ptr.object.destroyObject();
             }
             self.objects.deinit();
             self.* = undefined;
@@ -266,11 +266,11 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
 
                 var iter = self.objects.iterator();
                 while (iter.next()) |entry| {
-                    const obj = &entry.value;
+                    const obj = entry.value_ptr;
                     var class = class_lut[obj.class_id];
 
                     try stream.writeIntLittle(TypeIndex, obj.class_id);
-                    try stream.writeIntLittle(u64, @enumToInt(entry.key));
+                    try stream.writeIntLittle(u64, @enumToInt(entry.key_ptr.*));
 
                     try class.serialize(OutputStream.from(&stream), obj.object);
                 }
@@ -306,7 +306,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
 
                     const object = try class_lut[type_index].deserialize(allocator, InputStream.from(&stream));
 
-                    gop.entry.value = ManagedObject{
+                    gop.value_ptr.* = ManagedObject{
                         .object = object,
                         .refcount = 0,
                         .manualRefcount = 0,
@@ -353,7 +353,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
         /// To allow recollection, call `releaseObject`.
         pub fn retainObject(self: *Self, object: ObjectHandle) ObjectGetError!void {
             if (self.objects.getEntry(object)) |obj| {
-                obj.value.manualRefcount += 1;
+                obj.value_ptr.manualRefcount += 1;
             } else {
                 return error.InvalidObject;
             }
@@ -362,7 +362,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
         /// Removes a restrain from `retainObject` to re-allow garbage collection.
         pub fn releaseObject(self: *Self, object: ObjectHandle) ObjectGetError!void {
             if (self.objects.getEntry(object)) |obj| {
-                obj.value.manualRefcount -= 1;
+                obj.value_ptr.manualRefcount -= 1;
             } else {
                 return error.InvalidObject;
             }
@@ -370,7 +370,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
 
         /// Destroys an object by external means. This will also invoke the object destructor.
         pub fn destroyObject(self: *Self, object: ObjectHandle) void {
-            if (self.objects.remove(object)) |obj| {
+            if (self.objects.fetchRemove(object)) |obj| {
                 var copy = obj.value.object;
                 copy.destroyObject();
             }
@@ -378,7 +378,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
 
         /// Returns if an object handle is still valid.
         pub fn isObjectValid(self: Self, object: ObjectHandle) bool {
-            return if (self.objects.get(object)) |obj| true else false;
+            return (self.objects.get(object) != null);
         }
 
         /// Gets the method of an object or `null` if the method does not exist.
@@ -397,14 +397,14 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
         pub fn clearUsageCounters(self: *Self) void {
             var iter = self.objects.iterator();
             while (iter.next()) |obj| {
-                obj.value.refcount = 0;
+                obj.value_ptr.refcount = 0;
             }
         }
 
         /// Marks an object handle as used
         pub fn markUsed(self: *Self, object: ObjectHandle) ObjectGetError!void {
             if (self.objects.getEntry(object)) |obj| {
-                obj.value.refcount += 1;
+                obj.value_ptr.refcount += 1;
             } else {
                 return error.InvalidObject;
             }
@@ -446,8 +446,8 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
             // Now this?!
             var iter = self.objects.iterator();
             while (iter.next()) |obj| {
-                if (obj.value.refcount == 0 and obj.value.manualRefcount == 0) {
-                    if (self.objects.remove(obj.key)) |kv| {
+                if (obj.value_ptr.refcount == 0 and obj.value_ptr.manualRefcount == 0) {
+                    if (self.objects.fetchRemove(obj.key_ptr.*)) |kv| {
                         var temp_obj = kv.value.object;
                         temp_obj.destroyObject();
                     } else {
@@ -503,6 +503,7 @@ const TestObject = struct {
 
     pub fn getMethod(self: *Self, name: []const u8) ?Function {
         self.got_method_query = true;
+        _ = name;
         return null;
     }
 
@@ -518,6 +519,7 @@ const TestObject = struct {
     var deserialize_instance = Self{};
 
     pub fn deserializeObject(allocator: *std.mem.Allocator, reader: InputStream.Reader) !*Self {
+        _ = allocator;
         var buf: [11]u8 = undefined;
         try reader.readNoEof(&buf);
         try std.testing.expectEqualStrings("test object", &buf);
@@ -544,10 +546,14 @@ comptime {
             const Unserializable = struct {
                 const Self = @This();
                 pub fn getMethod(self: *Self, name: []const u8) ?Function {
+                    _ = self;
+                    _ = name;
                     unreachable;
                 }
 
                 pub fn destroyObject(self: *Self) void {
+                    _ = self;
+
                     unreachable;
                 }
             };

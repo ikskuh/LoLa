@@ -383,7 +383,7 @@ pub fn generateIR(
 
     std.debug.assert(global_scope.return_point.items.len == 0);
 
-    for (program.functions) |function, i| {
+    for (program.functions) |function| {
         const entry_point = @intCast(u32, writer.code.items.len);
 
         var local_scope = Scope.init(allocator, &global_scope, false);
@@ -412,6 +412,7 @@ pub fn generateIR(
 
     std.sort.sort(CompileUnit.DebugSymbol, debug_symbols.symbols.items, {}, struct {
         fn lessThan(v: void, lhs: CompileUnit.DebugSymbol, rhs: CompileUnit.DebugSymbol) bool {
+            _ = v;
             return lhs.offset < rhs.offset;
         }
     }.lessThan);

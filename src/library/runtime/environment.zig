@@ -1,8 +1,6 @@
 const std = @import("std");
 const iface = @import("interface");
 
-const utility = @import("utility.zig");
-
 // Import modules to reduce file size
 usingnamespace @import("value.zig");
 usingnamespace @import("../common/compile-unit.zig");
@@ -158,6 +156,7 @@ test "AsyncFunctionCall.deinit" {
             std.testing.allocator.destroy(context.get(u32));
         }
         fn exec(context: Context) anyerror!?Value {
+            _ = context;
             return error.NotSupported;
         }
     };
@@ -307,6 +306,7 @@ pub const Function = union(enum) {
 
         const Impl = struct {
             fn invoke(env: *Environment, context: Context, args: []const Value) anyerror!Value {
+                _ = context;
                 if (args.len != function_info.args.len)
                     return error.InvalidArgs;
 
@@ -469,7 +469,7 @@ pub const Environment = struct {
     pub fn deinit(self: *Self) void {
         var iter = self.functions.iterator();
         while (iter.next()) |fun| {
-            fun.value.deinit();
+            fun.value_ptr.deinit();
         }
 
         for (self.scriptGlobals) |*glob| {
@@ -487,7 +487,7 @@ pub const Environment = struct {
         var result = try self.functions.getOrPut(name);
         if (result.found_existing)
             return error.AlreadyExists;
-        result.entry.value = function;
+        result.value_ptr.* = function;
     }
 
     // Implementation to make a Environment a valid LoLa object:
@@ -520,7 +520,7 @@ pub const Environment = struct {
         {
             var iter = self.functions.iterator();
             while (iter.next()) |item| {
-                hasher.update(item.key);
+                hasher.update(item.key_ptr.*);
             }
         }
 
@@ -653,36 +653,47 @@ test "Function.wrap" {
         }
 
         fn takeVoid(value: void) void {
+            _ = value;
             unreachable;
         }
         fn takeValue(value: Value) void {
+            _ = value;
             unreachable;
         }
         fn takeString(value: String) void {
+            _ = value;
             unreachable;
         }
         fn takeArray(value: Array) void {
+            _ = value;
             unreachable;
         }
         fn takeObjectHandle(value: ObjectHandle) void {
+            _ = value;
             unreachable;
         }
         fn takeInt8(value: u8) void {
+            _ = value;
             unreachable;
         }
         fn takeInt63(value: i63) void {
+            _ = value;
             unreachable;
         }
         fn takeF64(value: f64) void {
+            _ = value;
             unreachable;
         }
         fn takeF16(value: f16) void {
+            _ = value;
             unreachable;
         }
         fn takeBool(value: bool) void {
+            _ = value;
             unreachable;
         }
         fn takeStringLit(value: []const u8) void {
+            _ = value;
             unreachable;
         }
 
@@ -699,6 +710,17 @@ test "Function.wrap" {
             a7: void,
             a8: []const u8,
         ) void {
+            _ = a0;
+            _ = a1;
+            _ = a2;
+            _ = a3;
+            _ = a4_1;
+            _ = a4_2;
+            _ = a5_1;
+            _ = a5_2;
+            _ = a6;
+            _ = a7;
+            _ = a8;
             unreachable;
         }
     };

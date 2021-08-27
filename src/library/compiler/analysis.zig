@@ -127,12 +127,12 @@ fn validateExpression(state: *AnalysisState, diagnostics: *Diagnostics, scope: *
             return TypeSet.any;
         },
 
-        .number_literal => |expr| {
+        .number_literal => {
             // these are always ok
             return TypeSet.from(.number);
         },
 
-        .string_literal => |literal| {
+        .string_literal => {
             return TypeSet.from(.string);
         },
 
@@ -222,20 +222,11 @@ fn validateStore(state: *AnalysisState, diagnostics: *Diagnostics, scope: *Scope
                     });
                 }
 
-                const previous = variable.possible_types;
-
                 if (state.conditional_scope_depth > 0) {
                     variable.possible_types = variable.possible_types.@"union"(type_hint);
                 } else {
                     variable.possible_types = type_hint;
                 }
-
-                // std.debug.warn("mutate {} from {} into {} applying {}\n", .{
-                //     variable_name,
-                //     previous,
-                //     variable.possible_types,
-                //     type_hint,
-                // });
             }
         },
 

@@ -4,11 +4,11 @@ const Builder = std.build.Builder;
 pub fn createPackage(comptime root: []const u8) std.build.Pkg {
     return std.build.Pkg{
         .name = "lola",
-        .path = root ++ "/src/library/main.zig",
+        .path = .{ .path = root ++ "/src/library/main.zig" },
         .dependencies = &[_]std.build.Pkg{
             std.build.Pkg{
                 .name = "interface",
-                .path = root ++ "/libs/interface.zig/interface.zig",
+                .path = .{ .path = root ++ "/libs/interface.zig/interface.zig" },
                 .dependencies = &[_]std.build.Pkg{},
             },
         },
@@ -20,19 +20,19 @@ const linkPcre = @import("libs/koino/vendor/libpcre.zig/build.zig").linkPcre;
 const pkgs = struct {
     const args = std.build.Pkg{
         .name = "args",
-        .path = "libs/args/args.zig",
+        .path = .{ .path = "libs/args/args.zig" },
         .dependencies = &[_]std.build.Pkg{},
     };
 
     const interface = std.build.Pkg{
         .name = "interface",
-        .path = "libs/interface.zig/interface.zig",
+        .path = .{ .path = "libs/interface.zig/interface.zig" },
         .dependencies = &[_]std.build.Pkg{},
     };
 
     const lola = std.build.Pkg{
         .name = "lola",
-        .path = "src/library/main.zig",
+        .path = .{ .path = "src/library/main.zig" },
         .dependencies = &[_]std.build.Pkg{
             interface,
         },
@@ -40,18 +40,13 @@ const pkgs = struct {
 
     const koino = std.build.Pkg{
         .name = "koino",
-        .path = "libs/koino/src/koino.zig",
+        .path = .{ .path = "libs/koino/src/koino.zig" },
         .dependencies = &[_]std.build.Pkg{
-            std.build.Pkg{ .name = "libpcre", .path = "libs/koino/vendor/libpcre.zig/src/main.zig" },
-            std.build.Pkg{ .name = "htmlentities", .path = "libs/koino/vendor/htmlentities.zig/src/main.zig" },
-            std.build.Pkg{ .name = "clap", .path = "libs/koino/vendor/zig-clap/clap.zig" },
-            std.build.Pkg{ .name = "zunicode", .path = "libs/koino/vendor/zunicode/src/zunicode.zig" },
+            std.build.Pkg{ .name = "libpcre", .path = .{ .path = "libs/koino/vendor/libpcre.zig/src/main.zig" } },
+            std.build.Pkg{ .name = "htmlentities", .path = .{ .path = "libs/koino/vendor/htmlentities.zig/src/main.zig" } },
+            std.build.Pkg{ .name = "clap", .path = .{ .path = "libs/koino/vendor/zig-clap/clap.zig" } },
+            std.build.Pkg{ .name = "zunicode", .path = .{ .path = "libs/koino/vendor/zunicode/src/zunicode.zig" } },
         },
-    };
-
-    const zee_alloc = std.build.Pkg{
-        .name = "zee_alloc",
-        .path = "libs/zee_alloc/src/main.zig",
     };
 };
 
@@ -92,17 +87,19 @@ pub fn build(b: *Builder) !void {
             std.zig.CrossTarget{},
     });
 
+    const build_options = b.addOptions();
+    build_options.addOption([]const u8, "version", version_tag orelse "development");
+
     const exe = b.addExecutable("lola", "src/frontend/main.zig");
     exe.setBuildMode(mode);
     exe.setTarget(target);
     exe.addPackage(pkgs.lola);
     exe.addPackage(pkgs.args);
-    exe.addBuildOption([]const u8, "version", version_tag orelse "development");
+    exe.addPackage(build_options.getPackage("build_options"));
     exe.install();
 
     const wasm_runtime = b.addStaticLibrary("lola", "src/wasm-compiler/main.zig");
     wasm_runtime.addPackage(pkgs.lola);
-    wasm_runtime.addPackage(pkgs.zee_alloc);
     wasm_runtime.setTarget(.{ .cpu_arch = .wasm32, .os_tag = .freestanding });
     wasm_runtime.setBuildMode(.ReleaseSafe);
     wasm_runtime.install();
@@ -233,7 +230,7 @@ pub fn build(b: *Builder) !void {
         copy_wasm_runtime.addArg("website/lola.wasm");
         gen_website_step.dependOn(&copy_wasm_runtime.step);
 
-        var gen_docs_runner = b.addTest(pkgs.lola.path);
+        var gen_docs_runner = b.addTest(pkgs.lola.path.path);
         gen_docs_runner.emit_bin = false;
         gen_docs_runner.emit_asm = false;
         gen_docs_runner.emit_bin = false;

@@ -22,6 +22,8 @@ pub const Location = struct {
     }
 
     pub fn format(self: @This(), comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
+        _ = fmt;
+        _ = options;
         try writer.print("{s}:{d}:{d}", .{ self.chunk, self.line, self.column });
     }
 

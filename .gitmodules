@@ -10,6 +10,3 @@
 [submodule "libs/ace-builds"]
 	path = libs/ace-builds
 	url = https://github.com/ajaxorg/ace-builds
-[submodule "libs/zee_alloc"]
-	path = libs/zee_alloc
-	url = https://github.com/fengb/zee_alloc

@@ -99,6 +99,7 @@ pub fn parse(
         }
 
         fn any(token: lexer.Token) bool {
+            _ = token;
             return true;
         }
 
@@ -190,7 +191,7 @@ pub fn parse(
                 const stmt = self.acceptStatement() catch break;
                 try body.append(stmt);
             }
-            const end = try self.accept(is(.@"}"));
+            _ = try self.accept(is(.@"}"));
 
             return ast.Statement{
                 .location = begin.location,

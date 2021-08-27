@@ -9,6 +9,8 @@ pub const Type = enum {
     object,
 
     pub fn format(value: @This(), comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
+        _ = fmt;
+        _ = options;
         try writer.writerAll(@tagName(value));
     }
 };
@@ -111,6 +113,8 @@ pub const TypeSet = struct {
     }
 
     pub fn format(value: Self, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
+        _ = fmt;
+        _ = options;
         if (value.isEmpty()) {
             try writer.writeAll("none");
         } else if (value.isAny()) {

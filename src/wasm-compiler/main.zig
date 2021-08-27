@@ -1,6 +1,5 @@
 const std = @import("std");
 const lola = @import("lola");
-const zee_alloc = @import("zee_alloc");
 
 // This is our global object pool that is back-referenced
 // by the runtime library.
@@ -9,7 +8,8 @@ pub const ObjectPool = lola.runtime.ObjectPool([_]type{
     lola.libs.runtime.LoLaDictionary,
 });
 
-var allocator: *std.mem.Allocator = zee_alloc.ZeeAllocDefaults.wasm_allocator;
+var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+var allocator: *std.mem.Allocator = &gpa.allocator;
 var compile_unit: lola.CompileUnit = undefined;
 var pool: ObjectPool = undefined;
 var environment: lola.runtime.Environment = undefined;
@@ -95,8 +95,10 @@ const API = struct {
 
         try environment.installFunction("Print", lola.runtime.Function.initSimpleUser(struct {
             fn Print(_environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+                _ = _environment;
+                _ = context;
                 // const allocator = context.get(std.mem.Allocator);
-                for (args) |value, i| {
+                for (args) |value| {
                     switch (value) {
                         .string => |str| try debug_writer.writeAll(str.contents),
                         else => try debug_writer.print("{}", .{value}),
@@ -109,8 +111,10 @@ const API = struct {
 
         try environment.installFunction("Write", lola.runtime.Function.initSimpleUser(struct {
             fn Write(_environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+                _ = _environment;
+                _ = context;
                 // const allocator = context.get(std.mem.Allocator);
-                for (args) |value, i| {
+                for (args) |value| {
                     switch (value) {
                         .string => |str| try debug_writer.writeAll(str.contents),
                         else => try debug_writer.print("{}", .{value}),
@@ -122,6 +126,8 @@ const API = struct {
 
         try environment.installFunction("Read", lola.runtime.Function.initSimpleUser(struct {
             fn Read(_environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+                _ = _environment;
+                _ = context;
                 if (args.len != 0)
                     return error.InvalidArgs;
 
@@ -164,7 +170,7 @@ const API = struct {
             return error.InvalidInterpreterState;
 
         // Run the virtual machine for up to 150 instructions
-        var result = vm.execute(150) catch |err| {
+        var result = vm.execute(steps) catch |err| {
             // When the virtua machine panics, we receive a Zig error
             try std.fmt.format(debug_writer_lf, "\x1B[91mLoLa Panic: {s}\x1B[m\n", .{@errorName(err)});
 
@@ -204,80 +210,82 @@ const API = struct {
     }
 };
 
-export fn initialize() void {
-    // nothing to init atm
-}
+const exports = struct {
+    export fn initialize() void {
+        // nothing to init atm
+    }
 
-export fn malloc(len: usize) [*]u8 {
-    var slice = allocator.alloc(u8, len) catch unreachable;
-    return slice.ptr;
-}
+    export fn malloc(len: usize) [*]u8 {
+        var slice = allocator.alloc(u8, len) catch unreachable;
+        return slice.ptr;
+    }
 
-export fn free(mem: [*]u8, len: usize) void {
-    allocator.free(mem[0..len]);
-}
+    export fn free(mem: [*]u8, len: usize) void {
+        allocator.free(mem[0..len]);
+    }
 
-const LoLaError = error{
-    OutOfMemory,
-    FailedToCompile,
-    SyntaxError,
-    InvalidCode,
-    AlreadyDeclared,
-    TooManyVariables,
-    TooManyLabels,
-    LabelAlreadyDefined,
-    Overflow,
-    NotInLoop,
-    VariableNotFound,
-    InvalidStoreTarget,
+    const LoLaError = error{
+        OutOfMemory,
+        FailedToCompile,
+        SyntaxError,
+        InvalidCode,
+        AlreadyDeclared,
+        TooManyVariables,
+        TooManyLabels,
+        LabelAlreadyDefined,
+        Overflow,
+        NotInLoop,
+        VariableNotFound,
+        InvalidStoreTarget,
 
-    LoLaPanic,
+        LoLaPanic,
 
-    AlreadyExists,
-    InvalidObject,
+        AlreadyExists,
+        InvalidObject,
 
-    InvalidInterpreterState,
-};
-fn mapError(err: LoLaError) u8 {
-    return switch (err) {
-        error.OutOfMemory => 1,
-        error.FailedToCompile => 2,
-        error.SyntaxError => 3,
-        error.InvalidCode => 3,
-        error.AlreadyDeclared => 3,
-        error.TooManyVariables => 3,
-        error.TooManyLabels => 3,
-        error.LabelAlreadyDefined => 3,
-        error.Overflow => 3,
-        error.NotInLoop => 3,
-        error.VariableNotFound => 3,
-        error.InvalidStoreTarget => 3,
-        error.AlreadyExists => 3,
-        error.LoLaPanic => 4,
-        error.InvalidObject => 5,
-        error.InvalidInterpreterState => 6,
+        InvalidInterpreterState,
     };
-}
+    fn mapError(err: LoLaError) u8 {
+        return switch (err) {
+            error.OutOfMemory => 1,
+            error.FailedToCompile => 2,
+            error.SyntaxError => 3,
+            error.InvalidCode => 3,
+            error.AlreadyDeclared => 3,
+            error.TooManyVariables => 3,
+            error.TooManyLabels => 3,
+            error.LabelAlreadyDefined => 3,
+            error.Overflow => 3,
+            error.NotInLoop => 3,
+            error.VariableNotFound => 3,
+            error.InvalidStoreTarget => 3,
+            error.AlreadyExists => 3,
+            error.LoLaPanic => 4,
+            error.InvalidObject => 5,
+            error.InvalidInterpreterState => 6,
+        };
+    }
 
-export fn validate(source: [*]const u8, source_len: usize) u8 {
-    API.validate(source[0..source_len]) catch |err| return mapError(err);
-    return 0;
-}
+    export fn validate(source: [*]const u8, source_len: usize) u8 {
+        API.validate(source[0..source_len]) catch |err| return mapError(err);
+        return 0;
+    }
 
-export fn initInterpreter(source: [*]const u8, source_len: usize) u8 {
-    API.initInterpreter(source[0..source_len]) catch |err| return mapError(err);
-    return 0;
-}
+    export fn initInterpreter(source: [*]const u8, source_len: usize) u8 {
+        API.initInterpreter(source[0..source_len]) catch |err| return mapError(err);
+        return 0;
+    }
 
-export fn deinitInterpreter() void {
-    API.deinitInterpreter();
-}
+    export fn deinitInterpreter() void {
+        API.deinitInterpreter();
+    }
 
-export fn stepInterpreter(steps: u32) u8 {
-    API.stepInterpreter(steps) catch |err| return mapError(err);
-    return 0;
-}
+    export fn stepInterpreter(steps: u32) u8 {
+        API.stepInterpreter(steps) catch |err| return mapError(err);
+        return 0;
+    }
 
-export fn isInterpreterDone() bool {
-    return is_done;
-}
+    export fn isInterpreterDone() bool {
+        return is_done;
+    }
+};

@@ -177,8 +177,8 @@ pub fn dumpExpression(writer: anytype, expr: Expression) @TypeOf(writer).Error!v
             }
             try writer.writeAll("]");
         },
-        .function_call => |val| unreachable,
-        .method_call => |val| unreachable,
+        .function_call => unreachable,
+        .method_call => unreachable,
         .number_literal => |val| try writer.print("{d}", .{val}),
         .string_literal => |val| try writer.print("\"{}\"", .{val}),
         .unary_operator => |val| {

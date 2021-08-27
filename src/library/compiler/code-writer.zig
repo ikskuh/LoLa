@@ -84,7 +84,7 @@ pub const CodeWriter = struct {
         const item = try self.labels.getOrPut(lbl);
         if (item.found_existing)
             return error.LabelAlreadyDefined;
-        item.entry.value = @intCast(u32, self.code.items.len);
+        item.value_ptr.* = @intCast(u32, self.code.items.len);
 
         // resolve all forward references to this label, so we
         // have a empty patch list when every referenced label was also defined.
@@ -93,7 +93,7 @@ pub const CodeWriter = struct {
         while (i < self.patches.items.len) {
             const patch = self.patches.items[i];
             if (patch.label == lbl) {
-                std.mem.writeIntLittle(u32, self.code.items[patch.offset..][0..4], item.entry.value);
+                std.mem.writeIntLittle(u32, self.code.items[patch.offset..][0..4], item.value_ptr.*);
                 _ = self.patches.swapRemove(i);
             } else {
                 i += 1;

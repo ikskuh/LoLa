@@ -84,6 +84,8 @@ pub fn main() anyerror!u8 {
                     context: lola.runtime.Context,
                     args: []const lola.runtime.Value,
                 ) anyerror!lola.runtime.Value {
+                    _ = environment;
+                    _ = args;
                     return lola.runtime.Value.initObject(context.get(lola.runtime.ObjectHandle).*);
                 }
             }.call,

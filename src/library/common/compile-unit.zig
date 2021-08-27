@@ -131,6 +131,7 @@ pub const CompileUnit = struct {
         }
         std.sort.sort(DebugSymbol, debugSymbols, {}, struct {
             fn lessThan(context: void, lhs: DebugSymbol, rhs: DebugSymbol) bool {
+                _ = context;
                 return lhs.offset < rhs.offset;
             }
         }.lessThan);
@@ -185,25 +186,25 @@ pub const CompileUnit = struct {
 };
 
 const serializedCompileUnit = "" // SoT
-    ++ "LoLa\xB9\x40\x80\x5A" // Header
-    ++ "\x01\x00\x00\x00" // Version
-    ++ "Made with NativeLola.zig!" ++ ("\x00" ** (256 - 25)) // Comment
-    ++ "\x03\x00" // globalCount
-    ++ "\x55\x11" // temporaryCount
-    ++ "\x02\x00" // functionCount
-    ++ "\x05\x00\x00\x00" // codeSize
-    ++ "\x03\x00\x00\x00" // numSymbols
-    ++ "Function1" ++ ("\x00" ** (128 - 9)) // Name
-    ++ "\x00\x00\x00\x00" // entryPoint
-    ++ "\x01\x00" // localCount
-    ++ "Function2" ++ ("\x00" ** (128 - 9)) // Name
-    ++ "\x10\x10\x00\x00" // entryPoint
-    ++ "\x02\x00" // localCount
-    ++ "Hello" // code
-    ++ "\x01\x00\x00\x00" ++ "\x01\x00\x00\x00" ++ "\x01\x00" // dbgSym1
-    ++ "\x02\x00\x00\x00" ++ "\x02\x00\x00\x00" ++ "\x04\x00" // dbgSym2
-    ++ "\x04\x00\x00\x00" ++ "\x03\x00\x00\x00" ++ "\x08\x00" // dbgSym3
-    ;
+++ "LoLa\xB9\x40\x80\x5A" // Header
+++ "\x01\x00\x00\x00" // Version
+++ "Made with NativeLola.zig!" ++ ("\x00" ** (256 - 25)) // Comment
+++ "\x03\x00" // globalCount
+++ "\x55\x11" // temporaryCount
+++ "\x02\x00" // functionCount
+++ "\x05\x00\x00\x00" // codeSize
+++ "\x03\x00\x00\x00" // numSymbols
+++ "Function1" ++ ("\x00" ** (128 - 9)) // Name
+++ "\x00\x00\x00\x00" // entryPoint
+++ "\x01\x00" // localCount
+++ "Function2" ++ ("\x00" ** (128 - 9)) // Name
+++ "\x10\x10\x00\x00" // entryPoint
+++ "\x02\x00" // localCount
+++ "Hello" // code
+++ "\x01\x00\x00\x00" ++ "\x01\x00\x00\x00" ++ "\x01\x00" // dbgSym1
+++ "\x02\x00\x00\x00" ++ "\x02\x00\x00\x00" ++ "\x04\x00" // dbgSym2
+++ "\x04\x00\x00\x00" ++ "\x03\x00\x00\x00" ++ "\x08\x00" // dbgSym3
+;
 
 test "CompileUnit I/O" {
     var sliceInStream = std.io.fixedBufferStream(serializedCompileUnit);
