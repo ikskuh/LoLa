@@ -1,16 +1,17 @@
 const std = @import("std");
 const interfaces = @import("interface");
 
-usingnamespace @import("environment.zig");
-usingnamespace @import("vm.zig");
-usingnamespace @import("value.zig");
+const Environment = @import("Environment.zig");
+
+const vm_unit = @import("vm.zig");
+const Value = @import("value.zig").Value;
 
 /// Non-owning interface to a abstract LoLa object.
 /// It is associated with a object handle in the `ObjectPool` and provides
 /// a way to get methods as well as destroy the object when it's garbage collected.
 pub const Object = struct {
     const Interface = interfaces.Interface(struct {
-        getMethod: fn (self: *interfaces.SelfType, name: []const u8) ?Function,
+        getMethod: fn (self: *interfaces.SelfType, name: []const u8) ?Environment.Function,
         destroyObject: fn (self: *interfaces.SelfType) void,
     }, interfaces.Storage.NonOwning);
 
@@ -28,7 +29,7 @@ pub const Object = struct {
             .impl = Interface.init(ptr) catch unreachable,
         };
     }
-    fn getMethod(self: *const Self, name: []const u8) ?Function {
+    fn getMethod(self: *const Self, name: []const u8) ?Environment.Function {
         return self.impl.call("getMethod", .{name});
     }
 
@@ -118,11 +119,11 @@ pub const ObjectPoolInterface = struct {
 
     self: *ErasedSelf,
 
-    getMethodFn: fn (self: *ErasedSelf, handle: ObjectHandle, name: []const u8) ObjectGetError!?Function,
+    getMethodFn: fn (self: *ErasedSelf, handle: ObjectHandle, name: []const u8) ObjectGetError!?Environment.Function,
     destroyObjectFn: fn (self: *ErasedSelf, handle: ObjectHandle) void,
     isObjectValidFn: fn (self: *ErasedSelf, handle: ObjectHandle) bool,
 
-    pub fn getMethod(self: @This(), handle: ObjectHandle, name: []const u8) ObjectGetError!?Function {
+    pub fn getMethod(self: @This(), handle: ObjectHandle, name: []const u8) ObjectGetError!?Environment.Function {
         return self.getMethodFn(self.self, handle, name);
     }
 
@@ -383,7 +384,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
 
         /// Gets the method of an object or `null` if the method does not exist.
         /// The returned `Function` is non-owned.
-        pub fn getMethod(self: Self, object: ObjectHandle, name: []const u8) ObjectGetError!?Function {
+        pub fn getMethod(self: Self, object: ObjectHandle, name: []const u8) ObjectGetError!?Environment.Function {
             if (self.objects.get(object)) |obj| {
                 return obj.object.getMethod(name);
             } else {
@@ -429,7 +430,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
         }
 
         /// Walks through all values stored in a virtual machine and marks all referenced objects as used.
-        pub fn walkVM(self: *Self, vm: VM) ObjectGetError!void {
+        pub fn walkVM(self: *Self, vm: vm_unit.VM) ObjectGetError!void {
             for (vm.stack.items) |val| {
                 try self.walkValue(val);
             }
@@ -472,7 +473,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
                 fn cast(erased_self: *ErasedSelf) *Self {
                     return @ptrCast(*Self, @alignCast(@alignOf(Self), erased_self));
                 }
-                fn getMethod(erased_self: *ErasedSelf, handle: ObjectHandle, name: []const u8) ObjectGetError!?Function {
+                fn getMethod(erased_self: *ErasedSelf, handle: ObjectHandle, name: []const u8) ObjectGetError!?Environment.Function {
                     return cast(erased_self).getMethod(handle, name);
                 }
                 fn destroyObject(erased_self: *ErasedSelf, handle: ObjectHandle) void {
@@ -501,7 +502,7 @@ const TestObject = struct {
     was_serialized: bool = false,
     was_deserialized: bool = false,
 
-    pub fn getMethod(self: *Self, name: []const u8) ?Function {
+    pub fn getMethod(self: *Self, name: []const u8) ?Environment.Function {
         self.got_method_query = true;
         _ = name;
         return null;
@@ -545,7 +546,7 @@ comptime {
         {
             const Unserializable = struct {
                 const Self = @This();
-                pub fn getMethod(self: *Self, name: []const u8) ?Function {
+                pub fn getMethod(self: *Self, name: []const u8) ?Environment.Function {
                     _ = self;
                     _ = name;
                     unreachable;

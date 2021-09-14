@@ -1,12 +1,174 @@
+//! An execution environment provides all needed
+//! data to execute a compiled piece of code.
+//! It stores its global variables, available functions
+//! and available features.
+
 const std = @import("std");
 const iface = @import("interface");
 
 // Import modules to reduce file size
-usingnamespace @import("value.zig");
-usingnamespace @import("../common/compile-unit.zig");
-usingnamespace @import("context.zig");
-usingnamespace @import("vm.zig");
-usingnamespace @import("objects.zig");
+const value_unit = @import("value.zig");
+const Value = value_unit.Value;
+const CompileUnit = @import("../common/CompileUnit.zig");
+const Context = @import("context.zig").Context;
+const vm = @import("vm.zig");
+const objects = @import("objects.zig");
+
+const String = value_unit.String;
+const Array = value_unit.Array;
+
+const ObjectPoolInterface = objects.ObjectPoolInterface;
+const ObjectHandle = objects.ObjectHandle;
+
+const Environment = @This();
+
+allocator: *std.mem.Allocator,
+
+/// The compile unit that provides the executed script.
+compileUnit: *const CompileUnit,
+
+/// Global variables required by the script.
+scriptGlobals: []Value,
+
+/// Object interface to
+objectPool: ObjectPoolInterface,
+
+/// Stores all available global functions.
+/// Functions will be contained in this unit and will be deinitialized,
+/// the name must be kept alive until end of the environment.
+functions: std.StringHashMap(Function),
+
+/// This is called when the destroyObject is called.
+destructor: ?fn (self: *Environment) void,
+
+pub fn init(allocator: *std.mem.Allocator, compileUnit: *const CompileUnit, object_pool: ObjectPoolInterface) !Environment {
+    var self = Environment{
+        .allocator = allocator,
+        .compileUnit = compileUnit,
+        .objectPool = object_pool,
+        .scriptGlobals = undefined,
+        .functions = undefined,
+        .destructor = null,
+    };
+
+    self.scriptGlobals = try allocator.alloc(Value, compileUnit.globalCount);
+    errdefer allocator.free(self.scriptGlobals);
+
+    for (self.scriptGlobals) |*glob| {
+        glob.* = .void;
+    }
+
+    self.functions = std.StringHashMap(Function).init(allocator);
+    errdefer self.functions.deinit();
+
+    for (compileUnit.functions) |srcfun| {
+        var fun = Function{
+            .script = ScriptFunction{
+                .environment = null, // this is a "self-contained" script function
+                .entryPoint = srcfun.entryPoint,
+                .localCount = srcfun.localCount,
+            },
+        };
+        _ = try self.functions.put(srcfun.name, fun);
+    }
+
+    return self;
+}
+
+pub fn deinit(self: *Environment) void {
+    var iter = self.functions.iterator();
+    while (iter.next()) |fun| {
+        fun.value_ptr.deinit();
+    }
+
+    for (self.scriptGlobals) |*glob| {
+        glob.deinit();
+    }
+
+    self.functions.deinit();
+    self.allocator.free(self.scriptGlobals);
+
+    self.* = undefined;
+}
+
+/// Adds a function to the environment and makes it available for the script.
+pub fn installFunction(self: *Environment, name: []const u8, function: Function) !void {
+    var result = try self.functions.getOrPut(name);
+    if (result.found_existing)
+        return error.AlreadyExists;
+    result.value_ptr.* = function;
+}
+
+// Implementation to make a Environment a valid LoLa object:
+pub fn getMethod(self: *Environment, name: []const u8) ?Function {
+    if (self.functions.get(name)) |fun| {
+        var mut_fun = fun;
+        if (mut_fun == .script and mut_fun.script.environment == null)
+            mut_fun.script.environment = self;
+        return mut_fun;
+    } else {
+        return null;
+    }
+}
+
+/// This is called when the object is removed from the associated object pool.
+pub fn destroyObject(self: *Environment) void {
+    if (self.destructor) |dtor| {
+        dtor(self);
+    }
+}
+
+/// Computes a unique signature for this environment based on
+/// the size and functions stored in the environment. This is used
+/// for serialization to ensure that Environments are restored into same
+/// state is it was serialized from previously.
+fn computeSignature(self: Environment) u64 {
+    var hasher = std.hash.SipHash64(2, 4).init("Environment Seri");
+
+    // Hash all function names to create reproducability
+    {
+        var iter = self.functions.iterator();
+        while (iter.next()) |item| {
+            hasher.update(item.key_ptr.*);
+        }
+    }
+
+    // safe the length of the script globals as a bad signature for
+    // the comileUnit
+    {
+        var buf: [8]u8 = undefined;
+        std.mem.writeIntLittle(u64, &buf, self.scriptGlobals.len);
+        hasher.update(&buf);
+    }
+
+    return hasher.finalInt();
+}
+
+/// Serializes the environment globals in a way that these
+/// are restorable later.
+pub fn serialize(self: Environment, stream: anytype) !void {
+    const sig = self.computeSignature();
+    try stream.writeIntLittle(u64, sig);
+
+    for (self.scriptGlobals) |glob| {
+        try glob.serialize(stream);
+    }
+}
+
+/// Deserializes the environment globals. This might fail with
+/// `error.SignatureMismatch` when a environment with a different signature
+/// is restored.
+pub fn deserialize(self: *Environment, stream: anytype) !void {
+    const sig_env = self.computeSignature();
+    const sig_ser = try stream.readIntLittle(u64);
+    if (sig_env != sig_ser)
+        return error.SignatureMismatch;
+
+    for (self.scriptGlobals) |*glob| {
+        const val = try Value.deserialize(stream, self.allocator);
+        glob.replaceWith(val);
+    }
+}
 
 /// A script function contained in either this or a foreign
 /// environment. For foreign environments.
@@ -406,162 +568,6 @@ pub const Function = union(enum) {
     }
 };
 
-/// An execution environment provides all needed
-/// data to execute a compiled piece of code.
-/// It stores its global variables, available functions
-/// and available features.
-pub const Environment = struct {
-    const Self = @This();
-
-    allocator: *std.mem.Allocator,
-
-    /// The compile unit that provides the executed script.
-    compileUnit: *const CompileUnit,
-
-    /// Global variables required by the script.
-    scriptGlobals: []Value,
-
-    /// Object interface to
-    objectPool: ObjectPoolInterface,
-
-    /// Stores all available global functions.
-    /// Functions will be contained in this unit and will be deinitialized,
-    /// the name must be kept alive until end of the environment.
-    functions: std.StringHashMap(Function),
-
-    /// This is called when the destroyObject is called.
-    destructor: ?fn (self: *Environment) void,
-
-    pub fn init(allocator: *std.mem.Allocator, compileUnit: *const CompileUnit, object_pool: ObjectPoolInterface) !Self {
-        var self = Self{
-            .allocator = allocator,
-            .compileUnit = compileUnit,
-            .objectPool = object_pool,
-            .scriptGlobals = undefined,
-            .functions = undefined,
-            .destructor = null,
-        };
-
-        self.scriptGlobals = try allocator.alloc(Value, compileUnit.globalCount);
-        errdefer allocator.free(self.scriptGlobals);
-
-        for (self.scriptGlobals) |*glob| {
-            glob.* = .void;
-        }
-
-        self.functions = std.StringHashMap(Function).init(allocator);
-        errdefer self.functions.deinit();
-
-        for (compileUnit.functions) |srcfun| {
-            var fun = Function{
-                .script = ScriptFunction{
-                    .environment = null, // this is a "self-contained" script function
-                    .entryPoint = srcfun.entryPoint,
-                    .localCount = srcfun.localCount,
-                },
-            };
-            _ = try self.functions.put(srcfun.name, fun);
-        }
-
-        return self;
-    }
-
-    pub fn deinit(self: *Self) void {
-        var iter = self.functions.iterator();
-        while (iter.next()) |fun| {
-            fun.value_ptr.deinit();
-        }
-
-        for (self.scriptGlobals) |*glob| {
-            glob.deinit();
-        }
-
-        self.functions.deinit();
-        self.allocator.free(self.scriptGlobals);
-
-        self.* = undefined;
-    }
-
-    /// Adds a function to the environment and makes it available for the script.
-    pub fn installFunction(self: *Self, name: []const u8, function: Function) !void {
-        var result = try self.functions.getOrPut(name);
-        if (result.found_existing)
-            return error.AlreadyExists;
-        result.value_ptr.* = function;
-    }
-
-    // Implementation to make a Environment a valid LoLa object:
-    pub fn getMethod(self: *Self, name: []const u8) ?Function {
-        if (self.functions.get(name)) |fun| {
-            var mut_fun = fun;
-            if (mut_fun == .script and mut_fun.script.environment == null)
-                mut_fun.script.environment = self;
-            return mut_fun;
-        } else {
-            return null;
-        }
-    }
-
-    /// This is called when the object is removed from the associated object pool.
-    pub fn destroyObject(self: *Self) void {
-        if (self.destructor) |dtor| {
-            dtor(self);
-        }
-    }
-
-    /// Computes a unique signature for this environment based on
-    /// the size and functions stored in the environment. This is used
-    /// for serialization to ensure that Environments are restored into same
-    /// state is it was serialized from previously.
-    fn computeSignature(self: Self) u64 {
-        var hasher = std.hash.SipHash64(2, 4).init("Environment Seri");
-
-        // Hash all function names to create reproducability
-        {
-            var iter = self.functions.iterator();
-            while (iter.next()) |item| {
-                hasher.update(item.key_ptr.*);
-            }
-        }
-
-        // safe the length of the script globals as a bad signature for
-        // the comileUnit
-        {
-            var buf: [8]u8 = undefined;
-            std.mem.writeIntLittle(u64, &buf, self.scriptGlobals.len);
-            hasher.update(&buf);
-        }
-
-        return hasher.finalInt();
-    }
-
-    /// Serializes the environment globals in a way that these
-    /// are restorable later.
-    pub fn serialize(self: Self, stream: anytype) !void {
-        const sig = self.computeSignature();
-        try stream.writeIntLittle(u64, sig);
-
-        for (self.scriptGlobals) |glob| {
-            try glob.serialize(stream);
-        }
-    }
-
-    /// Deserializes the environment globals. This might fail with
-    /// `error.SignatureMismatch` when a environment with a different signature
-    /// is restored.
-    pub fn deserialize(self: *Self, stream: anytype) !void {
-        const sig_env = self.computeSignature();
-        const sig_ser = try stream.readIntLittle(u64);
-        if (sig_env != sig_ser)
-            return error.SignatureMismatch;
-
-        for (self.scriptGlobals) |*glob| {
-            const val = try Value.deserialize(stream, self.allocator);
-            glob.replaceWith(val);
-        }
-    }
-};
-
 test "Environment" {
     const cu = CompileUnit{
         .arena = undefined,
@@ -589,7 +595,7 @@ test "Environment" {
         .debugSymbols = &[0]CompileUnit.DebugSymbol{},
     };
 
-    var pool = ObjectPool(.{}).init(std.testing.allocator);
+    var pool = objects.ObjectPool(.{}).init(std.testing.allocator);
     defer pool.deinit();
 
     var env = try Environment.init(std.testing.allocator, &cu, pool.interface());

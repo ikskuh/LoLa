@@ -1,11 +1,15 @@
 const std = @import("std");
 const lola = @import("../main.zig");
-usingnamespace @import("value.zig");
-usingnamespace @import("../common/ir.zig");
-usingnamespace @import("../common/compile-unit.zig");
-usingnamespace @import("../common/decoder.zig");
-usingnamespace @import("environment.zig");
-usingnamespace @import("objects.zig");
+
+const value_unit = @import("value.zig");
+const Value = value_unit.Value;
+const Decoder = @import("../common/Decoder.zig");
+
+const ir = @import("../common/ir.zig");
+const CompileUnit = @import("../common/CompileUnit.zig");
+const objects = @import("objects.zig");
+
+const Environment = @import("Environment.zig");
 
 pub const ExecutionResult = enum {
     /// The vm instruction quota was exhausted and the execution was terminated.
@@ -52,8 +56,8 @@ pub const VM = struct {
     allocator: *std.mem.Allocator,
     stack: std.ArrayList(Value),
     calls: std.ArrayList(Context),
-    currentAsynCall: ?AsyncFunctionCall,
-    objectPool: ObjectPoolInterface,
+    currentAsynCall: ?Environment.AsyncFunctionCall,
+    objectPool: objects.ObjectPoolInterface,
     stats: Statistics = Statistics{},
 
     /// Initialize a new virtual machine that will run the given environment.
@@ -73,7 +77,7 @@ pub const VM = struct {
 
         // Initialize with special "init context" that runs the script itself
         // and hosts the global variables.
-        var initFun = try vm.createContext(ScriptFunction{
+        var initFun = try vm.createContext(Environment.ScriptFunction{
             .environment = environment,
             .entryPoint = 0, // start at the very first byte
             .localCount = environment.compileUnit.temporaryCount,
@@ -112,7 +116,7 @@ pub const VM = struct {
     /// The script function must have a resolved environment which
     /// uses the same object pool as the main environment.
     /// It is not possible to mix several object pools.
-    fn createContext(self: *Self, fun: ScriptFunction) !Context {
+    fn createContext(self: *Self, fun: Environment.ScriptFunction) !Context {
         std.debug.assert(fun.environment != null);
         std.debug.assert(fun.environment.?.objectPool.self == self.objectPool.self);
         var ctx = Context{
@@ -215,7 +219,7 @@ pub const VM = struct {
 
         // std.debug.warn("execute 0x{X}…\n", .{ctx.decoder.offset});
 
-        const instruction = ctx.decoder.read(Instruction) catch |err| return switch (err) {
+        const instruction = ctx.decoder.read(ir.Instruction) catch |err| return switch (err) {
             error.EndOfStream => error.InvalidJump,
             else => error.InvalidBytecode,
         };
@@ -288,7 +292,7 @@ pub const VM = struct {
             // Array Operations:
 
             .array_pack => |i| {
-                var array = try Array.init(self.allocator, i.value);
+                var array = try value_unit.Array.init(self.allocator, i.value);
                 errdefer array.deinit();
 
                 for (array.contents) |*item| {
@@ -363,7 +367,7 @@ pub const VM = struct {
                         return error.IndexOutOfRange;
 
                     if (string.refcount != null and string.refcount.?.* > 1) {
-                        var new_string = try String.init(self.allocator, string.contents);
+                        var new_string = try value_unit.String.init(self.allocator, string.contents);
 
                         string.deinit();
                         string.* = new_string;
@@ -387,7 +391,7 @@ pub const VM = struct {
                 // is still owned by array_val and will be destroyed in case of array.
                 var array = try array_val.toArray();
 
-                try self.push(Value.fromEnumerator(Enumerator.initFromOwned(array)));
+                try self.push(Value.fromEnumerator(value_unit.Enumerator.initFromOwned(array)));
             },
 
             .iter_next => {
@@ -545,7 +549,7 @@ pub const VM = struct {
                 var lhs = try self.pop();
                 defer lhs.deinit();
 
-                if (@as(TypeId, lhs) != @as(TypeId, rhs))
+                if (@as(value_unit.TypeId, lhs) != @as(value_unit.TypeId, rhs))
                     return error.TypeMismatch;
 
                 switch (lhs) {
@@ -557,7 +561,7 @@ pub const VM = struct {
                         const lstr = lhs.string.contents;
                         const rstr = rhs.string.contents;
 
-                        var string = try String.initUninitialized(self.allocator, lstr.len + rstr.len);
+                        var string = try value_unit.String.initUninitialized(self.allocator, lstr.len + rstr.len);
                         errdefer string.deinit();
 
                         const buffer = try string.obtainMutableStorage();
@@ -572,7 +576,7 @@ pub const VM = struct {
                         const larr = lhs.array.contents;
                         const rarr = rhs.array.contents;
 
-                        var result = try Array.init(self.allocator, larr.len + rarr.len);
+                        var result = try value_unit.Array.init(self.allocator, larr.len + rarr.len);
                         errdefer result.deinit();
 
                         for (larr) |*item, i| {
@@ -661,7 +665,7 @@ pub const VM = struct {
 
     /// Initiates or executes a function call.
     /// Returns `true` when the VM execution should suspend after the call, else `false`.
-    fn executeFunctionCall(self: *Self, environment: *Environment, call: anytype, function: Function, object: ?ObjectHandle) !bool {
+    fn executeFunctionCall(self: *Self, environment: *Environment, call: anytype, function: Environment.Function, object: ?objects.ObjectHandle) !bool {
         return switch (function) {
             .script => |fun| blk: {
                 var context = try self.createContext(fun);
@@ -721,7 +725,7 @@ pub const VM = struct {
 
     /// Reads a number of call arguments into a slice.
     /// If an error happens, all items in `locals` are valid and must be deinitialized.
-    fn readLocals(self: *Self, call: Instruction.CallArg, locals: []Value) !void {
+    fn readLocals(self: *Self, call: ir.Instruction.CallArg, locals: []Value) !void {
         var i: usize = 0;
         while (i < call.argc) : (i += 1) {
             var value = try self.pop();
@@ -740,7 +744,7 @@ pub const VM = struct {
         var lhs = try self.pop();
         defer lhs.deinit();
 
-        if (@as(TypeId, lhs) != @as(TypeId, rhs))
+        if (@as(value_unit.TypeId, lhs) != @as(value_unit.TypeId, rhs))
             return error.TypeMismatch;
 
         const order = switch (lhs) {
@@ -876,7 +880,7 @@ pub const VM = struct {
                     vm.objectPool = env.objectPool;
                 }
 
-                var ctx = try vm.createContext(ScriptFunction{
+                var ctx = try vm.createContext(Environment.ScriptFunction{
                     .environment = env,
                     .entryPoint = offset,
                     .localCount = local_count,
@@ -896,7 +900,7 @@ pub const VM = struct {
     }
 };
 
-const TestPool = ObjectPool(.{});
+const TestPool = objects.ObjectPool(.{});
 
 fn runTest(comptime TestRunner: type) !void {
     var code = TestRunner.code;
@@ -926,7 +930,7 @@ fn runTest(comptime TestRunner: type) !void {
 test "VM basic execution" {
     try runTest(struct {
         var code = [_]u8{
-            @enumToInt(InstructionName.ret),
+            @enumToInt(ir.InstructionName.ret),
         };
 
         fn verify(vm: *VM) !void {
@@ -940,7 +944,7 @@ test "VM basic execution" {
 test "VM endless loop exhaustion" {
     try runTest(struct {
         var code = [_]u8{
-            @enumToInt(InstructionName.jmp),
+            @enumToInt(ir.InstructionName.jmp),
             0x00,
             0x00,
             0x00,
@@ -957,7 +961,7 @@ test "VM endless loop exhaustion" {
 test "VM invalid code panic" {
     try runTest(struct {
         var code = [_]u8{
-            @enumToInt(InstructionName.jmp),
+            @enumToInt(ir.InstructionName.jmp),
             0x00,
             0x00,
             0x00,
@@ -972,7 +976,7 @@ test "VM invalid code panic" {
 test "VM invalid jump panic" {
     try runTest(struct {
         var code = [_]u8{
-            @enumToInt(InstructionName.jmp),
+            @enumToInt(ir.InstructionName.jmp),
             0x00,
             0x00,
             0x00,

@@ -1,8 +1,8 @@
 const std = @import("std");
 
-usingnamespace @import("compile-unit.zig");
-usingnamespace @import("decoder.zig");
-usingnamespace @import("ir.zig");
+const CompileUnit = @import("CompileUnit.zig");
+const Decoder = @import("Decoder.zig");
+const ir = @import("ir.zig");
 
 pub const DisassemblerOptions = struct {
     /// Prefix each line of the disassembly with the hexadecimal address.
@@ -50,7 +50,7 @@ pub fn disassemble(stream: anytype, cu: CompileUnit, options: DisassemblerOption
             try stream.print("{X:0>6}\t", .{decoder.offset});
 
         const start = decoder.offset;
-        const instr = try decoder.read(Instruction);
+        const instr = try decoder.read(ir.Instruction);
         const end = decoder.offset;
 
         if (options.hexwidth) |hw| {
@@ -59,16 +59,16 @@ pub fn disassemble(stream: anytype, cu: CompileUnit, options: DisassemblerOption
 
         if (options.instructionOutput) {
             try stream.writeAll("\t");
-            try stream.writeAll(@tagName(@as(InstructionName, instr)));
+            try stream.writeAll(@tagName(@as(ir.InstructionName, instr)));
 
-            inline for (std.meta.fields(Instruction)) |fld| {
-                const instr_name = @field(InstructionName, fld.name);
+            inline for (std.meta.fields(ir.Instruction)) |fld| {
+                const instr_name = @field(ir.InstructionName, fld.name);
                 if (instr == instr_name) {
-                    if (fld.field_type == Instruction.Deprecated) {
+                    if (fld.field_type == ir.Instruction.Deprecated) {
                         // no-op
-                    } else if (fld.field_type == Instruction.NoArg) {
+                    } else if (fld.field_type == ir.Instruction.NoArg) {
                         // no-op
-                    } else if (fld.field_type == Instruction.CallArg) {
+                    } else if (fld.field_type == ir.Instruction.CallArg) {
                         const args = @field(instr, fld.name);
                         try stream.print(" {s} {d}", .{ args.function, args.argc });
                     } else {

@@ -3,127 +3,125 @@ const std = @import("std");
 const utility = @import("utility.zig");
 
 // Import modules to reduce file size
-usingnamespace @import("ir.zig");
-usingnamespace @import("compile-unit.zig");
+const ir = @import("ir.zig");
+const CompileUnit = @import("CompileUnit.zig");
 
 /// A struct that allows decoding data from LoLa IR code.
-pub const Decoder = struct {
-    const Self = @This();
+pub const Decoder = @This();
 
-    data: []const u8,
+data: []const u8,
 
-    // we are restricted to 4GB code size in the binary format, the decoder itself can use the same restriction
-    offset: u32,
+// we are restricted to 4GB code size in the binary format, the decoder itself can use the same restriction
+offset: u32,
 
-    pub fn init(source: []const u8) Self {
-        return Self{
-            .data = source,
-            .offset = 0,
-        };
+pub fn init(source: []const u8) Decoder {
+    return Decoder{
+        .data = source,
+        .offset = 0,
+    };
+}
+
+pub fn isEof(self: Decoder) bool {
+    return self.offset >= self.data.len;
+}
+
+pub fn readRaw(self: *Decoder, dest: []u8) !void {
+    if (self.offset == self.data.len)
+        return error.EndOfStream;
+    if (self.offset + dest.len > self.data.len)
+        return error.NotEnoughData;
+    std.mem.copy(u8, dest, self.data[self.offset .. self.offset + dest.len]);
+    self.offset += @intCast(u32, dest.len);
+}
+
+pub fn readBytes(self: *Decoder, comptime count: comptime_int) ![count]u8 {
+    var data: [count]u8 = undefined;
+    try self.readRaw(&data);
+    return data;
+}
+
+/// Reads a value of the given type from the data stream.
+/// Allowed types are `u8`, `u16`, `u32`, `f64`, `Instruction`.
+pub fn read(self: *Decoder, comptime T: type) !T {
+    if (T == ir.Instruction) {
+        return readInstruction(self);
     }
 
-    pub fn isEof(self: Self) bool {
-        return self.offset >= self.data.len;
+    const data = try self.readBytes(@sizeOf(T));
+    switch (T) {
+        u8, u16, u32 => return std.mem.readIntLittle(T, &data),
+        f64 => return @bitCast(f64, data),
+        ir.InstructionName => return try std.meta.intToEnum(ir.InstructionName, data[0]),
+        else => @compileError("Unsupported type " ++ @typeName(T) ++ " for Decoder.read!"),
     }
+}
 
-    pub fn readRaw(self: *Self, dest: []u8) !void {
-        if (self.offset == self.data.len)
-            return error.EndOfStream;
-        if (self.offset + dest.len > self.data.len)
-            return error.NotEnoughData;
-        std.mem.copy(u8, dest, self.data[self.offset .. self.offset + dest.len]);
-        self.offset += @intCast(u32, dest.len);
-    }
+/// Reads a variable-length string from the data stream.
+/// Note that the returned handle is only valid as long as Decoder.data is valid.
+pub fn readVarString(self: *Decoder) ![]const u8 {
+    const len = try self.read(u16);
+    if (self.offset + len > self.data.len)
+        return error.NotEnoughData; // this is when a string tells you it's longer than the actual data storage.
+    const string = self.data[self.offset .. self.offset + len];
+    self.offset += len;
+    return string;
+}
 
-    pub fn readBytes(self: *Self, comptime count: comptime_int) ![count]u8 {
-        var data: [count]u8 = undefined;
-        try self.readRaw(&data);
-        return data;
-    }
+/// Reads a fixed-length string from the data. The string may either be 0-terminated
+/// or use the available length completly.
+/// Note that the returned handle is only valid as long as Decoder.data is valid.
+pub fn readFixedString(self: *Decoder, comptime len: comptime_int) ![]const u8 {
+    if (self.offset == self.data.len)
+        return error.EndOfStream;
+    if (self.offset + len > self.data.len)
+        return error.NotEnoughData;
+    const fullMem = self.data[self.offset .. self.offset + len];
+    self.offset += len;
+    return utility.clampFixedString(fullMem);
+}
 
-    /// Reads a value of the given type from the data stream.
-    /// Allowed types are `u8`, `u16`, `u32`, `f64`, `Instruction`.
-    pub fn read(self: *Self, comptime T: type) !T {
-        if (T == Instruction) {
-            return readInstruction(self);
-        }
-
-        const data = try self.readBytes(@sizeOf(T));
-        switch (T) {
-            u8, u16, u32 => return std.mem.readIntLittle(T, &data),
-            f64 => return @bitCast(f64, data),
-            InstructionName => return try std.meta.intToEnum(InstructionName, data[0]),
-            else => @compileError("Unsupported type " ++ @typeName(T) ++ " for Decoder.read!"),
-        }
-    }
-
-    /// Reads a variable-length string from the data stream.
-    /// Note that the returned handle is only valid as long as Decoder.data is valid.
-    pub fn readVarString(self: *Self) ![]const u8 {
-        const len = try self.read(u16);
-        if (self.offset + len > self.data.len)
-            return error.NotEnoughData; // this is when a string tells you it's longer than the actual data storage.
-        const string = self.data[self.offset .. self.offset + len];
-        self.offset += len;
-        return string;
-    }
-
-    /// Reads a fixed-length string from the data. The string may either be 0-terminated
-    /// or use the available length completly.
-    /// Note that the returned handle is only valid as long as Decoder.data is valid.
-    pub fn readFixedString(self: *Self, comptime len: comptime_int) ![]const u8 {
-        if (self.offset == self.data.len)
-            return error.EndOfStream;
-        if (self.offset + len > self.data.len)
-            return error.NotEnoughData;
-        const fullMem = self.data[self.offset .. self.offset + len];
-        self.offset += len;
-        return utility.clampFixedString(fullMem);
-    }
-
-    /// Reads a a full instruction from the source.
-    /// This will provide full decoding and error checking.
-    fn readInstruction(self: *Self) !Instruction {
-        if (self.isEof())
-            return error.EndOfStream;
-        const instr = try self.read(InstructionName);
-        inline for (std.meta.fields(Instruction)) |fld| {
-            if (instr == @field(InstructionName, fld.name)) {
-                if (fld.field_type == Instruction.Deprecated) {
-                    return error.DeprecatedInstruction;
-                } else if (fld.field_type == Instruction.NoArg) {
-                    return @unionInit(Instruction, fld.name, .{});
-                } else if (fld.field_type == Instruction.CallArg) {
-                    const fun = self.readVarString() catch |err| return mapEndOfStreamToNotEnoughData(err);
-                    const argc = self.read(u8) catch |err| return mapEndOfStreamToNotEnoughData(err);
-                    return @unionInit(Instruction, fld.name, Instruction.CallArg{
-                        .function = fun,
-                        .argc = argc,
+/// Reads a a full instruction from the source.
+/// This will provide full decoding and error checking.
+fn readInstruction(self: *Decoder) !ir.Instruction {
+    if (self.isEof())
+        return error.EndOfStream;
+    const instr = try self.read(ir.InstructionName);
+    inline for (std.meta.fields(ir.Instruction)) |fld| {
+        if (instr == @field(ir.InstructionName, fld.name)) {
+            if (fld.field_type == ir.Instruction.Deprecated) {
+                return error.DeprecatedInstruction;
+            } else if (fld.field_type == ir.Instruction.NoArg) {
+                return @unionInit(ir.Instruction, fld.name, .{});
+            } else if (fld.field_type == ir.Instruction.CallArg) {
+                const fun = self.readVarString() catch |err| return mapEndOfStreamToNotEnoughData(err);
+                const argc = self.read(u8) catch |err| return mapEndOfStreamToNotEnoughData(err);
+                return @unionInit(ir.Instruction, fld.name, ir.Instruction.CallArg{
+                    .function = fun,
+                    .argc = argc,
+                });
+            } else {
+                const ValType = std.meta.fieldInfo(fld.field_type, .value).field_type;
+                if (ValType == []const u8) {
+                    return @unionInit(ir.Instruction, fld.name, fld.field_type{
+                        .value = self.readVarString() catch |err| return mapEndOfStreamToNotEnoughData(err),
                     });
                 } else {
-                    const ValType = std.meta.fieldInfo(fld.field_type, .value).field_type;
-                    if (ValType == []const u8) {
-                        return @unionInit(Instruction, fld.name, fld.field_type{
-                            .value = self.readVarString() catch |err| return mapEndOfStreamToNotEnoughData(err),
-                        });
-                    } else {
-                        return @unionInit(Instruction, fld.name, fld.field_type{
-                            .value = self.read(ValType) catch |err| return mapEndOfStreamToNotEnoughData(err),
-                        });
-                    }
+                    return @unionInit(ir.Instruction, fld.name, fld.field_type{
+                        .value = self.read(ValType) catch |err| return mapEndOfStreamToNotEnoughData(err),
+                    });
                 }
             }
         }
-        return error.InvalidInstruction;
     }
+    return error.InvalidInstruction;
+}
 
-    fn mapEndOfStreamToNotEnoughData(err: anytype) @TypeOf(err) {
-        return switch (err) {
-            error.EndOfStream => error.NotEnoughData,
-            else => err,
-        };
-    }
-};
+fn mapEndOfStreamToNotEnoughData(err: anytype) @TypeOf(err) {
+    return switch (err) {
+        error.EndOfStream => error.NotEnoughData,
+        else => err,
+    };
+}
 
 // zig fmt: off
 const decoderTestBlob = [_]u8{
@@ -145,7 +143,7 @@ test "Decoder" {
     std.debug.assert((try decoder.read(u8)) == 8);
     std.debug.assert((try decoder.read(u16)) == 16);
     std.debug.assert((try decoder.read(u32)) == 32);
-    std.debug.assert((try decoder.read(InstructionName)) == .add);
+    std.debug.assert((try decoder.read(ir.InstructionName)) == .add);
     std.debug.assert(std.mem.eql(u8, try decoder.readVarString(), "Hello"));
     std.debug.assert((try decoder.read(f64)) == 3.14000000000000012434);
     std.debug.assert(std.mem.eql(u8, try decoder.readFixedString(8), "Bye"));
@@ -194,19 +192,19 @@ test "Decoder.read(Instruction)" {
             }
         }
 
-        fn eql(a: Instruction, b: Instruction) bool {
+        fn eql(a: ir.Instruction, b: ir.Instruction) bool {
             @setEvalBranchQuota(5000);
-            const activeField = @as(InstructionName, a);
-            if (activeField != @as(InstructionName, b))
+            const activeField = @as(ir.InstructionName, a);
+            if (activeField != @as(ir.InstructionName, b))
                 return false;
-            inline for (std.meta.fields(InstructionName)) |fld| {
-                if (activeField == @field(InstructionName, fld.name)) {
+            inline for (std.meta.fields(ir.InstructionName)) |fld| {
+                if (activeField == @field(ir.InstructionName, fld.name)) {
                     const FieldType = @TypeOf(@field(a, fld.name));
                     const lhs = @field(a, fld.name);
                     const rhs = @field(b, fld.name);
-                    if ((FieldType == Instruction.Deprecated) or (FieldType == Instruction.NoArg)) {
+                    if ((FieldType == ir.Instruction.Deprecated) or (FieldType == ir.Instruction.NoArg)) {
                         return true;
-                    } else if (FieldType == Instruction.CallArg) {
+                    } else if (FieldType == ir.Instruction.CallArg) {
                         return lhs.argc == rhs.argc and std.mem.eql(u8, lhs.function, rhs.function);
                     } else {
                         const ValType = std.meta.fieldInfo(FieldType, .value).field_type;
@@ -221,6 +219,7 @@ test "Decoder.read(Instruction)" {
             unreachable;
         }
     };
+    const Instruction = ir.Instruction;
     const patterns = [_]Pattern{
         .{ .text = "\x00", .instr = Instruction{ .nop = .{} } },
         .{ .text = "\x01", .instr = error.DeprecatedInstruction },

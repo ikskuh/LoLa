@@ -5,7 +5,7 @@ const ast = @import("ast.zig");
 const Location = @import("location.zig").Location;
 const Scope = @import("scope.zig").Scope;
 const Diagnostics = @import("diagnostics.zig").Diagnostics;
-const CompileUnit = @import("../common/compile-unit.zig").CompileUnit;
+const CompileUnit = @import("../common/CompileUnit.zig");
 const CodeWriter = @import("code-writer.zig").CodeWriter;
 const Instruction = @import("../common/ir.zig").Instruction;
 

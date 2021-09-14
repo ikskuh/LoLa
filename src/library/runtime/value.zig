@@ -1,6 +1,7 @@
 const std = @import("std");
 
-const envsrc = @import("environment.zig");
+const objects = @import("objects.zig");
+const Environment = @import("Environment.zig");
 
 pub const TypeId = enum(u8) {
     void = 0,
@@ -19,7 +20,7 @@ pub const Value = union(TypeId) {
     // non-allocating
     void: void,
     number: f64,
-    object: envsrc.ObjectHandle,
+    object: objects.ObjectHandle,
     boolean: bool,
 
     // allocating
@@ -36,7 +37,7 @@ pub const Value = union(TypeId) {
         return Self{ .number = @intToFloat(f64, val) };
     }
 
-    pub fn initObject(id: envsrc.ObjectHandle) Self {
+    pub fn initObject(id: objects.ObjectHandle) Self {
         return Self{ .object = id };
     }
 
@@ -153,7 +154,7 @@ pub const Value = union(TypeId) {
             return error.TypeMismatch;
     }
 
-    pub fn toObject(self: Self) ConversionError!envsrc.ObjectHandle {
+    pub fn toObject(self: Self) ConversionError!objects.ObjectHandle {
         if (self != .object)
             return error.TypeMismatch;
         return self.object;
@@ -260,7 +261,7 @@ pub const Value = union(TypeId) {
 
                 break :blk initNumber(@bitCast(f64, buffer));
             },
-            .object => initObject(@intToEnum(envsrc.ObjectHandle, try reader.readIntLittle(std.meta.Tag(envsrc.ObjectHandle)))),
+            .object => initObject(@intToEnum(objects.ObjectHandle, try reader.readIntLittle(std.meta.Tag(objects.ObjectHandle)))),
             .boolean => initBoolean((try reader.readByte()) != 0),
             .string => blk: {
                 const size = try reader.readIntLittle(u32);
@@ -325,10 +326,10 @@ test "Value.boolean" {
 }
 
 test "Value.object" {
-    var value = Value{ .object = @intToEnum(envsrc.ObjectHandle, 2394) };
+    var value = Value{ .object = @intToEnum(objects.ObjectHandle, 2394) };
     defer value.deinit();
     std.debug.assert(value == .object);
-    std.debug.assert(value.object == @intToEnum(envsrc.ObjectHandle, 2394));
+    std.debug.assert(value.object == @intToEnum(objects.ObjectHandle, 2394));
 }
 
 test "Value.string (move)" {
@@ -377,9 +378,9 @@ test "Value.eql (number)" {
 }
 
 test "Value.eql (object)" {
-    var v1 = Value.initObject(@intToEnum(envsrc.ObjectHandle, 1));
-    var v2 = Value.initObject(@intToEnum(envsrc.ObjectHandle, 1));
-    var v3 = Value.initObject(@intToEnum(envsrc.ObjectHandle, 2));
+    var v1 = Value.initObject(@intToEnum(objects.ObjectHandle, 1));
+    var v2 = Value.initObject(@intToEnum(objects.ObjectHandle, 1));
+    var v3 = Value.initObject(@intToEnum(objects.ObjectHandle, 2));
 
     std.debug.assert(v1.eql(v2));
     std.debug.assert(v2.eql(v1));

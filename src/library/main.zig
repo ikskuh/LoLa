@@ -1,20 +1,31 @@
 const zig_std = @import("std");
 
 // Import all runtime namespaces
-pub usingnamespace @import("common/ir.zig");
-pub usingnamespace @import("common/compile-unit.zig");
+const common = struct {
+    pub usingnamespace @import("common/ir.zig");
+    pub usingnamespace @import("common/disassembler.zig");
+};
 
-pub usingnamespace @import("common/disassembler.zig");
-pub usingnamespace @import("common/decoder.zig");
+pub usingnamespace common;
+
+pub const Decoder = @import("common/Decoder.zig");
+pub const CompileUnit = @import("common/CompileUnit.zig");
 
 /// Contains functions and structures for executing LoLa code.
 pub const runtime = struct {
     usingnamespace @import("runtime/value.zig");
-    usingnamespace @import("runtime/environment.zig");
+    pub const Environment = @import("runtime/Environment.zig");
     usingnamespace @import("runtime/vm.zig");
     usingnamespace @import("runtime/context.zig");
     usingnamespace @import("runtime/objects.zig");
     pub const EnvironmentMap = @import("runtime/environmentmap.zig").EnvironmentMap;
+
+    pub const ScriptFunction = Environment.ScriptFunction;
+    pub const Function = Environment.Function;
+    pub const UserFunctionCall = Environment.UserFunctionCall;
+    pub const UserFunction = Environment.UserFunction;
+    pub const AsyncFunctionCall = Environment.AsyncFunctionCall;
+    pub const AsyncUserFunction = Environment.AsyncUserFunction;
 };
 
 /// LoLa libraries that provide pre-defined functions and variables.
@@ -75,15 +86,15 @@ comptime {
         _ = @import("compiler/scope.zig");
         _ = @import("runtime/vm.zig");
         _ = @import("runtime/objects.zig");
-        _ = @import("runtime/environment.zig");
+        _ = @import("runtime/Environment.zig");
         _ = @import("runtime/environmentmap.zig");
         _ = @import("runtime/value.zig");
         _ = @import("runtime/context.zig");
-        _ = @import("common/decoder.zig");
+        _ = @import("common/Decoder.zig");
         _ = @import("common/disassembler.zig");
         _ = @import("common/utility.zig");
         _ = @import("common/ir.zig");
-        _ = @import("common/compile-unit.zig");
+        _ = @import("common/CompileUnit.zig");
         _ = compiler.compile;
 
         _ = libs.runtime;
