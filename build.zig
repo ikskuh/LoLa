@@ -98,7 +98,7 @@ pub fn build(b: *Builder) !void {
     exe.addPackage(build_options.getPackage("build_options"));
     exe.install();
 
-    const wasm_runtime = b.addStaticLibrary("lola", "src/wasm-compiler/main.zig");
+    const wasm_runtime = b.addSharedLibrary("lola", "src/wasm-compiler/main.zig", .unversioned);
     wasm_runtime.addPackage(pkgs.lola);
     wasm_runtime.setTarget(.{ .cpu_arch = .wasm32, .os_tag = .freestanding });
     wasm_runtime.setBuildMode(.ReleaseSafe);

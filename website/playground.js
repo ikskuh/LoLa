@@ -221,7 +221,7 @@ function translateEmulatorError(ind) {
 
 function stepRuntime(time) {
   if (!wasmContext.instance.exports.isInterpreterDone()) {
-    const success = wasmContext.instance.exports.stepInterpreter(100000);
+    const success = wasmContext.instance.exports.stepInterpreter(1000);
 
     if (wasmContext.instance.exports.isInterpreterDone()) {
       document.getElementById('stopButton').classList.add('hidden');

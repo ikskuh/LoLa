@@ -210,6 +210,10 @@ const API = struct {
     }
 };
 
+comptime {
+    _ = exports;
+}
+
 const exports = struct {
     export fn initialize() void {
         // nothing to init atm
