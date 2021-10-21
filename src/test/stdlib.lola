@@ -231,4 +231,45 @@ for(original in [
   ExpectEqual(deserialized, original);
 }
 
+for(i in Range(100)) {
+  var x = Random();
+  Expect(x >= 0.0);
+  Expect(x <= 1.0);
+}
+
+for(i in Range(100)) {
+  var x = Random(100);
+  Expect(x >= 0.0);
+  Expect(x <=  100.0);
+}
+
+for(i in Range(100)) {
+  var x = Random(-10, 10);
+  Expect(x >= -10.0);
+  Expect(x <=  10.0);
+}
+
+for(i in Range(100)) {
+  var x = RandomInt();
+  // Expect(Floor(x) == x);
+  // Expect(Ceil(x) == x);
+  Expect(x >= 0);
+}
+
+for(i in Range(100)) {
+  var x = RandomInt(100);
+  // Expect(Floor(x) == x);
+  // Expect(Ceil(x) == x);
+  Expect(x >= 0);
+  Expect(x <  100);
+}
+
+for(i in Range(100)) {
+  var x = RandomInt(-10, 10);
+  // Expect(Floor(x) == x);
+  // Expect(Ceil(x) == x);
+  Expect(x >= -10.0);
+  Expect(x <   10.0);
+}
+
 Print("Standard library test suite passed.");

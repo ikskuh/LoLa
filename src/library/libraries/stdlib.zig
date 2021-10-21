@@ -670,4 +670,71 @@ const sync_functions = struct {
 
         return try lola.runtime.Value.deserialize(stream.reader(), allocator);
     }
+
+    fn Random(env: *lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+        _ = context;
+        _ = env;
+
+        var lower: f64 = 0;
+        var upper: f64 = 1;
+
+        switch (args.len) {
+            0 => {},
+            1 => upper = try args[0].toNumber(),
+            2 => {
+                lower = try args[0].toNumber();
+                upper = try args[1].toNumber();
+            },
+            else => return error.InvalidArgs,
+        }
+
+        var result: f64 = undefined;
+        {
+            var held = random_mutex.acquire();
+            defer held.release();
+
+            if (random == null) {
+                random = std.rand.DefaultPrng.init(@bitCast(u64, @intToFloat(f64, milliTimestamp())));
+            }
+
+            result = lower + (upper - lower) * random.?.random.float(f64);
+        }
+
+        return lola.runtime.Value.initNumber(result);
+    }
+
+    fn RandomInt(env: *lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+        _ = context;
+        _ = env;
+
+        var lower: i32 = 0;
+        var upper: i32 = std.math.maxInt(i32);
+
+        switch (args.len) {
+            0 => {},
+            1 => upper = try args[0].toInteger(i32),
+            2 => {
+                lower = try args[0].toInteger(i32);
+                upper = try args[1].toInteger(i32);
+            },
+            else => return error.InvalidArgs,
+        }
+
+        var result: i32 = undefined;
+        {
+            var held = random_mutex.acquire();
+            defer held.release();
+
+            if (random == null) {
+                random = std.rand.DefaultPrng.init(@bitCast(u64, @intToFloat(f64, milliTimestamp())));
+            }
+
+            result = random.?.random.intRangeLessThan(i32, lower, upper);
+        }
+
+        return lola.runtime.Value.initInteger(i32, result);
+    }
 };
+
+var random_mutex = std.Thread.Mutex{};
+var random: ?std.rand.DefaultPrng = null;

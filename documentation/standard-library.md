@@ -15,6 +15,7 @@ Returns a portion of `string`. The portion starts at `start` and is `length` byt
 ### `Trim(string): string`
 
 Removes leading and trailing white space from the string. White space is on of the following ascii characters:
+
 - `0x09` (horizontal tab)
 - `0x0A` (line feed)
 - `0x0B` (vertical tab)
@@ -59,9 +60,11 @@ If the conversion fails, `void` is returned.
 If `base` is 16, `0x` is accepted as a prefix, and `h` as a postfix.
 
 ### `Split(str, sep, [removeEmpty]): array`
+
 Splits the string `str` into chunks separated by `sep`. When `removeEmpty` is given and `true`, all empty entries will be removed.
 
 ### `Join(array, [sep]): string`
+
 Joins all items in `array`, optionally separated by `sep`. Each item in `array` must be a `string`.
 
 ## Array API
@@ -94,7 +97,7 @@ Returns the last index of a given `item` in `array`. If the item is not found, `
 
 ### `Pi: number`
 
-Global constant containing the number *pi*.
+Global constant containing the number _pi_.
 
 ### `DeltaEqual(a, b, delta): boolean`
 
@@ -124,7 +127,15 @@ Returns the logarithm of `v` to base `base`. If `base` is not given, base 10 is 
 
 ### `Exp(v): number`
 
-Returns *e* to the power of `v`. *e* is the euler number.
+Returns _e_ to the power of `v`. _e_ is the euler number.
+
+### `Random([min],[max]): number`
+
+Returns a random number between `min` and `max`. If no argument is given, a random number between `0.0` and `1.0` is returned. If only `min` is given, a number between `0.0` and `min` (inclusive) is returned.
+
+### `RandomInt([min],[max]): number`
+
+Returns a random integer between `min` and `max`. If no argument is given, a random positive number is returned. If only `min` is given, a number between `0` and `min` (exclusive) is returned.
 
 ## Auxiliary
 
@@ -157,10 +168,13 @@ Returns `true` if the current environment has a function called `name`, `false` 
 Returns `true` if the `object` has a function called `name`, `false` otherwise.
 
 ### `Serialize(value): string`
+
 Serializes any `value` into a binary representation. This representation can later be loaded by via `Deserialize` and return the exact same value again. Note that objects are stored as opaque handles and are not transferrable between different systems.
 
 ### `Deserialize(string): any`
+
 Deserializes a previously serialized value. If the deserialization fails, a panic will occurr.
 
 ### `Yield(): void`
+
 This function will yield control back to the host, pausing the current execution. This can be inserted in loops to reduce CPU usage.
