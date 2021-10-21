@@ -196,9 +196,7 @@ Right now, it's not published in the gallery, so to install the extension, you h
 
 ### Continous Integration
 
-![Linux CI](https://github.com/MasterQ32/LoLa/workflows/Linux%20Build/badge.svg)
-![MacOS CI](https://github.com/MasterQ32/LoLa/workflows/MacOS%20Build/badge.svg)
-![Windows CI](https://github.com/MasterQ32/LoLa/workflows/Windows%20Build/badge.svg)
+[![Build](https://github.com/MasterQ32/LoLa/actions/workflows/build.yml/badge.svg)](https://github.com/MasterQ32/LoLa/actions/workflows/build.yml) [![Render Website](https://github.com/MasterQ32/LoLa/actions/workflows/website.yml/badge.svg)](https://github.com/MasterQ32/LoLa/actions/workflows/website.yml)
 
 ### Requirements
 
