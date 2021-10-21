@@ -107,6 +107,18 @@ Global constant containing the number _pi_.
 
 Compares `a` and `b` with a certain `delta`. Returns `true` when `abs(a-b) < delta`.
 
+### ``Floor(x): number`
+
+Rounds `x` towards negative infinity.
+
+### ``Ceiling(x): number`
+
+Rounds `x` towards positive infinity.
+
+### ``Round(x): number`
+
+Rounds `x` to the closest integer.
+
 ### `Sin(a): number`, `Cos(a): number`, `Tan(a): number`
 
 Trigonometric functions, all use radians.

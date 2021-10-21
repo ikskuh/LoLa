@@ -171,6 +171,37 @@ var delta = 0.00001;
 
 Expect(DeltaEqual(0.000001, 0.000002, delta));
 
+ExpectEqual(Floor(2.0), 2.0);
+ExpectEqual(Floor(3.0), 3.0);
+ExpectEqual(Floor(2.5), 2.0);
+ExpectEqual(Floor(2.999), 2.0);
+ExpectEqual(Floor(3.1), 3.0);
+ExpectEqual(Floor(0.0), 0.0);
+ExpectEqual(Floor(-0.5), -1.0);
+ExpectEqual(Floor(-1.0), -1.0);
+
+ExpectEqual(Ceiling(2.0), 2.0);
+ExpectEqual(Ceiling(3.0), 3.0);
+ExpectEqual(Ceiling(2.5), 3.0);
+ExpectEqual(Ceiling(2.999), 3.0);
+ExpectEqual(Ceiling(3.1), 4.0);
+ExpectEqual(Ceiling(0.0), 0.0);
+ExpectEqual(Ceiling(-0.5), 0.0);
+ExpectEqual(Ceiling(-1.0), -1.0);
+
+
+ExpectEqual(Round(2.0), 2.0);
+ExpectEqual(Round(3.0), 3.0);
+ExpectEqual(Round(2.5), 3.0);
+ExpectEqual(Round(3.5), 4.0);
+ExpectEqual(Round(2.999), 3.0);
+ExpectEqual(Round(3.1), 3.0);
+ExpectEqual(Round(0.0), 0.0);
+ExpectEqual(Round(-0.4), 0.0);
+ExpectEqual(Round(-0.5), -1.0);
+ExpectEqual(Round(-1.0), -1.0);
+ExpectEqual(Round(-1.5), -2.0);
+
 Expect(DeltaEqual(Sin(Pi), 0.0, delta));
 Expect(DeltaEqual(Cos(Pi), -1.0, delta));
 Expect(DeltaEqual(Tan(Pi), 0.0, delta));

@@ -516,6 +516,30 @@ const sync_functions = struct {
         return lola.runtime.Value.initBoolean(std.math.fabs(a - b) < delta);
     }
 
+    fn Floor(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+        _ = env;
+        _ = context;
+        if (args.len != 1)
+            return error.InvalidArgs;
+        return lola.runtime.Value.initNumber(std.math.floor(try args[0].toNumber()));
+    }
+
+    fn Ceiling(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+        _ = env;
+        _ = context;
+        if (args.len != 1)
+            return error.InvalidArgs;
+        return lola.runtime.Value.initNumber(std.math.ceil(try args[0].toNumber()));
+    }
+
+    fn Round(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+        _ = env;
+        _ = context;
+        if (args.len != 1)
+            return error.InvalidArgs;
+        return lola.runtime.Value.initNumber(std.math.round(try args[0].toNumber()));
+    }
+
     fn Sin(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
         _ = env;
         _ = context;
