@@ -438,6 +438,22 @@ const sync_functions = struct {
         ));
     }
 
+    fn Array(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+        _ = env;
+        const allocator = context.get(std.mem.Allocator);
+        if (args.len < 1 or args.len > 2)
+            return error.InvalidArgs;
+
+        const length = try args[0].toInteger(usize);
+        const init_val = if (args.len > 1) args[1] else .void;
+
+        var arr = try lola.runtime.Array.init(allocator, length);
+        for (arr.contents) |*item| {
+            item.* = try init_val.clone();
+        }
+        return lola.runtime.Value.fromArray(arr);
+    }
+
     fn Range(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
         _ = env;
         const allocator = context.get(std.mem.Allocator);

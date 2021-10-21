@@ -69,6 +69,10 @@ Joins all items in `array`, optionally separated by `sep`. Each item in `array` 
 
 ## Array API
 
+### `Array(count, [init]): array`
+
+Returns an array with `count` items initialized with `init` if given. Otherwise, the array will be filled with `void`.
+
 ### `Range(count): array`
 
 Returns an array with `count` increasing numbers starting at 0.

@@ -123,6 +123,21 @@ ExpectEqual(Length([]), 0);
 ExpectEqual(Length([1]), 1);
 ExpectEqual(Length([1,2]), 2);
 
+ExpectEqual(Array(0), []);
+ExpectEqual(Array(1), [void]);
+ExpectEqual(Array(2), [void,void]);
+ExpectEqual(Array(3), [void,void,void]);
+
+ExpectEqual(Array(0, "hi"), []);
+ExpectEqual(Array(1, "hi"), ["hi"]);
+ExpectEqual(Array(2, "hi"), ["hi","hi"]);
+ExpectEqual(Array(3, "hi"), ["hi","hi","hi"]);
+
+ExpectEqual(Array(0, 2.5), []);
+ExpectEqual(Array(1, 2.5), [2.5]);
+ExpectEqual(Array(2, 2.5), [2.5,2.5]);
+ExpectEqual(Array(3, 2.5), [2.5,2.5,2.5]);
+
 ExpectEqual(Range(0), []);
 ExpectEqual(Range(1), [0]);
 ExpectEqual(Range(3), [0,1,2]);
@@ -230,6 +245,7 @@ for(original in [
   var deserialized = Deserialize(serialized);
   ExpectEqual(deserialized, original);
 }
+
 
 for(i in Range(100)) {
   var x = Random();
