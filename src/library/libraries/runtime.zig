@@ -1,10 +1,11 @@
 // This file implements the LoLa Runtime Library.
 
 const std = @import("std");
+const builtin = @import("builtin");
 const lola = @import("../main.zig");
 const root = @import("root");
 
-const GlobalObjectPool = if (std.builtin.is_test)
+const GlobalObjectPool = if (builtin.is_test)
     // we need to do a workaround here for testing purposes
     lola.runtime.ObjectPool([_]type{
         LoLaList,
@@ -16,7 +17,7 @@ else
     @compileError("Please define and use a global ObjectPool type to use the runtime classes.");
 
 comptime {
-    if (std.builtin.is_test) {
+    if (builtin.is_test) {
         const T = lola.runtime.ObjectPool([_]type{
             LoLaList,
             LoLaDictionary,

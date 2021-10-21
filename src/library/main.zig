@@ -1,4 +1,5 @@
 const zig_std = @import("std");
+const builtin = @import("builtin");
 
 // Import all runtime namespaces
 const common = struct {
@@ -69,7 +70,7 @@ pub const compiler = struct {
 };
 
 comptime {
-    if (zig_std.builtin.is_test) {
+    if (builtin.is_test) {
         // include tests
         _ = @import("libraries/stdlib.zig");
         _ = @import("libraries/runtime.zig");

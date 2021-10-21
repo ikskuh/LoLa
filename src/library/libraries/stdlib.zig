@@ -1,6 +1,7 @@
 // This file implements the LoLa standard library
 
 const std = @import("std");
+const builtin = @import("builtin");
 const lola = @import("../main.zig");
 
 const whitespace = [_]u8{
@@ -14,7 +15,7 @@ const whitespace = [_]u8{
 
 const root = @import("root");
 
-const milliTimestamp = if (std.builtin.os.tag == .freestanding)
+const milliTimestamp = if (builtin.os.tag == .freestanding)
     if (@hasDecl(root, "milliTimestamp"))
         root.milliTimestamp
     else

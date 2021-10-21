@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const Builder = std.build.Builder;
 
 pub fn createPackage(comptime root: []const u8) std.build.Pkg {
@@ -74,18 +75,7 @@ pub fn build(b: *Builder) !void {
     const version_tag = b.option([]const u8, "version", "Sets the version displayed in the docs and for `lola version`");
 
     const mode = b.standardReleaseOptions();
-    const target = b.standardTargetOptions(.{
-        .default_target = if (std.builtin.os.tag == .windows)
-            std.zig.CrossTarget.parse(.{ .arch_os_abi = "native-native-gnu" }) catch unreachable
-        else if (std.builtin.os.tag == .linux)
-            std.zig.CrossTarget.fromTarget(.{
-                .cpu = std.builtin.cpu,
-                .os = std.builtin.os,
-                .abi = .musl,
-            })
-        else
-            std.zig.CrossTarget{},
-    });
+    const target = b.standardTargetOptions(.{});
 
     const build_options = b.addOptions();
     build_options.addOption([]const u8, "version", version_tag orelse "development");
@@ -143,7 +133,7 @@ pub fn build(b: *Builder) !void {
         test_step.dependOn(&stdib_test.step);
 
         // when the host is windows, this won't work :(
-        if (std.builtin.os.tag != .windows) {
+        if (builtin.os.tag != .windows) {
             std.fs.cwd().makeDir("zig-cache/tmp") catch |err| switch (err) {
                 error.PathAlreadyExists => {}, // nice
                 else => |e| return e,

@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const interfaces = @import("interface");
 
 const Environment = @import("Environment.zig");
@@ -532,7 +533,7 @@ const TestObject = struct {
 const TestPool = ObjectPool([_]type{TestObject});
 
 comptime {
-    if (std.builtin.is_test) {
+    if (builtin.is_test) {
         {
             if (ObjectPool([_]type{}).serializable != false)
                 @compileError("Empty ObjectPool is required to be unserializable!");

@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const lola = @import("lola");
 const argsParser = @import("args");
 const build_options = @import("build_options");
@@ -342,7 +343,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
             var result = vm.execute(options.limit) catch |err| {
                 var stderr = std.io.getStdErr().writer();
 
-                if (std.builtin.mode == .Debug) {
+                if (builtin.mode == .Debug) {
                     if (@errorReturnTrace()) |err_trace| {
                         std.debug.dumpStackTrace(err_trace.*);
                     } else {
