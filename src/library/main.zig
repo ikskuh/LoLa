@@ -27,6 +27,7 @@ pub const runtime = struct {
     pub const UserFunction = Environment.UserFunction;
     pub const AsyncFunctionCall = Environment.AsyncFunctionCall;
     pub const AsyncUserFunction = Environment.AsyncUserFunction;
+    pub const AsyncUserFunctionCall = Environment.AsyncUserFunctionCall;
 };
 
 /// LoLa libraries that provide pre-defined functions and variables.
