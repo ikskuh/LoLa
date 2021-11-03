@@ -737,7 +737,7 @@ const sync_functions = struct {
                 random = std.rand.DefaultPrng.init(@bitCast(u64, @intToFloat(f64, milliTimestamp())));
             }
 
-            result = lower + (upper - lower) * random.?.random.float(f64);
+            result = lower + (upper - lower) * random.?.random().float(f64);
         }
 
         return lola.runtime.Value.initNumber(result);
@@ -769,7 +769,7 @@ const sync_functions = struct {
                 random = std.rand.DefaultPrng.init(@bitCast(u64, @intToFloat(f64, milliTimestamp())));
             }
 
-            result = random.?.random.intRangeLessThan(i32, lower, upper);
+            result = random.?.random().intRangeLessThan(i32, lower, upper);
         }
 
         return lola.runtime.Value.initInteger(i32, result);
