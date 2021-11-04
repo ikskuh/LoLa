@@ -781,6 +781,34 @@ pub const VM = struct {
         try self.push(Value.initNumber(result));
     }
 
+    pub const StackTraceItem = struct {
+        location: ?CompileUnit.DebugSymbol,
+        function: []const u8,
+        compile_unit: *const CompileUnit,
+    };
+
+    pub fn getStackTop(self: Self) ?StackTraceItem {
+        if (self.calls.items.len == 0)
+            return null;
+        const call = self.calls.items[self.calls.items.len - 1];
+
+        const stack_compile_unit = call.environment.compileUnit;
+
+        var item = StackTraceItem{
+            .compile_unit = stack_compile_unit,
+            .location = stack_compile_unit.lookUp(call.decoder.offset),
+            .function = "<main>",
+        };
+
+        for (stack_compile_unit.functions) |fun| {
+            if (call.decoder.offset < fun.entryPoint)
+                break;
+            item.function = fun.name;
+        }
+
+        return item;
+    }
+
     /// Prints a stack trace for the current code position into `stream`.
     pub fn printStackTrace(self: Self, stream: anytype) !void {
         var i: usize = self.calls.items.len;

@@ -43,9 +43,18 @@ pub const Diagnostics = struct {
         const msg_string = try std.fmt.allocPrint(&self.arena.allocator, fmt, args);
         errdefer self.arena.allocator.free(msg_string);
 
+        const arena_pos = try self.arena.allocator.dupe(u8, location.chunk);
+        errdefer self.arena.allocator.free(arena_pos);
+
         try self.messages.append(Message{
             .kind = kind,
-            .location = location,
+            .location = Location{
+                .chunk = arena_pos,
+                .line = location.line,
+                .column = location.column,
+                .offset_start = location.offset_start,
+                .offset_end = location.offset_end,
+            },
             .message = msg_string,
         });
     }
