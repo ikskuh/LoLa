@@ -27,7 +27,7 @@ else
 /// providing it with a basic set of functions.
 /// `allocator` will be used to perform new allocations for the environment.
 pub fn install(environment: *lola.runtime.Environment, allocator: *std.mem.Allocator) !void {
-    try environment.installModule(@This(), lola.runtime.Context.init(std.mem.Allocator, allocator));
+    try environment.installModule(@This(), lola.runtime.Context.make(*std.mem.Allocator, allocator));
 }
 
 /// empty compile unit for testing purposes
@@ -55,7 +55,7 @@ test "stdlib.install" {
 pub fn Sleep(env: *lola.runtime.Environment, call_context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.AsyncFunctionCall {
     _ = env;
 
-    const allocator = call_context.get(std.mem.Allocator);
+    const allocator = call_context.cast(*std.mem.Allocator);
 
     if (args.len != 1)
         return error.InvalidArgs;
@@ -73,16 +73,16 @@ pub fn Sleep(env: *lola.runtime.Environment, call_context: lola.runtime.Context,
     };
 
     return lola.runtime.AsyncFunctionCall{
-        .context = lola.runtime.Context.init(Context, ptr),
+        .context = lola.runtime.Context.make(*Context, ptr),
         .destructor = struct {
             fn dtor(exec_context: lola.runtime.Context) void {
-                const ctx = exec_context.get(Context);
+                const ctx = exec_context.cast(*Context);
                 ctx.allocator.destroy(ctx);
             }
         }.dtor,
         .execute = struct {
             fn execute(exec_context: lola.runtime.Context) anyerror!?lola.runtime.Value {
-                const ctx = exec_context.get(Context);
+                const ctx = exec_context.cast(*Context);
 
                 if (ctx.end_time < @intToFloat(f64, milliTimestamp())) {
                     return .void;
@@ -97,7 +97,7 @@ pub fn Sleep(env: *lola.runtime.Environment, call_context: lola.runtime.Context,
 pub fn Yield(env: *lola.runtime.Environment, call_context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.AsyncFunctionCall {
     _ = env;
 
-    const allocator = call_context.get(std.mem.Allocator);
+    const allocator = call_context.cast(*std.mem.Allocator);
 
     if (args.len != 0)
         return error.InvalidArgs;
@@ -114,16 +114,16 @@ pub fn Yield(env: *lola.runtime.Environment, call_context: lola.runtime.Context,
     };
 
     return lola.runtime.AsyncFunctionCall{
-        .context = lola.runtime.Context.init(Context, ptr),
+        .context = lola.runtime.Context.make(*Context, ptr),
         .destructor = struct {
             fn dtor(exec_context: lola.runtime.Context) void {
-                const ctx = exec_context.get(Context);
+                const ctx = exec_context.cast(*Context);
                 ctx.allocator.destroy(ctx);
             }
         }.dtor,
         .execute = struct {
             fn execute(exec_context: lola.runtime.Context) anyerror!?lola.runtime.Value {
-                const ctx = exec_context.get(Context);
+                const ctx = exec_context.cast(*Context);
 
                 if (ctx.end) {
                     return .void;
@@ -150,7 +150,7 @@ pub fn Length(env: *const lola.runtime.Environment, context: lola.runtime.Contex
 
 pub fn SubString(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
     _ = env;
-    const allocator = context.get(std.mem.Allocator);
+    const allocator = context.cast(*std.mem.Allocator);
     if (args.len < 2 or args.len > 3)
         return error.InvalidArgs;
     if (args[0] != .string)
@@ -174,7 +174,7 @@ pub fn SubString(env: *const lola.runtime.Environment, context: lola.runtime.Con
 }
 pub fn Trim(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
     _ = env;
-    const allocator = context.get(std.mem.Allocator);
+    const allocator = context.cast(*std.mem.Allocator);
     if (args.len != 1)
         return error.InvalidArgs;
     if (args[0] != .string)
@@ -189,7 +189,7 @@ pub fn Trim(env: *const lola.runtime.Environment, context: lola.runtime.Context,
 
 pub fn TrimLeft(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
     _ = env;
-    const allocator = context.get(std.mem.Allocator);
+    const allocator = context.cast(*std.mem.Allocator);
     if (args.len != 1)
         return error.InvalidArgs;
     if (args[0] != .string)
@@ -204,7 +204,7 @@ pub fn TrimLeft(env: *const lola.runtime.Environment, context: lola.runtime.Cont
 
 pub fn TrimRight(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
     _ = env;
-    const allocator = context.get(std.mem.Allocator);
+    const allocator = context.cast(*std.mem.Allocator);
     if (args.len != 1)
         return error.InvalidArgs;
     if (args[0] != .string)
@@ -290,7 +290,7 @@ pub fn Byte(env: *const lola.runtime.Environment, context: lola.runtime.Context,
 
 pub fn Chr(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
     _ = env;
-    const allocator = context.get(std.mem.Allocator);
+    const allocator = context.cast(*std.mem.Allocator);
     if (args.len != 1)
         return error.InvalidArgs;
     const val = try args[0].toInteger(u8);
@@ -303,7 +303,7 @@ pub fn Chr(env: *const lola.runtime.Environment, context: lola.runtime.Context, 
 
 pub fn NumToString(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
     _ = env;
-    const allocator = context.get(std.mem.Allocator);
+    const allocator = context.cast(*std.mem.Allocator);
     if (args.len < 1 or args.len > 2)
         return error.InvalidArgs;
     var buffer: [256]u8 = undefined;
@@ -356,7 +356,7 @@ pub fn StringToNum(env: *const lola.runtime.Environment, context: lola.runtime.C
 
 pub fn Split(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
     _ = env;
-    const allocator = context.get(std.mem.Allocator);
+    const allocator = context.cast(*std.mem.Allocator);
     if (args.len < 2 or args.len > 3)
         return error.InvalidArgs;
 
@@ -390,7 +390,7 @@ pub fn Split(env: *const lola.runtime.Environment, context: lola.runtime.Context
 
 pub fn Join(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
     _ = env;
-    const allocator = context.get(std.mem.Allocator);
+    const allocator = context.cast(*std.mem.Allocator);
     if (args.len < 1 or args.len > 2)
         return error.InvalidArgs;
 
@@ -420,7 +420,7 @@ pub fn Join(env: *const lola.runtime.Environment, context: lola.runtime.Context,
 
 pub fn Array(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
     _ = env;
-    const allocator = context.get(std.mem.Allocator);
+    const allocator = context.cast(*std.mem.Allocator);
     if (args.len < 1 or args.len > 2)
         return error.InvalidArgs;
 
@@ -436,7 +436,7 @@ pub fn Array(env: *const lola.runtime.Environment, context: lola.runtime.Context
 
 pub fn Range(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
     _ = env;
-    const allocator = context.get(std.mem.Allocator);
+    const allocator = context.cast(*std.mem.Allocator);
     if (args.len < 1 or args.len > 2)
         return error.InvalidArgs;
 
@@ -461,7 +461,7 @@ pub fn Range(env: *const lola.runtime.Environment, context: lola.runtime.Context
 
 pub fn Slice(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
     _ = env;
-    const allocator = context.get(std.mem.Allocator);
+    const allocator = context.cast(*std.mem.Allocator);
     if (args.len != 3)
         return error.InvalidArgs;
 
@@ -618,7 +618,7 @@ pub fn Timestamp(env: *const lola.runtime.Environment, context: lola.runtime.Con
 
 pub fn TypeOf(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
     _ = env;
-    const allocator = context.get(std.mem.Allocator);
+    const allocator = context.cast(*std.mem.Allocator);
     if (args.len != 1)
         return error.InvalidArgs;
     return lola.runtime.Value.initString(allocator, switch (args[0]) {
@@ -634,7 +634,7 @@ pub fn TypeOf(env: *const lola.runtime.Environment, context: lola.runtime.Contex
 
 pub fn ToString(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
     _ = env;
-    const allocator = context.get(std.mem.Allocator);
+    const allocator = context.cast(*std.mem.Allocator);
 
     if (args.len != 1)
         return error.InvalidArgs;
@@ -664,7 +664,7 @@ pub fn HasFunction(env: *const lola.runtime.Environment, context: lola.runtime.C
 
 pub fn Serialize(env: *lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
     _ = env;
-    const allocator = context.get(std.mem.Allocator);
+    const allocator = context.cast(*std.mem.Allocator);
     if (args.len != 1)
         return error.InvalidArgs;
 
@@ -680,7 +680,7 @@ pub fn Serialize(env: *lola.runtime.Environment, context: lola.runtime.Context, 
 
 pub fn Deserialize(env: *lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
     _ = env;
-    const allocator = context.get(std.mem.Allocator);
+    const allocator = context.cast(*std.mem.Allocator);
     if (args.len != 1)
         return error.InvalidArgs;
 

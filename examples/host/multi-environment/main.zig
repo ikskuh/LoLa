@@ -64,8 +64,8 @@ pub fn main() anyerror!u8 {
     defer client_b_env.deinit();
 
     for ([_]*lola.runtime.Environment{ &server_env, &client_a_env, &client_b_env }) |env| {
-        try env.installModule(lola.libs.std, lola.runtime.Context.init(std.mem.Allocator, allocator));
-        try env.installModule(lola.libs.runtime, lola.runtime.Context.init(std.mem.Allocator, allocator));
+        try env.installModule(lola.libs.std, lola.runtime.Context.make(*std.mem.Allocator, allocator));
+        try env.installModule(lola.libs.runtime, lola.runtime.Context.make(*std.mem.Allocator, allocator));
     }
 
     var server_obj_handle = try pool.createObject(&server_env);
@@ -77,7 +77,7 @@ pub fn main() anyerror!u8 {
 
     const getServerFunction = lola.runtime.Function{
         .syncUser = .{
-            .context = lola.runtime.Context.init(lola.runtime.ObjectHandle, &server_obj_handle),
+            .context = lola.runtime.Context.make(*lola.runtime.ObjectHandle, &server_obj_handle),
             .call = struct {
                 fn call(
                     environment: *lola.runtime.Environment,
@@ -86,7 +86,7 @@ pub fn main() anyerror!u8 {
                 ) anyerror!lola.runtime.Value {
                     _ = environment;
                     _ = args;
-                    return lola.runtime.Value.initObject(context.get(lola.runtime.ObjectHandle).*);
+                    return lola.runtime.Value.initObject(context.cast(*lola.runtime.ObjectHandle).*);
                 }
             }.call,
             .destructor = null,

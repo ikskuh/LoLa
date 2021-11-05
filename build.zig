@@ -10,7 +10,10 @@ pub fn createPackage(comptime root: []const u8) std.build.Pkg {
             std.build.Pkg{
                 .name = "interface",
                 .path = .{ .path = root ++ "/libs/interface.zig/interface.zig" },
-                .dependencies = &[_]std.build.Pkg{},
+            },
+            std.build.Pkg{
+                .name = "any-pointer",
+                .path = .{ .path = root ++ "/libs/any-pointer/any-pointer.zig" },
             },
         },
     };
@@ -34,9 +37,7 @@ const pkgs = struct {
     const lola = std.build.Pkg{
         .name = "lola",
         .path = .{ .path = "src/library/main.zig" },
-        .dependencies = &[_]std.build.Pkg{
-            interface,
-        },
+        .dependencies = &[_]std.build.Pkg{ interface, any_pointer },
     };
 
     const koino = std.build.Pkg{
@@ -48,6 +49,12 @@ const pkgs = struct {
             std.build.Pkg{ .name = "clap", .path = .{ .path = "libs/koino/vendor/zig-clap/clap.zig" } },
             std.build.Pkg{ .name = "zunicode", .path = .{ .path = "libs/koino/vendor/zunicode/src/zunicode.zig" } },
         },
+    };
+
+    const any_pointer =
+        std.build.Pkg{
+        .name = "any-pointer",
+        .path = .{ .path = "libs/any-pointer/any-pointer.zig" },
     };
 };
 

@@ -5,13 +5,13 @@
 
 const std = @import("std");
 const iface = @import("interface");
+const AnyPointer = @import("any-pointer").AnyPointer;
 const logger = std.log.scoped(.lola);
 
 // Import modules to reduce file size
 const value_unit = @import("value.zig");
 const Value = value_unit.Value;
 const CompileUnit = @import("../common/CompileUnit.zig");
-const Context = @import("context.zig").Context;
 const vm = @import("vm.zig");
 const objects = @import("objects.zig");
 
@@ -141,7 +141,7 @@ fn isCompatibleFunctionSignature(comptime Destination: type, comptime Queried: t
 /// Modules are containers that contain public functions with either a 
 /// `UserFunctionCall` or `AsyncUserFunctionCall` signature.
 /// Every other function is ignored (and a debug log is generated).
-pub fn installModule(self: *Environment, comptime Module: type, context: Context) !void {
+pub fn installModule(self: *Environment, comptime Module: type, context: AnyPointer) !void {
 
     // Install all functions from the namespace "functions":
     inline for (std.meta.declarations(Module)) |decl| {
@@ -270,7 +270,7 @@ pub const ScriptFunction = struct {
 
 pub const UserFunctionCall = fn (
     environment: *Environment,
-    context: Context,
+    context: AnyPointer,
     args: []const Value,
 ) anyerror!Value;
 
@@ -278,15 +278,15 @@ pub const UserFunctionCall = fn (
 pub const UserFunction = struct {
     const Self = @This();
 
-    /// Context, will be passed to `call`.
-    context: Context,
+    /// AnyPointer, will be passed to `call`.
+    context: AnyPointer,
 
     /// Executes the function, returns a value synchronously.
     call: UserFunctionCall,
 
     /// Optional destructor that may free the memory stored in `context`.
     /// Is called when the function call is deinitialized.
-    destructor: ?fn (context: Context) void,
+    destructor: ?fn (context: AnyPointer) void,
 
     pub fn deinit(self: *Self) void {
         if (self.destructor) |dtor| {
@@ -298,18 +298,18 @@ pub const UserFunction = struct {
 
 test "UserFunction (destructor)" {
     var uf1: UserFunction = .{
-        .context = .empty,
+        .context = AnyPointer.null_pointer,
         .call = undefined,
         .destructor = null,
     };
     defer uf1.deinit();
 
     var uf2: UserFunction = .{
-        .context = Context.init(u32, try std.testing.allocator.create(u32)),
+        .context = AnyPointer.make(*u32, try std.testing.allocator.create(u32)),
         .call = undefined,
         .destructor = struct {
-            fn destructor(ctx: Context) void {
-                std.testing.allocator.destroy(ctx.get(u32));
+            fn destructor(ctx: AnyPointer) void {
+                std.testing.allocator.destroy(ctx.cast(*u32));
             }
         }.destructor,
     };
@@ -318,7 +318,7 @@ test "UserFunction (destructor)" {
 
 pub const AsyncUserFunctionCall = fn (
     environment: *Environment,
-    context: Context,
+    context: AnyPointer,
     args: []const Value,
 ) anyerror!AsyncFunctionCall;
 
@@ -327,8 +327,8 @@ pub const AsyncUserFunctionCall = fn (
 pub const AsyncUserFunction = struct {
     const Self = @This();
 
-    /// Context, will be passed to `call`.
-    context: Context,
+    /// AnyPointer, will be passed to `call`.
+    context: AnyPointer,
 
     /// Begins execution of this function.
     /// After the initialization, the return value will be invoked once
@@ -337,7 +337,7 @@ pub const AsyncUserFunction = struct {
 
     /// Optional destructor that may free the memory stored in `context`.
     /// Is called when the function call is deinitialized.
-    destructor: ?fn (context: Context) void,
+    destructor: ?fn (context: AnyPointer) void,
 
     pub fn deinit(self: *Self) void {
         if (self.destructor) |dtor| {
@@ -356,11 +356,11 @@ test "AsyncUserFunction (destructor)" {
     defer uf1.deinit();
 
     var uf2: AsyncUserFunction = .{
-        .context = Context.init(u32, try std.testing.allocator.create(u32)),
+        .context = AnyPointer.make(*u32, try std.testing.allocator.create(u32)),
         .call = undefined,
         .destructor = struct {
-            fn destructor(ctx: Context) void {
-                std.testing.allocator.destroy(ctx.get(u32));
+            fn destructor(ctx: AnyPointer) void {
+                std.testing.allocator.destroy(ctx.cast(*u32));
             }
         }.destructor,
     };
@@ -379,15 +379,15 @@ pub const AsyncFunctionCall = struct {
 
     /// The context may be used to to store the state of this function call.
     /// This may be created with `@sliceToBytes`.
-    context: Context,
+    context: AnyPointer,
 
     /// Executor that will run this function call.
     /// May return a value (function call completed) or `null` (function call still in progress).
-    execute: fn (context: Context) anyerror!?Value,
+    execute: fn (context: AnyPointer) anyerror!?Value,
 
     /// Optional destructor that may free the memory stored in `context`.
     /// Is called when the function call is deinitialized.
-    destructor: ?fn (context: Context) void,
+    destructor: ?fn (context: AnyPointer) void,
 
     pub fn deinit(self: *Self) void {
         if (self.destructor) |dtor| {
@@ -399,10 +399,10 @@ pub const AsyncFunctionCall = struct {
 
 test "AsyncFunctionCall.deinit" {
     const Helper = struct {
-        fn destroy(context: Context) void {
-            std.testing.allocator.destroy(context.get(u32));
+        fn destroy(context: AnyPointer) void {
+            std.testing.allocator.destroy(context.cast(*u32));
         }
-        fn exec(context: Context) anyerror!?Value {
+        fn exec(context: AnyPointer) anyerror!?Value {
             _ = context;
             return error.NotSupported;
         }
@@ -410,7 +410,7 @@ test "AsyncFunctionCall.deinit" {
 
     var callWithDtor = AsyncFunctionCall{
         .object = null,
-        .context = Context.init(u32, try std.testing.allocator.create(u32)),
+        .context = AnyPointer.make(*u32, try std.testing.allocator.create(u32)),
         .execute = Helper.exec,
         .destructor = Helper.destroy,
     };
@@ -439,10 +439,10 @@ pub const Function = union(enum) {
     /// An asynchronous function that will yield the VM execution.
     asyncUser: AsyncUserFunction,
 
-    pub fn initSimpleUser(fun: fn (env: *Environment, context: Context, args: []const Value) anyerror!Value) Function {
+    pub fn initSimpleUser(fun: fn (env: *Environment, context: AnyPointer, args: []const Value) anyerror!Value) Function {
         return Self{
             .syncUser = UserFunction{
-                .context = .empty,
+                .context = AnyPointer.null_pointer,
                 .destructor = null,
                 .call = fun,
             },
@@ -552,7 +552,7 @@ pub const Function = union(enum) {
         const ArgsTuple = std.meta.ArgsTuple(F);
 
         const Impl = struct {
-            fn invoke(env: *Environment, context: Context, args: []const Value) anyerror!Value {
+            fn invoke(env: *Environment, context: AnyPointer, args: []const Value) anyerror!Value {
                 _ = context;
                 if (args.len != function_info.args.len)
                     return error.InvalidArgs;
@@ -589,9 +589,9 @@ pub const Function = union(enum) {
         return initSimpleUser(Impl.invoke);
     }
 
-    pub fn wrapWithContext(comptime function: anytype, context: @typeInfo(@TypeOf(function)).Fn.args[0].arg_type.?) Function {
+    pub fn wrapWithAnyPointer(comptime function: anytype, context: @typeInfo(@TypeOf(function)).Fn.args[0].arg_type.?) Function {
         const F = @TypeOf(function);
-        const FunctionContext = std.meta.Child(@TypeOf(context));
+        const FunctionAnyPointer = std.meta.Child(@TypeOf(context));
         const info = @typeInfo(F);
         if (info != .Fn)
             @compileError("Function.wrap expects a function!");
@@ -605,13 +605,13 @@ pub const Function = union(enum) {
         const ArgsTuple = std.meta.ArgsTuple(F);
 
         const Impl = struct {
-            fn invoke(env: *Environment, wrapped_context: Context, args: []const Value) anyerror!Value {
+            fn invoke(env: *Environment, wrapped_context: AnyPointer, args: []const Value) anyerror!Value {
                 if (args.len != (function_info.args.len - 1))
                     return error.InvalidArgs;
 
                 var zig_args: ArgsTuple = undefined;
 
-                zig_args[0] = wrapped_context.get(FunctionContext);
+                zig_args[0] = wrapped_context.get(FunctionAnyPointer);
 
                 comptime var index = 1;
                 inline while (index < function_info.args.len) : (index += 1) {
@@ -637,7 +637,7 @@ pub const Function = union(enum) {
 
         return Self{
             .syncUser = UserFunction{
-                .context = Context.init(FunctionContext, context),
+                .context = AnyPointer.init(FunctionAnyPointer, context),
                 .destructor = null,
                 .call = Impl.invoke,
             },

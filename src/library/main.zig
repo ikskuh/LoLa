@@ -16,8 +16,8 @@ pub const CompileUnit = @import("common/CompileUnit.zig");
 pub const runtime = struct {
     usingnamespace @import("runtime/value.zig");
     pub const Environment = @import("runtime/Environment.zig");
+    pub const Context = @import("any-pointer").AnyPointer;
     usingnamespace @import("runtime/vm.zig");
-    usingnamespace @import("runtime/context.zig");
     usingnamespace @import("runtime/objects.zig");
     pub const EnvironmentMap = @import("runtime/environmentmap.zig").EnvironmentMap;
 
@@ -91,7 +91,6 @@ comptime {
         _ = @import("runtime/Environment.zig");
         _ = @import("runtime/environmentmap.zig");
         _ = @import("runtime/value.zig");
-        _ = @import("runtime/context.zig");
         _ = @import("common/Decoder.zig");
         _ = @import("common/disassembler.zig");
         _ = @import("common/utility.zig");
