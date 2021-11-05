@@ -62,8 +62,8 @@ pub fn main() anyerror!u8 {
     // our environment. You can see how to implement custom
     // functions if you check out the implementation of both
     // libraries!
-    try lola.libs.std.install(&env, allocator);
-    try lola.libs.runtime.install(&env, allocator);
+    try env.installModule(lola.libs.std, lola.runtime.Context.init(std.mem.Allocator, allocator));
+    try env.installModule(lola.libs.runtime, lola.runtime.Context.init(std.mem.Allocator, allocator));
 
     // Create a virtual machine that is used to execute LoLa bytecode.
     // Using `.init` will always run the top-level code.

@@ -28,29 +28,12 @@ comptime {
     }
 }
 
+/// Deprecated
 /// Installs the LoLa standard library into the given environment,
 /// providing it with a basic set of functions.
 /// `allocator` will be used to perform new allocations for the environment.
 pub fn install(environment: *lola.runtime.Environment, allocator: *std.mem.Allocator) !void {
-    // Install all functions from the namespace "functions":
-    inline for (std.meta.declarations(sync_functions)) |decl| {
-        try environment.installFunction(decl.name, lola.runtime.Function{
-            .syncUser = lola.runtime.UserFunction{
-                .context = lola.runtime.Context.init(std.mem.Allocator, allocator),
-                .destructor = null,
-                .call = @field(sync_functions, decl.name),
-            },
-        });
-    }
-    inline for (std.meta.declarations(async_functions)) |decl| {
-        try environment.installFunction(decl.name, lola.runtime.Function{
-            .asyncUser = lola.runtime.AsyncUserFunction{
-                .context = lola.runtime.Context.init(std.mem.Allocator, allocator),
-                .destructor = null,
-                .call = @field(async_functions, decl.name),
-            },
-        });
-    }
+    try environment.installModule(@This(), lola.runtime.Context.init(std.mem.Allocator, allocator));
 }
 
 /// empty compile unit for testing purposes
@@ -74,184 +57,180 @@ test "runtime.install" {
     try install(&env, std.testing.allocator);
 }
 
-const async_functions = struct {
-    // fn Sleep(call_context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.AsyncFunctionCall {
-    //     const allocator = call_context.get(std.mem.Allocator);
+// fn Sleep(call_context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.AsyncFunctionCall {
+//     const allocator = call_context.get(std.mem.Allocator);
 
-    //     if (args.len != 1)
-    //         return error.InvalidArgs;
-    //     const seconds = try args[0].toNumber();
+//     if (args.len != 1)
+//         return error.InvalidArgs;
+//     const seconds = try args[0].toNumber();
 
-    //     const Context = struct {
-    //         allocator: *std.mem.Allocator,
-    //         end_time: f64,
-    //     };
+//     const Context = struct {
+//         allocator: *std.mem.Allocator,
+//         end_time: f64,
+//     };
 
-    //     const ptr = try allocator.create(Context);
-    //     ptr.* = Context{
-    //         .allocator = allocator,
-    //         .end_time = @intToFloat(f64, std.time.milliTimestamp()) + 1000.0 * seconds,
-    //     };
+//     const ptr = try allocator.create(Context);
+//     ptr.* = Context{
+//         .allocator = allocator,
+//         .end_time = @intToFloat(f64, std.time.milliTimestamp()) + 1000.0 * seconds,
+//     };
 
-    //     return lola.runtime.AsyncFunctionCall{
-    //         .context = lola.runtime.Context.init(Context, ptr),
-    //         .destructor = struct {
-    //             fn dtor(exec_context: lola.runtime.Context) void {
-    //                 const ctx = exec_context.get(Context);
-    //                 ctx.allocator.destroy(ctx);
-    //             }
-    //         }.dtor,
-    //         .execute = struct {
-    //             fn execute(exec_context: lola.runtime.Context) anyerror!?lola.runtime.Value {
-    //                 const ctx = exec_context.get(Context);
+//     return lola.runtime.AsyncFunctionCall{
+//         .context = lola.runtime.Context.init(Context, ptr),
+//         .destructor = struct {
+//             fn dtor(exec_context: lola.runtime.Context) void {
+//                 const ctx = exec_context.get(Context);
+//                 ctx.allocator.destroy(ctx);
+//             }
+//         }.dtor,
+//         .execute = struct {
+//             fn execute(exec_context: lola.runtime.Context) anyerror!?lola.runtime.Value {
+//                 const ctx = exec_context.get(Context);
 
-    //                 if (ctx.end_time < @intToFloat(f64, std.time.milliTimestamp())) {
-    //                     return .void;
-    //                 } else {
-    //                     return null;
-    //                 }
-    //             }
-    //         }.execute,
-    //     };
-    // }
-};
+//                 if (ctx.end_time < @intToFloat(f64, std.time.milliTimestamp())) {
+//                     return .void;
+//                 } else {
+//                     return null;
+//                 }
+//             }
+//         }.execute,
+//     };
+// }
 
-const sync_functions = struct {
-    fn Print(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
-        _ = environment;
-        _ = context;
+pub fn Print(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+    _ = environment;
+    _ = context;
 
-        var stdout = std.io.getStdOut().writer();
-        for (args) |value| {
-            switch (value) {
-                .string => |str| try stdout.writeAll(str.contents),
-                else => try stdout.print("{}", .{value}),
-            }
+    var stdout = std.io.getStdOut().writer();
+    for (args) |value| {
+        switch (value) {
+            .string => |str| try stdout.writeAll(str.contents),
+            else => try stdout.print("{}", .{value}),
         }
-        try stdout.writeAll("\n");
-        return .void;
     }
+    try stdout.writeAll("\n");
+    return .void;
+}
 
-    fn Exit(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
-        _ = environment;
-        _ = context;
+pub fn Exit(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+    _ = environment;
+    _ = context;
 
-        if (args.len != 1)
-            return error.InvalidArgs;
+    if (args.len != 1)
+        return error.InvalidArgs;
 
-        const status = try args[0].toInteger(u8);
-        std.process.exit(status);
-    }
+    const status = try args[0].toInteger(u8);
+    std.process.exit(status);
+}
 
-    fn ReadFile(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
-        _ = environment;
-        _ = context;
+pub fn ReadFile(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+    _ = environment;
+    _ = context;
 
-        const allocator = context.get(std.mem.Allocator);
-        if (args.len != 1)
-            return error.InvalidArgs;
+    const allocator = context.get(std.mem.Allocator);
+    if (args.len != 1)
+        return error.InvalidArgs;
 
-        const path = try args[0].toString();
+    const path = try args[0].toString();
 
-        var file = std.fs.cwd().openFile(path, .{ .read = true, .write = false }) catch return .void;
-        defer file.close();
+    var file = std.fs.cwd().openFile(path, .{ .read = true, .write = false }) catch return .void;
+    defer file.close();
 
-        // 2 GB
-        var contents = try file.readToEndAlloc(allocator, 2 << 30);
+    // 2 GB
+    var contents = try file.readToEndAlloc(allocator, 2 << 30);
 
-        return lola.runtime.Value.fromString(lola.runtime.String.initFromOwned(allocator, contents));
-    }
+    return lola.runtime.Value.fromString(lola.runtime.String.initFromOwned(allocator, contents));
+}
 
-    fn FileExists(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
-        _ = environment;
-        _ = context;
+pub fn FileExists(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+    _ = environment;
+    _ = context;
 
-        if (args.len != 1)
-            return error.InvalidArgs;
+    if (args.len != 1)
+        return error.InvalidArgs;
 
-        const path = try args[0].toString();
+    const path = try args[0].toString();
 
-        var file = std.fs.cwd().openFile(path, .{ .read = true, .write = false }) catch return lola.runtime.Value.initBoolean(false);
-        file.close();
+    var file = std.fs.cwd().openFile(path, .{ .read = true, .write = false }) catch return lola.runtime.Value.initBoolean(false);
+    file.close();
 
-        return lola.runtime.Value.initBoolean(true);
-    }
+    return lola.runtime.Value.initBoolean(true);
+}
 
-    fn WriteFile(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
-        _ = environment;
-        _ = context;
+pub fn WriteFile(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+    _ = environment;
+    _ = context;
 
-        if (args.len != 2)
-            return error.InvalidArgs;
+    if (args.len != 2)
+        return error.InvalidArgs;
 
-        const path = try args[0].toString();
-        const value = try args[1].toString();
+    const path = try args[0].toString();
+    const value = try args[1].toString();
 
-        var file = try std.fs.cwd().createFile(path, .{});
-        defer file.close();
+    var file = try std.fs.cwd().createFile(path, .{});
+    defer file.close();
 
-        try file.writeAll(value);
+    try file.writeAll(value);
 
-        return .void;
-    }
+    return .void;
+}
 
-    fn CreateList(environment: *lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
-        const allocator = context.get(std.mem.Allocator);
+pub fn CreateList(environment: *lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+    const allocator = context.get(std.mem.Allocator);
 
-        if (args.len > 1)
-            return error.InvalidArgs;
+    if (args.len > 1)
+        return error.InvalidArgs;
 
-        if (args.len > 0) _ = try args[0].toArray();
+    if (args.len > 0) _ = try args[0].toArray();
 
-        const list = try allocator.create(LoLaList);
-        errdefer allocator.destroy(list);
+    const list = try allocator.create(LoLaList);
+    errdefer allocator.destroy(list);
 
-        list.* = LoLaList{
-            .allocator = allocator,
-            .data = std.ArrayList(lola.runtime.Value).init(allocator),
-        };
+    list.* = LoLaList{
+        .allocator = allocator,
+        .data = std.ArrayList(lola.runtime.Value).init(allocator),
+    };
 
-        if (args.len > 0) {
-            const array = args[0].toArray() catch unreachable;
+    if (args.len > 0) {
+        const array = args[0].toArray() catch unreachable;
 
-            errdefer list.data.deinit();
-            try list.data.resize(array.contents.len);
+        errdefer list.data.deinit();
+        try list.data.resize(array.contents.len);
 
-            for (list.data.items) |*item| {
-                item.* = .void;
-            }
-
-            errdefer for (list.data.items) |*item| {
-                item.deinit();
-            };
-            for (list.data.items) |*item, index| {
-                item.* = try array.contents[index].clone();
-            }
+        for (list.data.items) |*item| {
+            item.* = .void;
         }
 
-        return lola.runtime.Value.initObject(
-            try environment.objectPool.castTo(GlobalObjectPool).createObject(list),
-        );
-    }
-
-    fn CreateDictionary(environment: *lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
-        const allocator = context.get(std.mem.Allocator);
-        if (args.len != 0)
-            return error.InvalidArgs;
-
-        const list = try allocator.create(LoLaDictionary);
-        errdefer allocator.destroy(list);
-
-        list.* = LoLaDictionary{
-            .allocator = allocator,
-            .data = std.ArrayList(LoLaDictionary.KV).init(allocator),
+        errdefer for (list.data.items) |*item| {
+            item.deinit();
         };
-
-        return lola.runtime.Value.initObject(
-            try environment.objectPool.castTo(GlobalObjectPool).createObject(list),
-        );
+        for (list.data.items) |*item, index| {
+            item.* = try array.contents[index].clone();
+        }
     }
-};
+
+    return lola.runtime.Value.initObject(
+        try environment.objectPool.castTo(GlobalObjectPool).createObject(list),
+    );
+}
+
+pub fn CreateDictionary(environment: *lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+    const allocator = context.get(std.mem.Allocator);
+    if (args.len != 0)
+        return error.InvalidArgs;
+
+    const list = try allocator.create(LoLaDictionary);
+    errdefer allocator.destroy(list);
+
+    list.* = LoLaDictionary{
+        .allocator = allocator,
+        .data = std.ArrayList(LoLaDictionary.KV).init(allocator),
+    };
+
+    return lola.runtime.Value.initObject(
+        try environment.objectPool.castTo(GlobalObjectPool).createObject(list),
+    );
+}
 
 pub const LoLaList = struct {
     const Self = @This();

@@ -296,11 +296,11 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
     defer env.deinit();
 
     if (!options.@"no-stdlib") {
-        try lola.libs.std.install(&env, allocator);
+        try env.installModule(lola.libs.std, lola.runtime.Context.init(std.mem.Allocator, allocator));
     }
 
     if (!options.@"no-runtime") {
-        try lola.libs.runtime.install(&env, allocator);
+        try env.installModule(lola.libs.runtime, lola.runtime.Context.init(std.mem.Allocator, allocator));
 
         // Move these two to a test runner
 

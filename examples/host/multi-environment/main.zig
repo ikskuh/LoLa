@@ -64,8 +64,8 @@ pub fn main() anyerror!u8 {
     defer client_b_env.deinit();
 
     for ([_]*lola.runtime.Environment{ &server_env, &client_a_env, &client_b_env }) |env| {
-        try lola.libs.std.install(env, allocator);
-        try lola.libs.runtime.install(env, allocator);
+        try env.installModule(lola.libs.std, lola.runtime.Context.init(std.mem.Allocator, allocator));
+        try env.installModule(lola.libs.runtime, lola.runtime.Context.init(std.mem.Allocator, allocator));
     }
 
     var server_obj_handle = try pool.createObject(&server_env);

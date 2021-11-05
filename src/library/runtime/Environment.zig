@@ -5,6 +5,7 @@
 
 const std = @import("std");
 const iface = @import("interface");
+const logger = std.log.scoped(.lola);
 
 // Import modules to reduce file size
 const value_unit = @import("value.zig");
@@ -89,6 +90,90 @@ pub fn deinit(self: *Environment) void {
     self.allocator.free(self.scriptGlobals);
 
     self.* = undefined;
+}
+
+/// Checks if two function signatures are compatible to each other and if `Queried` can be assigned to a `Destination` type.
+fn isCompatibleFunctionSignature(comptime Destination: type, comptime Queried: type) bool {
+    const ti_a = @typeInfo(Destination).Fn;
+    const ti_b = @typeInfo(Queried).Fn;
+
+    if (ti_a.args.len != ti_b.args.len)
+        return false;
+
+    const rettype_a = ti_a.return_type orelse opaque {};
+    const rettype_b = ti_b.return_type orelse opaque {};
+
+    if (@typeInfo(rettype_a) == .ErrorUnion) {
+        const rti_a = @typeInfo(rettype_a).ErrorUnion.payload;
+        const rti_b = @typeInfo(rettype_b).ErrorUnion.payload;
+
+        // @compileLog("Compare", rti_a, rti_b);
+
+        if (rti_a != rti_b)
+            return false;
+    } else if (rettype_a != rettype_b) {
+        return false;
+    }
+
+    for (ti_a.args) |arg_a, i| {
+        const arg_b = ti_b.args[i];
+        const type_a = arg_a.arg_type orelse opaque {};
+        const type_b = arg_b.arg_type orelse opaque {};
+        if (type_a != type_b) {
+            if (@typeInfo(type_a) == .Pointer) {
+                const pti_a: std.builtin.TypeInfo.Pointer = @typeInfo(type_a).Pointer;
+                const pti_b: std.builtin.TypeInfo.Pointer = @typeInfo(type_b).Pointer;
+                if (pti_a.child != pti_b.child)
+                    return false;
+                if (pti_a.size != pti_b.size)
+                    return false;
+                if (pti_a.is_const and !pti_b.is_const) // if target is const, we cannot allow non-const fn
+                    return false;
+            } else {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+/// Installs a LoLa module.
+/// Modules are containers that contain public functions with either a 
+/// `UserFunctionCall` or `AsyncUserFunctionCall` signature.
+/// Every other function is ignored (and a debug log is generated).
+pub fn installModule(self: *Environment, comptime Module: type, context: Context) !void {
+
+    // Install all functions from the namespace "functions":
+    inline for (std.meta.declarations(Module)) |decl| {
+        if (decl.is_pub and decl.data == .Fn) {
+            const module_fn = @field(Module, decl.name);
+            const FnType = @TypeOf(module_fn);
+
+            // @compileLog("Install", decl.name, "query", FnType);
+
+            if (comptime isCompatibleFunctionSignature(UserFunctionCall, FnType)) {
+                logger.debug("Install synchronous function {s} to environment", .{decl.name});
+                try self.installFunction(decl.name, Function{
+                    .syncUser = UserFunction{
+                        .context = context,
+                        .destructor = null,
+                        .call = module_fn,
+                    },
+                });
+            } else if (comptime isCompatibleFunctionSignature(AsyncUserFunctionCall, FnType)) {
+                logger.debug("Install asynchronous function {s} to environment", .{decl.name});
+                try self.installFunction(decl.name, Function{
+                    .asyncUser = AsyncUserFunction{
+                        .context = context,
+                        .destructor = null,
+                        .call = module_fn,
+                    },
+                });
+            } else {
+                logger.debug("could not install {s}: unrecognized signature {s}!", .{ decl.name, @typeName(FnType) });
+            }
+        }
+    }
 }
 
 /// Adds a function to the environment and makes it available for the script.
@@ -213,7 +298,7 @@ pub const UserFunction = struct {
 
 test "UserFunction (destructor)" {
     var uf1: UserFunction = .{
-        .context = Context.initVoid(),
+        .context = .empty,
         .call = undefined,
         .destructor = null,
     };
@@ -357,7 +442,7 @@ pub const Function = union(enum) {
     pub fn initSimpleUser(fun: fn (env: *Environment, context: Context, args: []const Value) anyerror!Value) Function {
         return Self{
             .syncUser = UserFunction{
-                .context = Context.initVoid(),
+                .context = .empty,
                 .destructor = null,
                 .call = fun,
             },
