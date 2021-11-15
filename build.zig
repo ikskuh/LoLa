@@ -235,6 +235,7 @@ pub fn build(b: *Builder) !void {
         gen_docs_runner.emit_h = false;
         gen_docs_runner.emit_llvm_ir = false;
         gen_docs_runner.addPackage(pkgs.interface);
+        gen_docs_runner.addPackage(pkgs.any_pointer);
         gen_docs_runner.setBuildMode(mode);
 
         const move_docs = b.addSystemCommand(&[_][]const u8{
