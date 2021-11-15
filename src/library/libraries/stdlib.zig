@@ -710,8 +710,8 @@ pub fn Random(env: *lola.runtime.Environment, context: lola.runtime.Context, arg
 
     var result: f64 = undefined;
     {
-        var held = random_mutex.acquire();
-        defer held.release();
+        random_mutex.lock();
+        defer random_mutex.unlock();
 
         if (random == null) {
             random = std.rand.DefaultPrng.init(@bitCast(u64, @intToFloat(f64, milliTimestamp())));
@@ -742,8 +742,8 @@ pub fn RandomInt(env: *lola.runtime.Environment, context: lola.runtime.Context, 
 
     var result: i32 = undefined;
     {
-        var held = random_mutex.acquire();
-        defer held.release();
+        random_mutex.lock();
+        defer random_mutex.unlock();
 
         if (random == null) {
             random = std.rand.DefaultPrng.init(@bitCast(u64, @intToFloat(f64, milliTimestamp())));
