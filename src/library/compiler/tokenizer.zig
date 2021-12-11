@@ -371,7 +371,7 @@ pub const Tokenizer = struct {
     }
 };
 
-pub fn tokenize(allocator: *std.mem.Allocator, diagnostics: *Diagnostics, chunk_name: []const u8, source: []const u8) ![]Token {
+pub fn tokenize(allocator: std.mem.Allocator, diagnostics: *Diagnostics, chunk_name: []const u8, source: []const u8) ![]Token {
     var result = std.ArrayList(Token).init(allocator);
     var tokenizer = Tokenizer.init(chunk_name, source);
 

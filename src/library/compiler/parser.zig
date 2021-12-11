@@ -11,17 +11,17 @@ const EscapedStringIterator = @import("string-escaping.zig").EscapedStringIterat
 /// Returns either a successfully parsed tree or puts all found
 /// syntax errors into `diagnostics`.
 pub fn parse(
-    allocator: *std.mem.Allocator,
+    allocator: std.mem.Allocator,
     diagnostics: *diag.Diagnostics,
     sequence: []const lexer.Token,
 ) !ast.Program {
     var arena = std.heap.ArenaAllocator.init(allocator);
     errdefer arena.deinit();
 
-    var root_script = std.ArrayList(ast.Statement).init(&arena.allocator);
+    var root_script = std.ArrayList(ast.Statement).init(arena.allocator());
     defer root_script.deinit();
 
-    var functions = std.ArrayList(ast.Function).init(&arena.allocator);
+    var functions = std.ArrayList(ast.Function).init(arena.allocator());
     defer functions.deinit();
 
     const Parser = struct {
@@ -36,7 +36,7 @@ pub fn parse(
             index: usize,
         };
 
-        allocator: *std.mem.Allocator,
+        allocator: std.mem.Allocator,
         sequence: []const lexer.Token,
         index: usize = 0,
         diagnostics: *diag.Diagnostics,
@@ -805,7 +805,7 @@ pub fn parse(
     };
 
     var parser = Parser{
-        .allocator = &arena.allocator,
+        .allocator = arena.allocator(),
         .sequence = sequence,
         .diagnostics = diagnostics,
     };
@@ -1687,7 +1687,7 @@ test "full suite parsing" {
     defer pgm.deinit();
 
     for (diagnostics.messages.items) |msg| {
-        std.debug.warn("{}\n", .{msg});
+        std.log.err("{}", .{msg});
     }
 
     // assert that we don't have an empty AST

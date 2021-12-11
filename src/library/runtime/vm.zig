@@ -53,7 +53,7 @@ pub const VM = struct {
         stalls: usize = 0,
     };
 
-    allocator: *std.mem.Allocator,
+    allocator: std.mem.Allocator,
     stack: std.ArrayList(Value),
     calls: std.ArrayList(Context),
     currentAsynCall: ?Environment.AsyncFunctionCall,
@@ -61,7 +61,7 @@ pub const VM = struct {
     stats: Statistics = Statistics{},
 
     /// Initialize a new virtual machine that will run the given environment.
-    pub fn init(allocator: *std.mem.Allocator, environment: *Environment) !Self {
+    pub fn init(allocator: std.mem.Allocator, environment: *Environment) !Self {
         var vm = Self{
             .allocator = allocator,
             .stack = std.ArrayList(Value).init(allocator),
@@ -72,8 +72,8 @@ pub const VM = struct {
         errdefer vm.stack.deinit();
         errdefer vm.calls.deinit();
 
-        try vm.stack.ensureCapacity(128);
-        try vm.calls.ensureCapacity(32);
+        try vm.stack.ensureTotalCapacity(128);
+        try vm.calls.ensureTotalCapacity(32);
 
         // Initialize with special "init context" that runs the script itself
         // and hosts the global variables.
@@ -864,7 +864,7 @@ pub const VM = struct {
         }
     }
 
-    pub fn deserialize(allocator: *std.mem.Allocator, envmap: *lola.runtime.EnvironmentMap, stream: anytype) !Self {
+    pub fn deserialize(allocator: std.mem.Allocator, envmap: *lola.runtime.EnvironmentMap, stream: anytype) !Self {
         const stack_size = try stream.readIntLittle(u64);
         const call_size = try stream.readIntLittle(u64);
 
@@ -878,8 +878,8 @@ pub const VM = struct {
         errdefer vm.stack.deinit();
         errdefer vm.calls.deinit();
 
-        try vm.stack.ensureCapacity(std.math.min(stack_size, 128));
-        try vm.calls.ensureCapacity(std.math.min(call_size, 32));
+        try vm.stack.ensureTotalCapacity(std.math.min(stack_size, 128));
+        try vm.calls.ensureTotalCapacity(std.math.min(call_size, 32));
 
         try vm.stack.resize(stack_size);
         for (vm.stack.items) |*item| {

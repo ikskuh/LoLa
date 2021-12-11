@@ -23,7 +23,7 @@ pub fn main() anyerror!u8 {
     var gpa_state = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa_state.deinit();
 
-    const allocator = &gpa_state.allocator;
+    const allocator = gpa_state.allocator();
 
     // Step 1: Compile the source code into a compile unit
 
@@ -62,8 +62,8 @@ pub fn main() anyerror!u8 {
     // our environment. You can see how to implement custom
     // functions if you check out the implementation of both
     // libraries!
-    try env.installModule(lola.libs.std, lola.runtime.Context.make(*std.mem.Allocator, allocator));
-    try env.installModule(lola.libs.runtime, lola.runtime.Context.make(*std.mem.Allocator, allocator));
+    try env.installModule(lola.libs.std, lola.runtime.Context.null_pointer);
+    try env.installModule(lola.libs.runtime, lola.runtime.Context.null_pointer);
 
     // Create a virtual machine that is used to execute LoLa bytecode.
     // Using `.init` will always run the top-level code.

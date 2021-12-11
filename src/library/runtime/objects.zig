@@ -187,7 +187,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
     const ClassInfo = struct {
         name: []const u8,
         serialize: fn (stream: OutputStream, obj: Object) anyerror!void,
-        deserialize: fn (allocator: *std.mem.Allocator, stream: InputStream) anyerror!Object,
+        deserialize: fn (allocator: std.mem.Allocator, stream: InputStream) anyerror!Object,
     };
 
     // Provide a huge-enough branch quota
@@ -203,7 +203,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
                     try Class.serializeObject(stream.writer(), @ptrCast(*Class, @alignCast(@alignOf(Class), obj.impl.storage.erased_ptr)));
                 }
 
-                fn deserialize(allocator: *std.mem.Allocator, stream: InputStream) anyerror!Object {
+                fn deserialize(allocator: std.mem.Allocator, stream: InputStream) anyerror!Object {
                     var ptr = try Class.deserializeObject(allocator, stream.reader());
                     return Object.init(ptr);
                 }
@@ -241,7 +241,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
         objects: std.AutoHashMap(ObjectHandle, ManagedObject),
 
         /// Creates a new object pool, using `allocator` to handle hashmap allocations.
-        pub fn init(allocator: *std.mem.Allocator) Self {
+        pub fn init(allocator: std.mem.Allocator) Self {
             return Self{
                 .objectCounter = 0,
                 .objects = std.AutoHashMap(ObjectHandle, ManagedObject).init(allocator),
@@ -284,7 +284,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
         }
 
         /// Deserializes a object pool from `steam` and returns it.
-        pub fn deserialize(allocator: *std.mem.Allocator, stream: anytype) !Self {
+        pub fn deserialize(allocator: std.mem.Allocator, stream: anytype) !Self {
             if (all_classes_can_serialize) {
                 var pool = init(allocator);
                 errdefer pool.deinit();
@@ -520,7 +520,7 @@ const TestObject = struct {
 
     var deserialize_instance = Self{};
 
-    pub fn deserializeObject(allocator: *std.mem.Allocator, reader: InputStream.Reader) !*Self {
+    pub fn deserializeObject(allocator: std.mem.Allocator, reader: InputStream.Reader) !*Self {
         _ = allocator;
         var buf: [11]u8 = undefined;
         try reader.readNoEof(&buf);

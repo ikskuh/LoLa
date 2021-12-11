@@ -13,7 +13,7 @@ pub const EnvironmentMap = struct {
 
     items: std.ArrayList(Entry),
 
-    pub fn init(allocator: *std.mem.Allocator) Self {
+    pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .items = std.ArrayList(Entry).init(allocator),
         };

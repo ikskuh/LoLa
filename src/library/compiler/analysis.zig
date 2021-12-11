@@ -365,7 +365,7 @@ fn getErrorCount(diagnostics: *const Diagnostics) usize {
 /// Validates the `program` against programming mistakes and filles `diagnostics` with the findings.
 /// Note that the function will always succeed when no `OutOfMemory` happens. To see if the program
 /// is semantically sound, check `diagnostics` for error messages.
-pub fn validate(allocator: *std.mem.Allocator, diagnostics: *Diagnostics, program: ast.Program) ValidationError!bool {
+pub fn validate(allocator: std.mem.Allocator, diagnostics: *Diagnostics, program: ast.Program) ValidationError!bool {
     var global_scope = Scope.init(allocator, null, true);
     defer global_scope.deinit();
 

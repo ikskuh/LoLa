@@ -228,12 +228,12 @@ pub fn build(b: *Builder) !void {
         gen_website_step.dependOn(&copy_wasm_runtime.step);
 
         var gen_docs_runner = b.addTest(pkgs.lola.path.path);
-        gen_docs_runner.emit_bin = false;
-        gen_docs_runner.emit_asm = false;
-        gen_docs_runner.emit_bin = false;
-        gen_docs_runner.emit_docs = true;
+        gen_docs_runner.emit_bin = .no_emit;
+        gen_docs_runner.emit_asm = .no_emit;
+        gen_docs_runner.emit_bin = .no_emit;
+        gen_docs_runner.emit_docs = .no_emit;
         gen_docs_runner.emit_h = false;
-        gen_docs_runner.emit_llvm_ir = false;
+        gen_docs_runner.emit_llvm_ir = .no_emit;
         gen_docs_runner.addPackage(pkgs.interface);
         gen_docs_runner.addPackage(pkgs.any_pointer);
         gen_docs_runner.setBuildMode(mode);

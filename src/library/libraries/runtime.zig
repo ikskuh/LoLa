@@ -28,14 +28,6 @@ comptime {
     }
 }
 
-/// Deprecated
-/// Installs the LoLa standard library into the given environment,
-/// providing it with a basic set of functions.
-/// `allocator` will be used to perform new allocations for the environment.
-pub fn install(environment: *lola.runtime.Environment, allocator: *std.mem.Allocator) !void {
-    try environment.installModule(@This(), lola.runtime.Context.make(*std.mem.Allocator, allocator));
-}
-
 /// empty compile unit for testing purposes
 const empty_compile_unit = lola.CompileUnit{
     .arena = std.heap.ArenaAllocator.init(std.testing.failing_allocator),
@@ -54,7 +46,7 @@ test "runtime.install" {
     var env = try lola.runtime.Environment.init(std.testing.allocator, &empty_compile_unit, pool.interface());
     defer env.deinit();
 
-    try install(&env, std.testing.allocator);
+    try env.installModule(@This(), lola.runtime.Context.null_pointer);
 }
 
 // fn Sleep(call_context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.AsyncFunctionCall {
@@ -65,7 +57,7 @@ test "runtime.install" {
 //     const seconds = try args[0].toNumber();
 
 //     const Context = struct {
-//         allocator: *std.mem.Allocator,
+//         allocator: std.mem.Allocator,
 //         end_time: f64,
 //     };
 
@@ -127,7 +119,6 @@ pub fn ReadFile(environment: *const lola.runtime.Environment, context: lola.runt
     _ = environment;
     _ = context;
 
-    const allocator = context.cast(*std.mem.Allocator);
     if (args.len != 1)
         return error.InvalidArgs;
 
@@ -137,9 +128,9 @@ pub fn ReadFile(environment: *const lola.runtime.Environment, context: lola.runt
     defer file.close();
 
     // 2 GB
-    var contents = try file.readToEndAlloc(allocator, 2 << 30);
+    var contents = try file.readToEndAlloc(environment.allocator, 2 << 30);
 
-    return lola.runtime.Value.fromString(lola.runtime.String.initFromOwned(allocator, contents));
+    return lola.runtime.Value.fromString(lola.runtime.String.initFromOwned(environment.allocator, contents));
 }
 
 pub fn FileExists(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
@@ -176,19 +167,18 @@ pub fn WriteFile(environment: *const lola.runtime.Environment, context: lola.run
 }
 
 pub fn CreateList(environment: *lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
-    const allocator = context.cast(*std.mem.Allocator);
-
+    _ = context;
     if (args.len > 1)
         return error.InvalidArgs;
 
     if (args.len > 0) _ = try args[0].toArray();
 
-    const list = try allocator.create(LoLaList);
-    errdefer allocator.destroy(list);
+    const list = try environment.allocator.create(LoLaList);
+    errdefer environment.allocator.destroy(list);
 
     list.* = LoLaList{
-        .allocator = allocator,
-        .data = std.ArrayList(lola.runtime.Value).init(allocator),
+        .allocator = environment.allocator,
+        .data = std.ArrayList(lola.runtime.Value).init(environment.allocator),
     };
 
     if (args.len > 0) {
@@ -215,16 +205,16 @@ pub fn CreateList(environment: *lola.runtime.Environment, context: lola.runtime.
 }
 
 pub fn CreateDictionary(environment: *lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
-    const allocator = context.cast(*std.mem.Allocator);
+    _ = context;
     if (args.len != 0)
         return error.InvalidArgs;
 
-    const list = try allocator.create(LoLaDictionary);
-    errdefer allocator.destroy(list);
+    const list = try environment.allocator.create(LoLaDictionary);
+    errdefer environment.allocator.destroy(list);
 
     list.* = LoLaDictionary{
-        .allocator = allocator,
-        .data = std.ArrayList(LoLaDictionary.KV).init(allocator),
+        .allocator = environment.allocator,
+        .data = std.ArrayList(LoLaDictionary.KV).init(environment.allocator),
     };
 
     return lola.runtime.Value.initObject(
@@ -235,7 +225,7 @@ pub fn CreateDictionary(environment: *lola.runtime.Environment, context: lola.ru
 pub const LoLaList = struct {
     const Self = @This();
 
-    allocator: *std.mem.Allocator,
+    allocator: std.mem.Allocator,
     data: std.ArrayList(lola.runtime.Value),
 
     pub fn getMethod(self: *Self, name: []const u8) ?lola.runtime.Function {
@@ -268,7 +258,7 @@ pub const LoLaList = struct {
         }
     }
 
-    pub fn deserializeObject(allocator: *std.mem.Allocator, reader: lola.runtime.InputStream.Reader) !*Self {
+    pub fn deserializeObject(allocator: std.mem.Allocator, reader: lola.runtime.InputStream.Reader) !*Self {
         const item_count = try reader.readIntLittle(u32);
         var list = try allocator.create(Self);
         list.* = Self{
@@ -490,7 +480,7 @@ pub const LoLaDictionary = struct {
         }
     };
 
-    allocator: *std.mem.Allocator,
+    allocator: std.mem.Allocator,
     data: std.ArrayList(KV),
 
     pub fn getMethod(self: *Self, name: []const u8) ?lola.runtime.Function {
@@ -524,7 +514,7 @@ pub const LoLaDictionary = struct {
         }
     }
 
-    pub fn deserializeObject(allocator: *std.mem.Allocator, reader: lola.runtime.InputStream.Reader) !*Self {
+    pub fn deserializeObject(allocator: std.mem.Allocator, reader: lola.runtime.InputStream.Reader) !*Self {
         const item_count = try reader.readIntLittle(u32);
         var list = try allocator.create(Self);
         list.* = Self{

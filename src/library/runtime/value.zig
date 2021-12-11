@@ -46,7 +46,7 @@ pub const Value = union(TypeId) {
     }
 
     /// Initializes a new value with string contents.
-    pub fn initString(allocator: *std.mem.Allocator, text: []const u8) !Self {
+    pub fn initString(allocator: std.mem.Allocator, text: []const u8) !Self {
         return Self{ .string = try String.init(allocator, text) };
     }
 
@@ -249,7 +249,7 @@ pub const Value = union(TypeId) {
 
     /// Deserializes a value from the `reader`, using `allocator` to allocate memory.
     /// Note that if objects are deserialized you need to also deserialize the corresponding object pool
-    pub fn deserialize(reader: anytype, allocator: *std.mem.Allocator) (@TypeOf(reader).Error || error{ OutOfMemory, InvalidEnumTag, EndOfStream, NotSupported })!Self {
+    pub fn deserialize(reader: anytype, allocator: std.mem.Allocator) (@TypeOf(reader).Error || error{ OutOfMemory, InvalidEnumTag, EndOfStream, NotSupported })!Self {
         const type_id_src = try reader.readByte();
         const type_id = try std.meta.intToEnum(TypeId, type_id_src);
         return switch (type_id) {
@@ -409,12 +409,12 @@ test "Value.eql (string)" {
 pub const String = struct {
     const Self = @This();
 
-    allocator: *std.mem.Allocator,
+    allocator: std.mem.Allocator,
     contents: []const u8,
     refcount: ?*usize,
 
     /// Creates a new, uninitialized string
-    pub fn initUninitialized(allocator: *std.mem.Allocator, length: usize) !Self {
+    pub fn initUninitialized(allocator: std.mem.Allocator, length: usize) !Self {
         const alignment = @alignOf(usize);
 
         const ptr_offset = std.mem.alignForward(length, alignment);
@@ -435,7 +435,7 @@ pub const String = struct {
 
     /// Clones `text` with the given parameter and stores the
     /// duplicated value.
-    pub fn init(allocator: *std.mem.Allocator, text: []const u8) !Self {
+    pub fn init(allocator: std.mem.Allocator, text: []const u8) !Self {
         var string = try initUninitialized(allocator, text.len);
         std.mem.copy(
             u8,
@@ -447,7 +447,7 @@ pub const String = struct {
 
     /// Returns a string that will take ownership of the passed `text` and
     /// will free that with `allocator`.
-    pub fn initFromOwned(allocator: *std.mem.Allocator, text: []const u8) Self {
+    pub fn initFromOwned(allocator: std.mem.Allocator, text: []const u8) Self {
         return Self{
             .allocator = allocator,
             .contents = text,
@@ -530,10 +530,10 @@ test "String.eql" {
 pub const Array = struct {
     const Self = @This();
 
-    allocator: *std.mem.Allocator,
+    allocator: std.mem.Allocator,
     contents: []Value,
 
-    pub fn init(allocator: *std.mem.Allocator, size: usize) !Self {
+    pub fn init(allocator: std.mem.Allocator, size: usize) !Self {
         var arr = Self{
             .allocator = allocator,
             .contents = try allocator.alloc(Value, size),

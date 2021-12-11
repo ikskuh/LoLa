@@ -51,7 +51,7 @@ pub const compiler = struct {
     /// - `source_code` is the LoLa source code that should be compiled.
     /// The function returns either a compile unit when `source_code` is a valid program, otherwise it will return `null`.
     pub fn compile(
-        allocator: *zig_std.mem.Allocator,
+        allocator: zig_std.mem.Allocator,
         diagnostics: *Diagnostics,
         chunk_name: []const u8,
         source_code: []const u8,

@@ -23,7 +23,7 @@ const ObjectHandle = objects.ObjectHandle;
 
 const Environment = @This();
 
-allocator: *std.mem.Allocator,
+allocator: std.mem.Allocator,
 
 /// The compile unit that provides the executed script.
 compileUnit: *const CompileUnit,
@@ -42,7 +42,7 @@ functions: std.StringHashMap(Function),
 /// This is called when the destroyObject is called.
 destructor: ?fn (self: *Environment) void,
 
-pub fn init(allocator: *std.mem.Allocator, compileUnit: *const CompileUnit, object_pool: ObjectPoolInterface) !Environment {
+pub fn init(allocator: std.mem.Allocator, compileUnit: *const CompileUnit, object_pool: ObjectPoolInterface) !Environment {
     var self = Environment{
         .allocator = allocator,
         .compileUnit = compileUnit,
@@ -486,7 +486,7 @@ pub const Function = union(enum) {
         }
     }
 
-    fn convertToLoLaValue(allocator: *std.mem.Allocator, value: anytype) !Value {
+    fn convertToLoLaValue(allocator: std.mem.Allocator, value: anytype) !Value {
         const T = @TypeOf(value);
         const info = @typeInfo(T);
         if (info == .Int)

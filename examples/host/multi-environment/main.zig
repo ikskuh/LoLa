@@ -32,7 +32,7 @@ pub fn main() anyerror!u8 {
     var gpa_state = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa_state.deinit();
 
-    const allocator = &gpa_state.allocator;
+    const allocator = gpa_state.allocator();
 
     var diagnostics = lola.compiler.Diagnostics.init(allocator);
     defer {
@@ -64,8 +64,8 @@ pub fn main() anyerror!u8 {
     defer client_b_env.deinit();
 
     for ([_]*lola.runtime.Environment{ &server_env, &client_a_env, &client_b_env }) |env| {
-        try env.installModule(lola.libs.std, lola.runtime.Context.make(*std.mem.Allocator, allocator));
-        try env.installModule(lola.libs.runtime, lola.runtime.Context.make(*std.mem.Allocator, allocator));
+        try env.installModule(lola.libs.std, lola.runtime.Context.null_pointer);
+        try env.installModule(lola.libs.runtime, lola.runtime.Context.null_pointer);
     }
 
     var server_obj_handle = try pool.createObject(&server_env);

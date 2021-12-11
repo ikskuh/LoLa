@@ -26,7 +26,7 @@ pub const Diagnostics = struct {
     arena: std.heap.ArenaAllocator,
     messages: std.ArrayList(Message),
 
-    pub fn init(allocator: *std.mem.Allocator) Self {
+    pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .arena = std.heap.ArenaAllocator.init(allocator),
             .messages = std.ArrayList(Message).init(allocator),
@@ -40,11 +40,11 @@ pub const Diagnostics = struct {
 
     /// Emits a new diagnostic message and appends that to the current output.
     pub fn emit(self: *Self, kind: MessageKind, location: Location, comptime fmt: []const u8, args: anytype) !void {
-        const msg_string = try std.fmt.allocPrint(&self.arena.allocator, fmt, args);
-        errdefer self.arena.allocator.free(msg_string);
+        const msg_string = try std.fmt.allocPrint(self.arena.allocator(), fmt, args);
+        errdefer self.arena.allocator().free(msg_string);
 
-        const arena_pos = try self.arena.allocator.dupe(u8, location.chunk);
-        errdefer self.arena.allocator.free(arena_pos);
+        const arena_pos = try self.arena.allocator().dupe(u8, location.chunk);
+        errdefer self.arena.allocator().free(arena_pos);
 
         try self.messages.append(Message{
             .kind = kind,

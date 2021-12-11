@@ -5,7 +5,7 @@ const argsParser = @import("args");
 const build_options = @import("build_options");
 
 var gpa_state = std.heap.GeneralPurposeAllocator(.{}){};
-const gpa = &gpa_state.allocator;
+const gpa = gpa_state.allocator();
 
 // This is our global object pool that is back-referenced
 // by the runtime library.
@@ -148,7 +148,7 @@ fn disassemble(options: DisassemblerCLI, files: []const []const u8) !u8 {
         var arena = std.heap.ArenaAllocator.init(gpa);
         defer arena.deinit();
 
-        const allocator = &arena.allocator;
+        const allocator = arena.allocator();
 
         var cu = blk: {
             var file = try std.fs.cwd().openFile(arg, .{ .read = true, .write = false });
@@ -248,7 +248,7 @@ const RunCLI = struct {
     benchmark: bool = false,
 };
 
-fn autoLoadModule(allocator: *std.mem.Allocator, options: RunCLI, file: []const u8) !lola.CompileUnit {
+fn autoLoadModule(allocator: std.mem.Allocator, options: RunCLI, file: []const u8) !lola.CompileUnit {
     return switch (options.mode) {
         .autodetect => loadModuleFromFile(allocator, file) catch |err| if (err == error.InvalidFormat)
             try compileFileToUnit(allocator, file)
@@ -296,11 +296,11 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
     defer env.deinit();
 
     if (!options.@"no-stdlib") {
-        try env.installModule(lola.libs.std, lola.runtime.Context.make(*std.mem.Allocator, allocator));
+        try env.installModule(lola.libs.std, lola.runtime.Context.null_pointer);
     }
 
     if (!options.@"no-runtime") {
-        try env.installModule(lola.libs.runtime, lola.runtime.Context.make(*std.mem.Allocator, allocator));
+        try env.installModule(lola.libs.runtime, lola.runtime.Context.null_pointer);
 
         // Move these two to a test runner
 
@@ -450,7 +450,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
     return 0;
 }
 
-fn compileFileToUnit(allocator: *std.mem.Allocator, fileName: []const u8) !lola.CompileUnit {
+fn compileFileToUnit(allocator: std.mem.Allocator, fileName: []const u8) !lola.CompileUnit {
     const maxLength = 1 << 20; // 1 MB
     var source = blk: {
         var file = try std.fs.cwd().openFile(fileName, .{ .read = true, .write = false });
@@ -485,7 +485,7 @@ fn compileFileToUnit(allocator: *std.mem.Allocator, fileName: []const u8) !lola.
     return compile_unit;
 }
 
-fn loadModuleFromFile(allocator: *std.mem.Allocator, fileName: []const u8) !lola.CompileUnit {
+fn loadModuleFromFile(allocator: std.mem.Allocator, fileName: []const u8) !lola.CompileUnit {
     var file = try std.fs.cwd().openFile(fileName, .{ .read = true, .write = false });
     defer file.close();
 

@@ -30,7 +30,7 @@ pub fn main() anyerror!void {
         defer _ = gpa_state.deinit();
 
         try run_serialization(
-            &gpa_state.allocator,
+            gpa_state.allocator(),
             &serialization_buffer,
         );
     }
@@ -47,13 +47,13 @@ pub fn main() anyerror!void {
         defer _ = gpa_state.deinit();
 
         try run_deserialization(
-            &gpa_state.allocator,
+            gpa_state.allocator(),
             &serialization_buffer,
         );
     }
 }
 
-fn run_serialization(allocator: *std.mem.Allocator, serialization_buffer: []u8) !void {
+fn run_serialization(allocator: std.mem.Allocator, serialization_buffer: []u8) !void {
     var diagnostics = lola.compiler.Diagnostics.init(allocator);
     defer {
         for (diagnostics.messages.items) |msg| {
@@ -71,8 +71,8 @@ fn run_serialization(allocator: *std.mem.Allocator, serialization_buffer: []u8) 
     var env = try lola.runtime.Environment.init(allocator, &compile_unit, pool.interface());
     defer env.deinit();
 
-    try env.installModule(lola.libs.std, lola.runtime.Context.make(*std.mem.Allocator, allocator));
-    try env.installModule(lola.libs.runtime, lola.runtime.Context.make(*std.mem.Allocator, allocator));
+    try env.installModule(lola.libs.std, lola.runtime.Context.null_pointer);
+    try env.installModule(lola.libs.runtime, lola.runtime.Context.null_pointer);
 
     var vm = try lola.runtime.VM.init(allocator, &env);
     defer vm.deinit();
@@ -111,7 +111,7 @@ fn run_serialization(allocator: *std.mem.Allocator, serialization_buffer: []u8) 
     }
 }
 
-fn run_deserialization(allocator: *std.mem.Allocator, serialization_buffer: []u8) !void {
+fn run_deserialization(allocator: std.mem.Allocator, serialization_buffer: []u8) !void {
     var stream = std.io.fixedBufferStream(serialization_buffer);
     var reader = stream.reader();
 
@@ -138,8 +138,8 @@ fn run_deserialization(allocator: *std.mem.Allocator, serialization_buffer: []u8
     defer env.deinit();
 
     // Installs the functions back into the environment.
-    try lola.libs.std.install(&env, allocator);
-    try lola.libs.runtime.install(&env, allocator);
+    try env.installModule(lola.libs.std, lola.runtime.Context.null_pointer);
+    try env.installModule(lola.libs.runtime, lola.runtime.Context.null_pointer);
 
     // This will restore the whole environment state back to how it was at serialization
     // time. All globals will be restored here.

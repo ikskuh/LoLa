@@ -43,17 +43,19 @@ pub fn main() !u8 {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
 
+    const allocator = gpa.allocator();
+
     var args = std.process.args();
 
-    const exe_name = try (args.next(&gpa.allocator) orelse return 1);
-    gpa.allocator.free(exe_name);
+    const exe_name = try (args.next(allocator) orelse return 1);
+    allocator.free(exe_name);
 
-    const version_name = if (args.next(&gpa.allocator)) |v|
+    const version_name = if (args.next(allocator)) |v|
         try v
     else
         null;
     defer if (version_name) |name| {
-        gpa.allocator.free(name);
+        allocator.free(name);
     };
 
     for (menu_items) |current_file, current_index| {
@@ -68,11 +70,11 @@ pub fn main() !u8 {
         var infile = try std.fs.cwd().openFile(current_file.input_file_name, .{});
         defer infile.close();
 
-        var markdown = try infile.reader().readAllAlloc(&gpa.allocator, 1024 * 1024 * 1024);
-        defer gpa.allocator.free(markdown);
+        var markdown = try infile.reader().readAllAlloc(allocator, 1024 * 1024 * 1024);
+        defer allocator.free(markdown);
 
-        var output = try markdownToHtml(&gpa.allocator, options, markdown);
-        defer gpa.allocator.free(output);
+        var output = try markdownToHtml(allocator, options, markdown);
+        defer allocator.free(output);
 
         var outfile = try std.fs.cwd().createFile(current_file.output_file_name, .{});
         defer outfile.close();
@@ -152,7 +154,7 @@ pub fn main() !u8 {
     return 0;
 }
 
-fn markdownToHtmlInternal(resultAllocator: *std.mem.Allocator, internalAllocator: *std.mem.Allocator, options: koino.Options, markdown: []const u8) ![]u8 {
+fn markdownToHtmlInternal(resultAllocator: std.mem.Allocator, internalAllocator: std.mem.Allocator, options: koino.Options, markdown: []const u8) ![]u8 {
     var p = try koino.parser.Parser.init(internalAllocator, options);
     try p.feed(markdown);
 
@@ -169,8 +171,8 @@ fn markdownToHtmlInternal(resultAllocator: *std.mem.Allocator, internalAllocator
     return buffer.toOwnedSlice();
 }
 
-pub fn markdownToHtml(allocator: *std.mem.Allocator, options: koino.Options, markdown: []const u8) ![]u8 {
+pub fn markdownToHtml(allocator: std.mem.Allocator, options: koino.Options, markdown: []const u8) ![]u8 {
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
-    return markdownToHtmlInternal(allocator, &arena.allocator, options, markdown);
+    return markdownToHtmlInternal(allocator, arena.allocator(), options, markdown);
 }

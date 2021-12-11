@@ -9,7 +9,7 @@ pub const ObjectPool = lola.runtime.ObjectPool([_]type{
 });
 
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-var allocator: *std.mem.Allocator = &gpa.allocator;
+var allocator: std.mem.Allocator = gpa.allocator();
 var compile_unit: lola.CompileUnit = undefined;
 var pool: ObjectPool = undefined;
 var environment: lola.runtime.Environment = undefined;
@@ -90,7 +90,7 @@ const API = struct {
         environment = try lola.runtime.Environment.init(allocator, &compile_unit, pool.interface());
         errdefer environment.deinit();
 
-        try lola.libs.std.install(&environment, allocator);
+        try environment.installModule(lola.libs.std, lola.runtime.Context.null_pointer);
         // try lola.libs.runtime.install(&environment, allocator);
 
         try environment.installFunction("Print", lola.runtime.Function.initSimpleUser(struct {

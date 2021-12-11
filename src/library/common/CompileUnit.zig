@@ -52,7 +52,7 @@ functions: []const Function,
 debugSymbols: []const DebugSymbol,
 
 /// Loads a compile unit from a data stream.
-pub fn loadFromStream(allocator: *std.mem.Allocator, stream: anytype) !CompileUnit {
+pub fn loadFromStream(allocator: std.mem.Allocator, stream: anytype) !CompileUnit {
     // var inStream = file.getInStream();
     // var stream = &inStream.stream;
     var header: [8]u8 = undefined;
@@ -80,7 +80,7 @@ pub fn loadFromStream(allocator: *std.mem.Allocator, stream: anytype) !CompileUn
     };
     errdefer unit.arena.deinit();
 
-    unit.comment = try std.mem.dupe(&unit.arena.allocator, u8, utility.clampFixedString(&comment));
+    unit.comment = try unit.arena.allocator().dupe(u8, utility.clampFixedString(&comment));
 
     unit.globalCount = try stream.readIntLittle(u16);
     unit.temporaryCount = try stream.readIntLittle(u16);
@@ -96,9 +96,9 @@ pub fn loadFromStream(allocator: *std.mem.Allocator, stream: anytype) !CompileUn
         return error.CorruptedData;
     }
 
-    const functions = try unit.arena.allocator.alloc(Function, functionCount);
-    const code = try unit.arena.allocator.alloc(u8, codeSize);
-    const debugSymbols = try unit.arena.allocator.alloc(DebugSymbol, numSymbols);
+    const functions = try unit.arena.allocator().alloc(Function, functionCount);
+    const code = try unit.arena.allocator().alloc(u8, codeSize);
+    const debugSymbols = try unit.arena.allocator().alloc(DebugSymbol, numSymbols);
 
     for (functions) |*fun| {
         var name: [128]u8 = undefined;
@@ -108,7 +108,7 @@ pub fn loadFromStream(allocator: *std.mem.Allocator, stream: anytype) !CompileUn
         const localCount = try stream.readIntLittle(u16);
 
         fun.* = Function{
-            .name = try std.mem.dupe(&unit.arena.allocator, u8, utility.clampFixedString(&name)),
+            .name = try unit.arena.allocator().dupe(u8, utility.clampFixedString(&name)),
             .entryPoint = entryPoint,
             .localCount = localCount,
         };

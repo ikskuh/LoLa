@@ -350,7 +350,7 @@ fn emitStatement(debug_symbols: *DebugSyms, scope: *Scope, writer: *CodeWriter, 
 /// Generates code for a given program. The program is assumed to be sane and checked with
 /// code analysis already.
 pub fn generateIR(
-    allocator: *std.mem.Allocator,
+    allocator: std.mem.Allocator,
     program: ast.Program,
     comment: []const u8,
 ) !CompileUnit {
@@ -401,7 +401,7 @@ pub fn generateIR(
         });
 
         try functions.append(CompileUnit.Function{
-            .name = try arena.allocator.dupe(u8, function.name),
+            .name = try arena.allocator().dupe(u8, function.name),
             .entryPoint = entry_point,
             .localCount = @intCast(u16, local_scope.max_locals),
         });
@@ -418,12 +418,12 @@ pub fn generateIR(
     }.lessThan);
 
     var cu = CompileUnit{
-        .comment = try arena.allocator.dupe(u8, comment),
+        .comment = try arena.allocator().dupe(u8, comment),
         .globalCount = @intCast(u16, global_scope.global_variables.items.len),
         .temporaryCount = @intCast(u16, global_scope.max_locals),
-        .code = try arena.allocator.dupe(u8, code),
-        .functions = try arena.allocator.dupe(CompileUnit.Function, functions.items),
-        .debugSymbols = try arena.allocator.dupe(CompileUnit.DebugSymbol, debug_symbols.symbols.items),
+        .code = try arena.allocator().dupe(u8, code),
+        .functions = try arena.allocator().dupe(CompileUnit.Function, functions.items),
+        .debugSymbols = try arena.allocator().dupe(CompileUnit.DebugSymbol, debug_symbols.symbols.items),
 
         .arena = undefined,
     };

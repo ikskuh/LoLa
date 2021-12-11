@@ -37,7 +37,7 @@ pub const Scope = struct {
     /// Creates a new scope.
     /// `global_scope` is a reference towards a scope that will provide references to a encasing scope.
     /// This scope must only provide `global` variables.
-    pub fn init(allocator: *std.mem.Allocator, global_scope: ?*Self, is_global: bool) Self {
+    pub fn init(allocator: std.mem.Allocator, global_scope: ?*Self, is_global: bool) Self {
         return Self{
             .arena = std.heap.ArenaAllocator.init(allocator),
             .local_variables = std.ArrayList(Variable).init(allocator),
@@ -86,7 +86,7 @@ pub const Scope = struct {
                 return error.TooManyVariables;
             try self.global_variables.append(Variable{
                 .storage_slot = @intCast(u16, self.global_variables.items.len),
-                .name = try self.arena.allocator.dupe(u8, name),
+                .name = try self.arena.allocator().dupe(u8, name),
                 .type = .global,
                 .is_const = is_const,
             });
@@ -95,7 +95,7 @@ pub const Scope = struct {
                 return error.TooManyVariables;
             try self.local_variables.append(Variable{
                 .storage_slot = @intCast(u16, self.local_variables.items.len),
-                .name = try self.arena.allocator.dupe(u8, name),
+                .name = try self.arena.allocator().dupe(u8, name),
                 .type = .local,
                 .is_const = is_const,
             });

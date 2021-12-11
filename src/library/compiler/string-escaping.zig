@@ -52,7 +52,7 @@ pub const EscapedStringIterator = struct {
 
 /// Applies all known string escape codes to the given input string,
 /// returning a freshly allocated string.
-pub fn escapeString(allocator: *std.mem.Allocator, input: []const u8) ![]u8 {
+pub fn escapeString(allocator: std.mem.Allocator, input: []const u8) ![]u8 {
     var iterator = EscapedStringIterator{
         .slice = input,
         .position = 0,

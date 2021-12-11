@@ -34,7 +34,7 @@ pub const CodeWriter = struct {
 
     next_label: u32 = 0,
 
-    pub fn init(allocator: *std.mem.Allocator) Self {
+    pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .code = std.ArrayList(u8).init(allocator),
             .loops = std.ArrayList(Loop).init(allocator),
