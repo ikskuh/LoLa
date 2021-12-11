@@ -231,22 +231,14 @@ pub fn build(b: *Builder) !void {
         gen_docs_runner.emit_bin = .no_emit;
         gen_docs_runner.emit_asm = .no_emit;
         gen_docs_runner.emit_bin = .no_emit;
-        gen_docs_runner.emit_docs = .no_emit;
+        gen_docs_runner.emit_docs = .{ .emit_to = "website/docs" };
         gen_docs_runner.emit_h = false;
         gen_docs_runner.emit_llvm_ir = .no_emit;
         gen_docs_runner.addPackage(pkgs.interface);
         gen_docs_runner.addPackage(pkgs.any_pointer);
         gen_docs_runner.setBuildMode(mode);
 
-        const move_docs = b.addSystemCommand(&[_][]const u8{
-            "cp",
-            "docs/index.html",
-            "docs/data.js",
-            "docs/main.js",
-            "website/docs/",
-        });
-        move_docs.step.dependOn(&gen_docs_runner.step);
-        gen_website_step.dependOn(&move_docs.step);
+        gen_website_step.dependOn(&gen_docs_runner.step);
 
         // Only generates documentation
         const gen_docs_step = b.step("docs", "Generate the code documentation");
