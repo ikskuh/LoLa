@@ -45,18 +45,12 @@ pub fn main() !u8 {
 
     const allocator = gpa.allocator();
 
-    var args = std.process.args();
+    var args = try std.process.argsWithAllocator(allocator);
+    args.deinit();
 
-    const exe_name = try (args.next(allocator) orelse return 1);
-    allocator.free(exe_name);
+    _ = args.next() orelse return 1; // exe name
 
-    const version_name = if (args.next(allocator)) |v|
-        try v
-    else
-        null;
-    defer if (version_name) |name| {
-        allocator.free(name);
-    };
+    const version_name = args.next();
 
     for (menu_items) |current_file, current_index| {
         const options = koino.Options{
