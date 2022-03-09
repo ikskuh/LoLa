@@ -144,8 +144,12 @@ fn isCompatibleFunctionSignature(comptime Destination: type, comptime Queried: t
 pub fn installModule(self: *Environment, comptime Module: type, context: AnyPointer) !void {
 
     // Install all functions from the namespace "functions":
-    inline for (std.meta.declarations(Module)) |decl| {
-        if (decl.is_pub and decl.data == .Fn) {
+    inline for (comptime std.meta.declarations(Module)) |decl| {
+        if (!decl.is_pub)
+            continue;
+        const data = @field(Module, decl.name);
+
+        if (@typeInfo(@TypeOf(data)) == .Fn) {
             const module_fn = @field(Module, decl.name);
             const FnType = @TypeOf(module_fn);
 
@@ -816,7 +820,7 @@ test "Function.wrap" {
         }
     };
 
-    inline for (std.meta.declarations(Funcs)) |fun| {
+    inline for (comptime std.meta.declarations(Funcs)) |fun| {
         _ = Function.wrap(@field(Funcs, fun.name));
     }
 }

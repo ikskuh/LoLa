@@ -1,7 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const lola = @import("lola");
-const argsParser = @import("args");
+const args_parser = @import("args");
 const build_options = @import("build_options");
 
 var gpa_state = std.heap.GeneralPurposeAllocator(.{}){};
@@ -17,51 +17,26 @@ pub const ObjectPool = lola.runtime.ObjectPool([_]type{
 pub fn main() !u8 {
     defer _ = gpa_state.deinit();
 
-    var args = std.process.args();
+    var cli = args_parser.parseWithVerbForCurrentProcess(struct {}, CliVerb, gpa, .print) catch return 1;
+    defer cli.deinit();
 
-    var argsAllocator = gpa;
-
-    const exeName = try (args.next(argsAllocator) orelse {
-        try std.io.getStdErr().writer().writeAll("Failed to get executable name from the argument list!\n");
-        return 1;
-    });
-    defer argsAllocator.free(exeName);
-
-    const module = try (args.next(argsAllocator) orelse {
+    const verb = cli.verb orelse {
         try print_usage();
         return 1;
-    });
-    defer argsAllocator.free(module);
+    };
 
-    if (std.mem.eql(u8, module, "compile")) {
-        const options = argsParser.parse(CompileCLI, &args, argsAllocator, .print) catch return 1;
-        defer options.deinit();
-
-        return try compile(options.options, options.positionals);
-    } else if (std.mem.eql(u8, module, "dump")) {
-        const options = argsParser.parse(DisassemblerCLI, &args, argsAllocator, .print) catch return 1;
-        defer options.deinit();
-
-        return try disassemble(options.options, options.positionals);
-    } else if (std.mem.eql(u8, module, "run")) {
-        const options = argsParser.parse(RunCLI, &args, argsAllocator, .print) catch return 1;
-        defer options.deinit();
-
-        return try run(options.options, options.positionals);
-    } else if (std.mem.eql(u8, module, "help")) {
-        try print_usage();
-        return 0;
-    } else if (std.mem.eql(u8, module, "version")) {
-        try std.io.getStdOut().writeAll(build_options.version ++ "\n");
-        return 0;
-    } else {
-        try std.io.getStdErr().writer().print(
-            "Unrecognized command: {s}\nSee `lola help` for detailed usage information.\n",
-            .{
-                module,
-            },
-        );
-        return 1;
+    switch (verb) {
+        .compile => |options| return try compile(options, cli.positionals),
+        .dump => |options| return try disassemble(options, cli.positionals),
+        .run => |options| return try run(options, cli.positionals),
+        .help => {
+            try print_usage();
+            return 0;
+        },
+        .version => {
+            try std.io.getStdOut().writeAll(build_options.version ++ "\n");
+            return 0;
+        },
     }
 
     return 0;
@@ -102,6 +77,14 @@ pub fn print_usage() !void {
     // \\  -S                      Intermixes the disassembly with the original source code if possible.
     try std.io.getStdErr().writer().writeAll(usage_msg);
 }
+
+const CliVerb = union(enum) {
+    compile: CompileCLI,
+    dump: DisassemblerCLI,
+    run: RunCLI,
+    help: struct {},
+    version: struct {},
+};
 
 const DisassemblerCLI = struct {
     @"output": ?[]const u8 = null,
@@ -151,7 +134,7 @@ fn disassemble(options: DisassemblerCLI, files: []const []const u8) !u8 {
         const allocator = arena.allocator();
 
         var cu = blk: {
-            var file = try std.fs.cwd().openFile(arg, .{ .read = true, .write = false });
+            var file = try std.fs.cwd().openFile(arg, .{ .mode = .read_only });
             defer file.close();
 
             break :blk try lola.CompileUnit.loadFromStream(allocator, file.reader());
@@ -453,7 +436,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
 fn compileFileToUnit(allocator: std.mem.Allocator, fileName: []const u8) !lola.CompileUnit {
     const maxLength = 1 << 20; // 1 MB
     var source = blk: {
-        var file = try std.fs.cwd().openFile(fileName, .{ .read = true, .write = false });
+        var file = try std.fs.cwd().openFile(fileName, .{ .mode = .read_only });
         defer file.close();
 
         break :blk try file.reader().readAllAlloc(gpa, maxLength);
@@ -486,7 +469,7 @@ fn compileFileToUnit(allocator: std.mem.Allocator, fileName: []const u8) !lola.C
 }
 
 fn loadModuleFromFile(allocator: std.mem.Allocator, fileName: []const u8) !lola.CompileUnit {
-    var file = try std.fs.cwd().openFile(fileName, .{ .read = true, .write = false });
+    var file = try std.fs.cwd().openFile(fileName, .{ .mode = .read_only });
     defer file.close();
 
     return try lola.CompileUnit.loadFromStream(allocator, file.reader());

@@ -124,7 +124,7 @@ pub fn ReadFile(environment: *const lola.runtime.Environment, context: lola.runt
 
     const path = try args[0].toString();
 
-    var file = std.fs.cwd().openFile(path, .{ .read = true, .write = false }) catch return .void;
+    var file = std.fs.cwd().openFile(path, .{ .mode = .read_only }) catch return .void;
     defer file.close();
 
     // 2 GB
@@ -142,7 +142,7 @@ pub fn FileExists(environment: *const lola.runtime.Environment, context: lola.ru
 
     const path = try args[0].toString();
 
-    var file = std.fs.cwd().openFile(path, .{ .read = true, .write = false }) catch return lola.runtime.Value.initBoolean(false);
+    var file = std.fs.cwd().openFile(path, .{ .mode = .read_only }) catch return lola.runtime.Value.initBoolean(false);
     file.close();
 
     return lola.runtime.Value.initBoolean(true);
@@ -229,7 +229,7 @@ pub const LoLaList = struct {
     data: std.ArrayList(lola.runtime.Value),
 
     pub fn getMethod(self: *Self, name: []const u8) ?lola.runtime.Function {
-        inline for (std.meta.declarations(funcs)) |decl| {
+        inline for (comptime std.meta.declarations(funcs)) |decl| {
             if (std.mem.eql(u8, name, decl.name)) {
                 return lola.runtime.Function{
                     .syncUser = .{
@@ -484,7 +484,7 @@ pub const LoLaDictionary = struct {
     data: std.ArrayList(KV),
 
     pub fn getMethod(self: *Self, name: []const u8) ?lola.runtime.Function {
-        inline for (std.meta.declarations(funcs)) |decl| {
+        inline for (comptime std.meta.declarations(funcs)) |decl| {
             if (std.mem.eql(u8, name, decl.name)) {
                 return lola.runtime.Function{
                     .syncUser = .{
