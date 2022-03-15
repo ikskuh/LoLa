@@ -1,0 +1,25 @@
+
+function Foo(a) {
+  Bar(2 * a);
+  Bar(2 * a + 1);
+}
+
+function Bar(a) {
+  Bam(2 * a);
+  Bam(2 * a + 1);
+}
+
+function Bam(a) {
+  Baz();
+  Baz();
+}
+
+function Baz() {
+  // NOP
+}
+
+var i = 0;
+while(i < 1000000) {
+  Foo(i);
+  i += 1;
+}

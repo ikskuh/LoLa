@@ -1,0 +1,26 @@
+// same as function-call.lola, but tests reduced copies on function calls
+
+function Foo(a, b, c) {
+  Bar(a, b, c);
+  Bar(a, b, c);
+}
+
+function Bar(a, b, c) {
+  Bam(a, b, c);
+  Bam(a, b, c);
+}
+
+function Bam(a, b, c) {
+  Baz(a, b, c);
+  Baz(a, b, c);
+}
+
+function Baz(a, b, c) {
+  // NOP
+}
+
+var i = 0;
+while(i < 1000000) {
+  Foo(i);
+  i += 1;
+}

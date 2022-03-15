@@ -1,0 +1,13 @@
+
+var array = [ 1, 2, 3 ];
+
+var i = 0;
+while(i < 1000000) {
+
+  var tmp = array[0];
+  array[0] = array[1];
+  array[1] = array[2];
+  array[2] = tmp;
+
+  i += 1;
+}

@@ -95,6 +95,42 @@ pub fn build(b: *Builder) !void {
     exe.addPackage(build_options.getPackage("build_options"));
     exe.install();
 
+    const benchmark_renderer = b.addExecutable("benchmark-render", "src/benchmark/render.zig");
+    benchmark_renderer.setBuildMode(mode);
+    benchmark_renderer.install();
+
+    {
+        const render_benchmark_step = b.step("render-benchmarks", "Runs the benchmark suite.");
+
+        const only_render_benchmark = benchmark_renderer.run();
+        only_render_benchmark.addArg(b.pathFromRoot("benchmarks/data"));
+        only_render_benchmark.addArg(b.pathFromRoot("benchmarks/visualization"));
+
+        render_benchmark_step.dependOn(&only_render_benchmark.step);
+    }
+
+    const benchmark_modes = [_]std.builtin.Mode{
+        .ReleaseSafe, .ReleaseFast, .ReleaseSmall,
+    };
+    const benchmark_step = b.step("benchmark", "Runs the benchmark suite.");
+
+    const render_benchmark = benchmark_renderer.run();
+    render_benchmark.addArg(b.pathFromRoot("benchmarks/data"));
+    render_benchmark.addArg(b.pathFromRoot("benchmarks/visualization"));
+    benchmark_step.dependOn(&render_benchmark.step);
+
+    for (benchmark_modes) |benchmark_mode| {
+        const benchmark = b.addExecutable(b.fmt("benchmark-{s}", .{@tagName(benchmark_mode)}), "src/benchmark/perf.zig");
+        benchmark.setBuildMode(benchmark_mode);
+        benchmark.addPackage(pkgs.lola);
+
+        const run_benchmark = benchmark.run();
+        run_benchmark.addArg(b.pathFromRoot("src/benchmark/benchmarks"));
+        run_benchmark.addArg(b.pathFromRoot("benchmarks/data"));
+
+        render_benchmark.step.dependOn(&run_benchmark.step);
+    }
+
     const wasm_runtime = b.addSharedLibrary("lola", "src/wasm-compiler/main.zig", .unversioned);
     wasm_runtime.addPackage(pkgs.lola);
     wasm_runtime.setTarget(.{ .cpu_arch = .wasm32, .os_tag = .freestanding });
