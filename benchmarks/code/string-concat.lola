@@ -1,0 +1,9 @@
+
+
+var i = 0;
+while(i < 100000) {
+
+  var foo = "a" + "hello" + "bar";
+
+  i += 1;
+}

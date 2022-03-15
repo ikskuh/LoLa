@@ -125,7 +125,7 @@ pub fn build(b: *Builder) !void {
         benchmark.addPackage(pkgs.lola);
 
         const run_benchmark = benchmark.run();
-        run_benchmark.addArg(b.pathFromRoot("src/benchmark/benchmarks"));
+        run_benchmark.addArg(b.pathFromRoot("benchmarks/code"));
         run_benchmark.addArg(b.pathFromRoot("benchmarks/data"));
 
         render_benchmark.step.dependOn(&run_benchmark.step);

@@ -19,8 +19,10 @@ function Baz(a, b, c) {
   // NOP
 }
 
+var array = [ 1, 2, 3 ];
+
 var i = 0;
-while(i < 1000000) {
-  Foo(i);
+while(i < 100000) {
+  Foo("Hello", array, "World!");
   i += 1;
 }

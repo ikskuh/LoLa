@@ -1,0 +1,29 @@
+
+
+var deep_array = [
+  "Hello",
+  "This",
+  [
+    "deep",
+    "deeper",
+    "deepest",
+  ],
+  [
+    [
+      [
+        "nesting"
+      ],
+      "is"
+    ],
+    "fun"
+  ],
+  [[[ 1,2,3,4 ]]],
+];
+
+var i = 0;
+while(i < 100000) {
+
+  var copy = deep_array;
+
+  i += 1;
+}

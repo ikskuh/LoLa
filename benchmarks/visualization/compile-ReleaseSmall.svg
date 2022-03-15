@@ -1,13 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg version="1.1" viewBox="0 0 350 200" xmlns="http://www.w3.org/2000/svg">
-  <text x="305.000" y="10" fill="#442434" font-family="sans-serif" font-size="5" xml:space="preserve">array-creation</text>
-  <path d="M 0.0000 63.6867 158.6007 150.5449 161.4722 149.3652 283.0720 86.5367 284.8496 144.2161 287.1057 139.9603 288.8013 151.0815 290.4831 91.9357 292.7393 145.7536 294.4075 150.4026 296.6500 138.7443 298.3318 148.6500 300.0000 109.8516" fill="none" stroke="#442434" stroke-width="1.00" />
-  <text x="305.000" y="17" fill="#30346d" font-family="sans-serif" font-size="5" xml:space="preserve">function-call</text>
-  <path d="M 0.0000 128.0886 158.6007 132.1651 161.4722 144.5734 283.0720 148.4355 284.8496 137.9937 287.1057 135.9913 288.8013 145.6107 290.4831 142.8931 292.7393 148.6142 294.4075 142.4276 296.6500 137.4218 298.3318 142.3918 300.0000 139.2097" fill="none" stroke="#30346d" stroke-width="1.00" />
-  <text x="305.000" y="24" fill="#4e4a4e" font-family="sans-serif" font-size="5" xml:space="preserve">cow-calls</text>
-  <path d="M 0.0000 116.1093 158.6007 133.0944 161.4722 139.6030 283.0720 137.1356 284.8496 129.0184 287.1057 127.9811 288.8013 138.7090 290.4831 141.2480 292.7393 140.3182 294.4075 134.5249 296.6500 134.7400 298.3318 138.9235 300.0000 135.0615" fill="none" stroke="#4e4a4e" stroke-width="1.00" />
-  <text x="305.000" y="31" fill="#854c30" font-family="sans-serif" font-size="5" xml:space="preserve">array-modification</text>
-  <path d="M 0.0000 121.0081 158.6007 147.0049 161.4722 151.1532 283.0720 145.7178 284.8496 126.0145 287.1057 145.2887 288.8013 149.4364 290.4831 141.7487 292.7393 119.2561 294.4075 141.3197 296.6500 149.0437 298.3318 149.5081 300.0000 145.0025" fill="none" stroke="#854c30" stroke-width="1.00" />
-  <text x="305.000" y="38" fill="#346524" font-family="sans-serif" font-size="5" xml:space="preserve">basic-execution</text>
-  <path d="M 0.0000 167.4952 158.6007 158.3048 161.4722 168.1746 283.0720 163.3828 284.8496 162.9537 287.1057 166.5295 288.8013 169.2114 290.4831 168.1029 292.7393 168.7465 294.4075 165.8501 296.6500 168.5320 298.3318 167.3165 300.0000 166.8158" fill="none" stroke="#346524" stroke-width="1.00" />
+  <text x="305.000" y="10" fill="#442434" font-family="sans-serif" font-size="5" xml:space="preserve">string-concat</text>
+  <path d="M 0.0000 153.8708 300.0000 162.4171" fill="none" stroke="#442434" stroke-width="1.00" />
+  <text x="305.000" y="17" fill="#30346d" font-family="sans-serif" font-size="5" xml:space="preserve">array-creation</text>
+  <path d="M 0.0000 149.1507 300.0000 149.4723" fill="none" stroke="#30346d" stroke-width="1.00" />
+  <text x="305.000" y="24" fill="#4e4a4e" font-family="sans-serif" font-size="5" xml:space="preserve">function-call</text>
+  <path d="M 0.0000 144.1802 300.0000 148.0064" fill="none" stroke="#4e4a4e" stroke-width="1.00" />
+  <text x="305.000" y="31" fill="#854c30" font-family="sans-serif" font-size="5" xml:space="preserve">array-deep-copy</text>
+  <path d="M 0.0000 118.9699 300.0000 150.4020" fill="none" stroke="#854c30" stroke-width="1.00" />
+  <text x="305.000" y="38" fill="#346524" font-family="sans-serif" font-size="5" xml:space="preserve">array-concat</text>
+  <path d="M 0.0000 126.0145 300.0000 143.6795" fill="none" stroke="#346524" stroke-width="1.00" />
+  <text x="305.000" y="45" fill="#d04648" font-family="sans-serif" font-size="5" xml:space="preserve">cow-calls</text>
+  <path d="M 0.0000 130.6634 300.0000 130.5201" fill="none" stroke="#d04648" stroke-width="1.00" />
+  <text x="305.000" y="52" fill="#757161" font-family="sans-serif" font-size="5" xml:space="preserve">array-modification</text>
+  <path d="M 0.0000 148.4713 300.0000 148.8292" fill="none" stroke="#757161" stroke-width="1.00" />
+  <text x="305.000" y="59" fill="#597dce" font-family="sans-serif" font-size="5" xml:space="preserve">basic-execution</text>
+  <path d="M 0.0000 157.7324 300.0000 166.7799" fill="none" stroke="#597dce" stroke-width="1.00" />
 </svg>

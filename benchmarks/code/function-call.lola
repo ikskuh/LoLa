@@ -19,7 +19,7 @@ function Baz() {
 }
 
 var i = 0;
-while(i < 1000000) {
+while(i < 100000) {
   Foo(i);
   i += 1;
 }
