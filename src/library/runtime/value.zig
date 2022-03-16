@@ -202,7 +202,7 @@ pub const Value = union(TypeId) {
         try stream.writeAll(" ]");
     }
 
-    /// Checks if two values are equal.
+    /// Prints a LoLa value to the given stream.
     pub fn format(value: Self, comptime fmt: []const u8, options: std.fmt.FormatOptions, stream: anytype) !void {
         _ = fmt;
         _ = options;

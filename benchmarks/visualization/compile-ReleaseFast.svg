@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg version="1.1" viewBox="0 0 350 200" xmlns="http://www.w3.org/2000/svg">
   <text x="305.000" y="10" fill="#442434" font-family="sans-serif" font-size="5" xml:space="preserve">array-creation</text>
-  <path d="M 0.0000 152.7265 300.0000 158.6627" fill="none" stroke="#442434" stroke-width="1.00" />
+  <path d="M 0.0000 152.7265 0.0190 158.6627 300.0000 129.4843" fill="none" stroke="#442434" stroke-width="1.00" />
   <text x="305.000" y="17" fill="#30346d" font-family="sans-serif" font-size="5" xml:space="preserve">function-call</text>
-  <path d="M 0.0000 145.1459 300.0000 157.3038" fill="none" stroke="#30346d" stroke-width="1.00" />
+  <path d="M 0.0000 145.1459 0.0190 157.3038 300.0000 148.1861" fill="none" stroke="#30346d" stroke-width="1.00" />
   <text x="305.000" y="24" fill="#4e4a4e" font-family="sans-serif" font-size="5" xml:space="preserve">array-deep-copy</text>
-  <path d="M 0.0000 146.7192 300.0000 156.6956" fill="none" stroke="#4e4a4e" stroke-width="1.00" />
+  <path d="M 0.0000 146.7192 0.0190 156.6956 300.0000 134.8475" fill="none" stroke="#4e4a4e" stroke-width="1.00" />
   <text x="305.000" y="31" fill="#854c30" font-family="sans-serif" font-size="5" xml:space="preserve">array-concat</text>
-  <path d="M 0.0000 152.6548 300.0000 163.3116" fill="none" stroke="#854c30" stroke-width="1.00" />
+  <path d="M 0.0000 152.6548 0.0190 163.3116 300.0000 145.2180" fill="none" stroke="#854c30" stroke-width="1.00" />
   <text x="305.000" y="38" fill="#346524" font-family="sans-serif" font-size="5" xml:space="preserve">cow-calls</text>
-  <path d="M 0.0000 133.5951 300.0000 155.8374" fill="none" stroke="#346524" stroke-width="1.00" />
+  <path d="M 0.0000 133.5951 0.0190 155.8374 300.0000 129.5196" fill="none" stroke="#346524" stroke-width="1.00" />
   <text x="305.000" y="45" fill="#d04648" font-family="sans-serif" font-size="5" xml:space="preserve">array-modification</text>
-  <path d="M 0.0000 152.1188 300.0000 136.4562" fill="none" stroke="#d04648" stroke-width="1.00" />
+  <path d="M 0.0000 152.1188 0.0190 136.4562 300.0000 142.8936" fill="none" stroke="#d04648" stroke-width="1.00" />
   <text x="305.000" y="52" fill="#757161" font-family="sans-serif" font-size="5" xml:space="preserve">string-concat</text>
-  <path d="M 0.0000 165.1348 300.0000 162.0956" fill="none" stroke="#757161" stroke-width="1.00" />
+  <path d="M 0.0000 165.1348 0.0190 162.0956 300.0000 127.6247" fill="none" stroke="#757161" stroke-width="1.00" />
   <text x="305.000" y="59" fill="#597dce" font-family="sans-serif" font-size="5" xml:space="preserve">basic-execution</text>
-  <path d="M 0.0000 160.3789 300.0000 164.4554" fill="none" stroke="#597dce" stroke-width="1.00" />
+  <path d="M 0.0000 160.3789 0.0190 164.4554 300.0000 153.1208" fill="none" stroke="#597dce" stroke-width="1.00" />
 </svg>
