@@ -2,7 +2,7 @@ const std = @import("std");
 
 pub const EscapedStringIterator = struct {
     slice: []const u8,
-    position: u8,
+    position: usize,
 
     pub fn init(slice: []const u8) @This() {
         return @This(){
