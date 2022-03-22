@@ -183,8 +183,10 @@ pub fn installModule(self: *Environment, comptime Module: type, context: AnyPoin
 /// Adds a function to the environment and makes it available for the script.
 pub fn installFunction(self: *Environment, name: []const u8, function: Function) !void {
     var result = try self.functions.getOrPut(name);
-    if (result.found_existing)
+    if (result.found_existing) {
+        logger.err("tried to install already existing function '{s}'", .{name});
         return error.AlreadyExists;
+    }
     result.value_ptr.* = function;
 }
 
