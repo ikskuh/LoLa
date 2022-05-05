@@ -471,7 +471,7 @@ pub fn DeltaEqual(env: *const lola.runtime.Environment, context: lola.runtime.Co
     const a = try args[0].toNumber();
     const b = try args[1].toNumber();
     const delta = try args[2].toNumber();
-    return lola.runtime.Value.initBoolean(std.math.fabs(a - b) < delta);
+    return lola.runtime.Value.initBoolean(@fabs(a - b) < delta);
 }
 
 pub fn Floor(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
@@ -479,7 +479,7 @@ pub fn Floor(env: *const lola.runtime.Environment, context: lola.runtime.Context
     _ = context;
     if (args.len != 1)
         return error.InvalidArgs;
-    return lola.runtime.Value.initNumber(std.math.floor(try args[0].toNumber()));
+    return lola.runtime.Value.initNumber(@floor(try args[0].toNumber()));
 }
 
 pub fn Ceiling(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
@@ -487,7 +487,7 @@ pub fn Ceiling(env: *const lola.runtime.Environment, context: lola.runtime.Conte
     _ = context;
     if (args.len != 1)
         return error.InvalidArgs;
-    return lola.runtime.Value.initNumber(std.math.ceil(try args[0].toNumber()));
+    return lola.runtime.Value.initNumber(@ceil(try args[0].toNumber()));
 }
 
 pub fn Round(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
@@ -495,7 +495,7 @@ pub fn Round(env: *const lola.runtime.Environment, context: lola.runtime.Context
     _ = context;
     if (args.len != 1)
         return error.InvalidArgs;
-    return lola.runtime.Value.initNumber(std.math.round(try args[0].toNumber()));
+    return lola.runtime.Value.initNumber(@round(try args[0].toNumber()));
 }
 
 pub fn Sin(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
@@ -503,7 +503,7 @@ pub fn Sin(env: *const lola.runtime.Environment, context: lola.runtime.Context, 
     _ = context;
     if (args.len != 1)
         return error.InvalidArgs;
-    return lola.runtime.Value.initNumber(std.math.sin(try args[0].toNumber()));
+    return lola.runtime.Value.initNumber(@sin(try args[0].toNumber()));
 }
 
 pub fn Cos(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
@@ -511,7 +511,7 @@ pub fn Cos(env: *const lola.runtime.Environment, context: lola.runtime.Context, 
     _ = context;
     if (args.len != 1)
         return error.InvalidArgs;
-    return lola.runtime.Value.initNumber(std.math.cos(try args[0].toNumber()));
+    return lola.runtime.Value.initNumber(@cos(try args[0].toNumber()));
 }
 
 pub fn Tan(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
@@ -519,7 +519,7 @@ pub fn Tan(env: *const lola.runtime.Environment, context: lola.runtime.Context, 
     _ = context;
     if (args.len != 1)
         return error.InvalidArgs;
-    return lola.runtime.Value.initNumber(std.math.tan(try args[0].toNumber()));
+    return lola.runtime.Value.initNumber(@tan(try args[0].toNumber()));
 }
 
 pub fn Atan(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
@@ -583,7 +583,7 @@ pub fn Exp(env: *const lola.runtime.Environment, context: lola.runtime.Context, 
     _ = context;
     if (args.len != 1)
         return error.InvalidArgs;
-    return lola.runtime.Value.initNumber(std.math.exp(try args[0].toNumber()));
+    return lola.runtime.Value.initNumber(@exp(try args[0].toNumber()));
 }
 
 pub fn Timestamp(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {

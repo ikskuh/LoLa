@@ -135,7 +135,7 @@ pub const Value = union(TypeId) {
     }
 
     pub fn toInteger(self: Self, comptime T: type) ConversionError!T {
-        const num = std.math.floor(try self.toNumber());
+        const num = @floor(try self.toNumber());
         if (num < std.math.minInt(T))
             return error.OutOfRange;
         if (num > std.math.maxInt(T))

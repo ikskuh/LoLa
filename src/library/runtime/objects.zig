@@ -141,6 +141,31 @@ pub const ObjectPoolInterface = struct {
     }
 };
 
+const TypeListInfo = struct {
+    all_can_serialize: bool,
+    hash: u64,
+};
+
+fn computeTypeListHash(comptime classes: []const type) TypeListInfo {
+    var hasher = std.hash.SipHash64(2, 4).init("OP SER Version 1");
+    var all_classes_can_serialize = (classes.len > 0);
+    inline for (classes) |class| {
+        const can_serialize = @hasDecl(class, "serializeObject");
+        if (can_serialize != @hasDecl(class, "deserializeObject")) {
+            @compileError("Each class requires either both serializeObject and deserializeObject to be present or none.");
+        }
+
+        all_classes_can_serialize = all_classes_can_serialize and can_serialize;
+
+        // this requires to use a typeHash structure instead of the type name
+        hasher.update(@typeName(class));
+    }
+    return TypeListInfo{
+        .hash = hasher.finalInt(),
+        .all_can_serialize = all_classes_can_serialize,
+    };
+}
+
 /// An object pool is a structure that is used for garbage collecting objects.
 /// Each object gets a unique number assigned when being put into the pool
 /// via `createObject`. This handle can then be passed into a VM, used opaquely.
@@ -156,26 +181,12 @@ pub const ObjectPoolInterface = struct {
 /// betewen `clearUsageCounters` and `collectGarbage`.
 pub fn ObjectPool(comptime classes_list: anytype) type {
     // enforce type safety here
-    comptime var classes: [classes_list.len]type = undefined;
-    for (classes_list) |item, i| {
-        classes[i] = item;
-    }
-    //                                                   ----XXXX----XXXX
-    comptime var hasher = std.hash.SipHash64(2, 4).init("OP SER Version 1");
+    const classes: [classes_list.len]type = classes_list;
 
-    comptime var all_classes_can_serialize = (classes.len > 0);
+    const list_info = comptime computeTypeListHash(&classes);
 
-    inline for (classes) |class| {
-        const can_serialize = @hasDecl(class, "serializeObject");
-        if (can_serialize != @hasDecl(class, "deserializeObject")) {
-            @compileError("Each class requires either both serializeObject and deserializeObject to be present or none.");
-        }
-
-        all_classes_can_serialize = all_classes_can_serialize and can_serialize;
-
-        // this requires to use a typeHash structure instead of the type name
-        hasher.update(@typeName(class));
-    }
+    const all_classes_can_serialize = list_info.all_can_serialize;
+    const pool_signature = list_info.hash;
 
     const TypeIndex = std.meta.Int(
         .unsigned,
@@ -217,8 +228,6 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
         }
         break :blk lut;
     } else {};
-
-    const pool_signature = hasher.finalInt();
 
     return struct {
         const Self = @This();

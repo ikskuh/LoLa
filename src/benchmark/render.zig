@@ -81,7 +81,7 @@ pub fn renderSeriesSet(dst_dir: std.fs.Dir, file_name: []const u8, all_series: [
             }
         }
     }
-    high = std.math.pow(f32, scale_base, std.math.ceil(std.math.log(f32, scale_base, 1.3 * high)));
+    high = std.math.pow(f32, scale_base, @ceil(std.math.log(f32, scale_base, 1.3 * high)));
 
     const time_range = end_time - start_time;
 
