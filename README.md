@@ -200,7 +200,7 @@ Right now, it's not published in the gallery, so to install the extension, you h
 
 ### Requirements
 
-- The [Zig Compiler](https://ziglang.org/) (Version 0.6.0+12ce6eb8f or newer)
+- The [Zig Compiler](https://ziglang.org/) (Version 0.10.0-dev.2413+ee1a95b55, the next version 0.10.0-dev.2490+135b91aec won't work)
 
 ### Building
 

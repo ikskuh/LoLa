@@ -5,15 +5,15 @@ const Builder = std.build.Builder;
 pub fn createPackage(comptime root: []const u8) std.build.Pkg {
     return std.build.Pkg{
         .name = "lola",
-        .path = .{ .path = root ++ "/src/library/main.zig" },
+        .source = .{ .path = root ++ "/src/library/main.zig" },
         .dependencies = &[_]std.build.Pkg{
             std.build.Pkg{
                 .name = "interface",
-                .path = .{ .path = root ++ "/libs/interface.zig/interface.zig" },
+                .source = .{ .path = root ++ "/libs/interface.zig/interface.zig" },
             },
             std.build.Pkg{
                 .name = "any-pointer",
-                .path = .{ .path = root ++ "/libs/any-pointer/any-pointer.zig" },
+                .source = .{ .path = root ++ "/libs/any-pointer/any-pointer.zig" },
             },
         },
     };
@@ -24,37 +24,37 @@ const linkPcre = @import("libs/koino/vendor/libpcre.zig/build.zig").linkPcre;
 const pkgs = struct {
     const args = std.build.Pkg{
         .name = "args",
-        .path = .{ .path = "libs/args/args.zig" },
+        .source = .{ .path = "libs/args/args.zig" },
         .dependencies = &[_]std.build.Pkg{},
     };
 
     const interface = std.build.Pkg{
         .name = "interface",
-        .path = .{ .path = "libs/interface.zig/interface.zig" },
+        .source = .{ .path = "libs/interface.zig/interface.zig" },
         .dependencies = &[_]std.build.Pkg{},
     };
 
     const lola = std.build.Pkg{
         .name = "lola",
-        .path = .{ .path = "src/library/main.zig" },
+        .source = .{ .path = "src/library/main.zig" },
         .dependencies = &[_]std.build.Pkg{ interface, any_pointer },
     };
 
     const koino = std.build.Pkg{
         .name = "koino",
-        .path = .{ .path = "libs/koino/src/koino.zig" },
+        .source = .{ .path = "libs/koino/src/koino.zig" },
         .dependencies = &[_]std.build.Pkg{
-            std.build.Pkg{ .name = "libpcre", .path = .{ .path = "libs/koino/vendor/libpcre.zig/src/main.zig" } },
-            std.build.Pkg{ .name = "htmlentities", .path = .{ .path = "libs/koino/vendor/htmlentities.zig/src/main.zig" } },
-            std.build.Pkg{ .name = "clap", .path = .{ .path = "libs/koino/vendor/zig-clap/clap.zig" } },
-            std.build.Pkg{ .name = "zunicode", .path = .{ .path = "libs/koino/vendor/zunicode/src/zunicode.zig" } },
+            std.build.Pkg{ .name = "libpcre", .source = .{ .path = "libs/koino/vendor/libpcre.zig/src/main.zig" } },
+            std.build.Pkg{ .name = "htmlentities", .source = .{ .path = "libs/koino/vendor/htmlentities.zig/src/main.zig" } },
+            std.build.Pkg{ .name = "clap", .source = .{ .path = "libs/koino/vendor/zig-clap/clap.zig" } },
+            std.build.Pkg{ .name = "zunicode", .source = .{ .path = "libs/koino/vendor/zunicode/src/zunicode.zig" } },
         },
     };
 
     const any_pointer =
         std.build.Pkg{
         .name = "any-pointer",
-        .path = .{ .path = "libs/any-pointer/any-pointer.zig" },
+        .source = .{ .path = "libs/any-pointer/any-pointer.zig" },
     };
 };
 
@@ -263,7 +263,7 @@ pub fn build(b: *Builder) !void {
         copy_wasm_runtime.addArg("website/lola.wasm");
         gen_website_step.dependOn(&copy_wasm_runtime.step);
 
-        var gen_docs_runner = b.addTest(pkgs.lola.path.path);
+        var gen_docs_runner = b.addTest(pkgs.lola.source.path);
         gen_docs_runner.emit_bin = .no_emit;
         gen_docs_runner.emit_asm = .no_emit;
         gen_docs_runner.emit_bin = .no_emit;
