@@ -187,7 +187,7 @@ pub const CodeWriter = struct {
 
     /// Encodes a variable-length string with a max. length of 0 … 65535 characters.
     pub fn emitString(self: *Self, val: []const u8) !void {
-        try self.emitU16(try std.math.cast(u16, val.len));
+        try self.emitU16(std.math.cast(u16, val.len) orelse return error.Overflow);
         try self.emitRaw(val);
     }
 

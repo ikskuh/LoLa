@@ -10,7 +10,7 @@ pub fn main() !u8 {
         return 1;
     }
 
-    var src_dir = try std.fs.cwd().openDir(argv[1], .{ .iterate = true });
+    var src_dir = try std.fs.cwd().openIterableDir(argv[1], .{});
     defer src_dir.close();
 
     var dst_dir = try std.fs.cwd().openDir(argv[2], .{});
@@ -33,7 +33,7 @@ pub fn main() !u8 {
                 .data = undefined,
             };
 
-            var file = try src_dir.openFile(entry.name, .{ .mode = .read_only });
+            var file = try src_dir.dir.openFile(entry.name, .{ .mode = .read_only });
             defer file.close();
 
             series.data = try loadSeries(gpa.allocator(), file);

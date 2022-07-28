@@ -228,18 +228,18 @@ pub const Value = union(TypeId) {
             .object => |val| try writer.writeIntLittle(u64, @enumToInt(val)),
             .boolean => |val| try writer.writeByte(if (val) @as(u8, 1) else 0),
             .string => |val| {
-                try writer.writeIntLittle(u32, std.math.cast(u32, val.contents.len) catch return error.ObjectTooLarge);
+                try writer.writeIntLittle(u32, std.math.cast(u32, val.contents.len) orelse return error.ObjectTooLarge);
                 try writer.writeAll(val.contents);
             },
             .array => |arr| {
-                try writer.writeIntLittle(u32, std.math.cast(u32, arr.contents.len) catch return error.ObjectTooLarge);
+                try writer.writeIntLittle(u32, std.math.cast(u32, arr.contents.len) orelse return error.ObjectTooLarge);
                 for (arr.contents) |item| {
                     try item.serialize(writer);
                 }
             },
             .enumerator => |e| {
-                try writer.writeIntLittle(u32, std.math.cast(u32, e.array.contents.len) catch return error.ObjectTooLarge);
-                try writer.writeIntLittle(u32, std.math.cast(u32, e.index) catch return error.ObjectTooLarge);
+                try writer.writeIntLittle(u32, std.math.cast(u32, e.array.contents.len) orelse return error.ObjectTooLarge);
+                try writer.writeIntLittle(u32, std.math.cast(u32, e.index) orelse return error.ObjectTooLarge);
                 for (e.array.contents) |item| {
                     try item.serialize(writer);
                 }
