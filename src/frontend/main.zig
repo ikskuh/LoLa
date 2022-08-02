@@ -352,7 +352,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
             switch (result) {
                 .completed => return 0,
                 .exhausted => {
-                    try std.io.getStdErr().writer().print("Execution exhausted after {d} instructions!\n", .{
+                    try std.io.getStdErr().writer().print("Execution exhausted after {?d} instructions!\n", .{
                         options.limit,
                     });
                     return 1;
@@ -398,7 +398,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
                 switch (result) {
                     .completed => break :emulation,
                     .exhausted => {
-                        try std.io.getStdErr().writer().print("Execution exhausted after {d} instructions!\n", .{
+                        try std.io.getStdErr().writer().print("Execution exhausted after {?d} instructions!\n", .{
                             options.limit,
                         });
                         return 1;

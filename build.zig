@@ -19,7 +19,7 @@ pub fn createPackage(comptime root: []const u8) std.build.Pkg {
     };
 }
 
-const linkPcre = @import("libs/koino/vendor/libpcre.zig/build.zig").linkPcre;
+const linkPcre = @import("libs/koino/vendor/libpcre/build.zig").linkPcre;
 
 const pkgs = struct {
     const args = std.build.Pkg{
@@ -44,8 +44,8 @@ const pkgs = struct {
         .name = "koino",
         .source = .{ .path = "libs/koino/src/koino.zig" },
         .dependencies = &[_]std.build.Pkg{
-            std.build.Pkg{ .name = "libpcre", .source = .{ .path = "libs/koino/vendor/libpcre.zig/src/main.zig" } },
-            std.build.Pkg{ .name = "htmlentities", .source = .{ .path = "libs/koino/vendor/htmlentities.zig/src/main.zig" } },
+            std.build.Pkg{ .name = "libpcre", .source = .{ .path = "libs/koino/vendor/libpcre/src/main.zig" } },
+            std.build.Pkg{ .name = "htmlentities", .source = .{ .path = "libs/koino/vendor/htmlentities/src/main.zig" } },
             std.build.Pkg{ .name = "clap", .source = .{ .path = "libs/koino/vendor/zig-clap/clap.zig" } },
             std.build.Pkg{ .name = "zunicode", .source = .{ .path = "libs/koino/vendor/zunicode/src/zunicode.zig" } },
         },

@@ -272,7 +272,7 @@ test "Decoder.read(Instruction)" {
         var decoder = Decoder.init(pattern.text);
         const instruction = decoder.read(Instruction);
         if (!pattern.isMatch(instruction)) {
-            std.log.err("expected {}, got {}\n", .{ pattern.instr, instruction });
+            std.log.err("expected {!}, got {!}\n", .{ pattern.instr, instruction });
             return error.UnexpectedToken;
         }
     }

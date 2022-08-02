@@ -46,13 +46,13 @@ pub fn main() !u8 {
     });
 
     {
-        var dir = try std.fs.cwd().openDir(argv[1], .{ .iterate = true });
+        var dir = try std.fs.cwd().openIterableDir(argv[1], .{});
         defer dir.close();
 
         var iterator = dir.iterate();
         while (try iterator.next()) |entry| {
             const name = try string_arena.allocator().dupe(u8, entry.name);
-            const source = try dir.readFileAlloc(string_arena.allocator(), entry.name, size(1.5, .MeBi)); // 1 MB source
+            const source = try dir.dir.readFileAlloc(string_arena.allocator(), entry.name, size(1.5, .MeBi)); // 1 MB source
 
             const target_file = try std.fmt.allocPrint(string_arena.allocator(), "{s}-{s}.csv", .{
                 name[0 .. name.len - std.fs.path.extension(name).len],
@@ -67,7 +67,7 @@ pub fn main() !u8 {
         }
     }
 
-    var output_dir = try std.fs.cwd().openDir(argv[2], .{ .iterate = true });
+    var output_dir = try std.fs.cwd().openDir(argv[2], .{});
     defer output_dir.close();
 
     for (files.items) |benchmark| {
