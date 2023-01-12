@@ -23,14 +23,14 @@ pub const TokenType = enum {
     @"while",
     @"if",
     @"else",
-    @"function",
-    @"in",
+    function,
+    in,
     @"break",
     @"continue",
     @"return",
     @"and",
     @"or",
-    @"not",
+    not,
     @"+=",
     @"-=",
     @"*=",
@@ -176,7 +176,7 @@ pub const Tokenizer = struct {
 
     const Predicate = fn (u8) bool;
 
-    fn accept(self: *Self, predicate: fn (u8) bool) bool {
+    fn accept(self: *Self, predicate: *const fn (u8) bool) bool {
         if (self.offset >= self.source.len)
             return false;
         const c = self.source[self.offset];

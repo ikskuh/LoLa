@@ -27,7 +27,7 @@ pub fn parse(
     const Parser = struct {
         const Self = @This();
 
-        const Predicate = fn (lexer.Token) bool;
+        const Predicate = *const (fn (lexer.Token) bool);
 
         const AcceptError = error{SyntaxError};
         const ParseError = std.mem.Allocator.Error || AcceptError;
@@ -173,7 +173,7 @@ pub fn parse(
             return ast.Function{
                 .location = initial_pos.location,
                 .name = name.text,
-                .parameters = args.toOwnedSlice(),
+                .parameters = try args.toOwnedSlice(),
                 .body = block,
             };
         }
@@ -196,7 +196,7 @@ pub fn parse(
             return ast.Statement{
                 .location = begin.location,
                 .type = .{
-                    .block = body.toOwnedSlice(),
+                    .block = try body.toOwnedSlice(),
                 },
             };
         }
@@ -572,7 +572,7 @@ pub fn parse(
             const state = self.saveState();
             errdefer self.restoreState(state);
 
-            if (self.accept(oneOf(.{ .@"not", .@"-" }))) |prefix| {
+            if (self.accept(oneOf(.{ .not, .@"-" }))) |prefix| {
                 // this must directly recurse as we can write `not not x`
                 const value = try self.acceptUnaryPrefixOperatorExpression();
                 return ast.Expression{
@@ -580,7 +580,7 @@ pub fn parse(
                     .type = .{
                         .unary_operator = .{
                             .operator = switch (prefix.type) {
-                                .@"not" => .boolean_not,
+                                .not => .boolean_not,
                                 .@"-" => .negate,
                                 else => unreachable,
                             },
@@ -652,7 +652,7 @@ pub fn parse(
                             .type = .{
                                 .function_call = .{
                                     .function = try self.moveToHeap(value),
-                                    .arguments = args.toOwnedSlice(),
+                                    .arguments = try args.toOwnedSlice(),
                                 },
                             },
                         };
@@ -688,7 +688,7 @@ pub fn parse(
                                 .method_call = .{
                                     .object = try self.moveToHeap(value),
                                     .name = method_name.text,
-                                    .arguments = args.toOwnedSlice(),
+                                    .arguments = try args.toOwnedSlice(),
                                 },
                             },
                         };
@@ -740,7 +740,7 @@ pub fn parse(
                     return ast.Expression{
                         .location = token.location,
                         .type = .{
-                            .array_literal = array.toOwnedSlice(),
+                            .array_literal = try array.toOwnedSlice(),
                         },
                     };
                 },
@@ -853,8 +853,8 @@ pub fn parse(
 
     return ast.Program{
         .arena = arena,
-        .root_script = root_script.toOwnedSlice(),
-        .functions = functions.toOwnedSlice(),
+        .root_script = try root_script.toOwnedSlice(),
+        .functions = try functions.toOwnedSlice(),
     };
 }
 

@@ -40,7 +40,7 @@ objectPool: ObjectPoolInterface,
 functions: std.StringHashMap(Function),
 
 /// This is called when the destroyObject is called.
-destructor: ?fn (self: *Environment) void,
+destructor: ?*const fn (self: *Environment) void,
 
 pub fn init(allocator: std.mem.Allocator, compileUnit: *const CompileUnit, object_pool: ObjectPoolInterface) !Environment {
     var self = Environment{
@@ -94,10 +94,10 @@ pub fn deinit(self: *Environment) void {
 
 /// Checks if two function signatures are compatible to each other and if `Queried` can be assigned to a `Destination` type.
 fn isCompatibleFunctionSignature(comptime Destination: type, comptime Queried: type) bool {
-    const ti_a = @typeInfo(Destination).Fn;
-    const ti_b = @typeInfo(Queried).Fn;
+    const ti_a = @typeInfo(std.meta.Child(Destination)).Fn;
+    const ti_b = @typeInfo(std.meta.Child(Queried)).Fn;
 
-    if (ti_a.args.len != ti_b.args.len)
+    if (ti_a.params.len != ti_b.params.len)
         return false;
 
     const rettype_a = ti_a.return_type orelse opaque {};
@@ -115,14 +115,14 @@ fn isCompatibleFunctionSignature(comptime Destination: type, comptime Queried: t
         return false;
     }
 
-    for (ti_a.args) |arg_a, i| {
-        const arg_b = ti_b.args[i];
-        const type_a = arg_a.arg_type orelse opaque {};
-        const type_b = arg_b.arg_type orelse opaque {};
+    for (ti_a.params) |arg_a, i| {
+        const arg_b = ti_b.params[i];
+        const type_a = arg_a.type orelse opaque {};
+        const type_b = arg_b.type orelse opaque {};
         if (type_a != type_b) {
             if (@typeInfo(type_a) == .Pointer) {
-                const pti_a: std.builtin.TypeInfo.Pointer = @typeInfo(type_a).Pointer;
-                const pti_b: std.builtin.TypeInfo.Pointer = @typeInfo(type_b).Pointer;
+                const pti_a: std.builtin.Type.Pointer = @typeInfo(type_a).Pointer;
+                const pti_b: std.builtin.Type.Pointer = @typeInfo(type_b).Pointer;
                 if (pti_a.child != pti_b.child)
                     return false;
                 if (pti_a.size != pti_b.size)
@@ -138,7 +138,7 @@ fn isCompatibleFunctionSignature(comptime Destination: type, comptime Queried: t
 }
 
 /// Installs a LoLa module.
-/// Modules are containers that contain public functions with either a 
+/// Modules are containers that contain public functions with either a
 /// `UserFunctionCall` or `AsyncUserFunctionCall` signature.
 /// Every other function is ignored (and a debug log is generated).
 pub fn installModule(self: *Environment, comptime Module: type, context: AnyPointer) !void {
@@ -151,7 +151,7 @@ pub fn installModule(self: *Environment, comptime Module: type, context: AnyPoin
 
         if (@typeInfo(@TypeOf(data)) == .Fn) {
             const module_fn = @field(Module, decl.name);
-            const FnType = @TypeOf(module_fn);
+            const FnType = *const @TypeOf(module_fn);
 
             // @compileLog("Install", decl.name, "query", FnType);
 
@@ -274,11 +274,11 @@ pub const ScriptFunction = struct {
     localCount: u16,
 };
 
-pub const UserFunctionCall = fn (
+pub const UserFunctionCall = *const (fn (
     environment: *Environment,
     context: AnyPointer,
     args: []const Value,
-) anyerror!Value;
+) anyerror!Value);
 
 /// A synchronous function that may be called from the script environment
 pub const UserFunction = struct {
@@ -292,7 +292,7 @@ pub const UserFunction = struct {
 
     /// Optional destructor that may free the memory stored in `context`.
     /// Is called when the function call is deinitialized.
-    destructor: ?fn (context: AnyPointer) void,
+    destructor: ?*const (fn (context: AnyPointer) void),
 
     pub fn deinit(self: *Self) void {
         if (self.destructor) |dtor| {
@@ -322,11 +322,11 @@ test "UserFunction (destructor)" {
     defer uf2.deinit();
 }
 
-pub const AsyncUserFunctionCall = fn (
+pub const AsyncUserFunctionCall = *const (fn (
     environment: *Environment,
     context: AnyPointer,
     args: []const Value,
-) anyerror!AsyncFunctionCall;
+) anyerror!AsyncFunctionCall);
 
 /// An asynchronous function that yields execution of the VM
 /// and can be resumed later.
@@ -343,7 +343,7 @@ pub const AsyncUserFunction = struct {
 
     /// Optional destructor that may free the memory stored in `context`.
     /// Is called when the function call is deinitialized.
-    destructor: ?fn (context: AnyPointer) void,
+    destructor: ?*const (fn (context: AnyPointer) void),
 
     pub fn deinit(self: *Self) void {
         if (self.destructor) |dtor| {
@@ -389,11 +389,11 @@ pub const AsyncFunctionCall = struct {
 
     /// Executor that will run this function call.
     /// May return a value (function call completed) or `null` (function call still in progress).
-    execute: fn (context: AnyPointer) anyerror!?Value,
+    execute: *const fn (context: AnyPointer) anyerror!?Value,
 
     /// Optional destructor that may free the memory stored in `context`.
     /// Is called when the function call is deinitialized.
-    destructor: ?fn (context: AnyPointer) void,
+    destructor: ?*const fn (context: AnyPointer) void,
 
     pub fn deinit(self: *Self) void {
         if (self.destructor) |dtor| {
@@ -445,7 +445,7 @@ pub const Function = union(enum) {
     /// An asynchronous function that will yield the VM execution.
     asyncUser: AsyncUserFunction,
 
-    pub fn initSimpleUser(fun: fn (env: *Environment, context: AnyPointer, args: []const Value) anyerror!Value) Function {
+    pub fn initSimpleUser(fun: *const fn (env: *Environment, context: AnyPointer, args: []const Value) anyerror!Value) Function {
         return Self{
             .syncUser = UserFunction{
                 .context = AnyPointer.null_pointer,
@@ -560,14 +560,14 @@ pub const Function = union(enum) {
         const Impl = struct {
             fn invoke(env: *Environment, context: AnyPointer, args: []const Value) anyerror!Value {
                 _ = context;
-                if (args.len != function_info.args.len)
+                if (args.len != function_info.params.len)
                     return error.InvalidArgs;
 
                 var zig_args: ArgsTuple = undefined;
 
                 comptime var index = 0;
-                inline while (index < function_info.args.len) : (index += 1) {
-                    const T = function_info.args[index].arg_type.?;
+                inline while (index < function_info.params.len) : (index += 1) {
+                    const T = function_info.params[index].type.?;
                     const value = args[index];
                     if (T == Value) {
                         zig_args[index] = value;
@@ -584,9 +584,9 @@ pub const Function = union(enum) {
                 };
 
                 var result: ActualReturnType = if (ReturnType != ActualReturnType)
-                    try @call(.{}, function, zig_args)
+                    try @call(.auto, function, zig_args)
                 else
-                    @call(.{}, function, zig_args);
+                    @call(.auto, function, zig_args);
 
                 return try convertToLoLaValue(env.allocator, result);
             }
@@ -595,7 +595,7 @@ pub const Function = union(enum) {
         return initSimpleUser(Impl.invoke);
     }
 
-    pub fn wrapWithAnyPointer(comptime function: anytype, context: @typeInfo(@TypeOf(function)).Fn.args[0].arg_type.?) Function {
+    pub fn wrapWithAnyPointer(comptime function: anytype, context: @typeInfo(@TypeOf(function)).Fn.args[0].type.?) Function {
         const F = @TypeOf(function);
         const FunctionAnyPointer = std.meta.Child(@TypeOf(context));
         const info = @typeInfo(F);
@@ -621,7 +621,7 @@ pub const Function = union(enum) {
 
                 comptime var index = 1;
                 inline while (index < function_info.args.len) : (index += 1) {
-                    const T = function_info.args[index].arg_type.?;
+                    const T = function_info.args[index].type.?;
                     zig_args[index] = try convertToZigValue(T, args[index - 1]);
                 }
 

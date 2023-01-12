@@ -2,18 +2,26 @@ const std = @import("std");
 const builtin = @import("builtin");
 const Builder = std.build.Builder;
 
-pub fn createPackage(comptime root: []const u8) std.build.Pkg {
-    return std.build.Pkg{
-        .name = "lola",
-        .path = .{ .path = root ++ "/src/library/main.zig" },
+fn sdkPath(comptime suffix: []const u8) []const u8 {
+    if (suffix[0] != '/') @compileError("sdkPath requires an absolute path!");
+    return comptime blk: {
+        const root_dir = std.fs.path.dirname(@src().file) orelse ".";
+        break :blk root_dir ++ suffix;
+    };
+}
+
+pub fn createPackage(comptime package_name: []const u8) std.build.Pkg {
+    return comptime std.build.Pkg{
+        .name = package_name,
+        .source = .{ .path = sdkPath("/src/library/main.zig") },
         .dependencies = &[_]std.build.Pkg{
             std.build.Pkg{
                 .name = "interface",
-                .path = .{ .path = root ++ "/libs/interface.zig/interface.zig" },
+                .source = .{ .path = sdkPath("/libs/interface.zig/interface.zig") },
             },
             std.build.Pkg{
                 .name = "any-pointer",
-                .path = .{ .path = root ++ "/libs/any-pointer/any-pointer.zig" },
+                .source = .{ .path = sdkPath("/libs/any-pointer/any-pointer.zig") },
             },
         },
     };
@@ -153,6 +161,7 @@ pub fn build(b: *Builder) !void {
             main_tests.addPackage(pkg);
         }
     }
+    main_tests.setMainPkgPath(".");
     main_tests.setBuildMode(mode);
 
     const test_step = b.step("test", "Run test suite");
@@ -270,9 +279,11 @@ pub fn build(b: *Builder) !void {
         gen_docs_runner.emit_docs = .{ .emit_to = "website/docs" };
         gen_docs_runner.emit_h = false;
         gen_docs_runner.emit_llvm_ir = .no_emit;
-        gen_docs_runner.addPackage(pkgs.interface);
-        gen_docs_runner.addPackage(pkgs.any_pointer);
+        for (pkgs.lola.dependencies.?) |dep| {
+            gen_docs_runner.addPackage(dep);
+        }
         gen_docs_runner.setBuildMode(mode);
+        gen_docs_runner.setMainPkgPath(".");
 
         gen_website_step.dependOn(&gen_docs_runner.step);
 

@@ -418,11 +418,10 @@ pub const String = struct {
         const alignment = @alignOf(usize);
 
         const ptr_offset = std.mem.alignForward(length, alignment);
-        const buffer = try allocator.allocAdvanced(
+        const buffer = try allocator.alignedAlloc(
             u8,
             alignment,
             ptr_offset + @sizeOf(usize),
-            .exact,
         );
         std.mem.writeIntNative(usize, buffer[ptr_offset..][0..@sizeOf(usize)], 1);
 

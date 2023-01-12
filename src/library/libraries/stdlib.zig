@@ -366,7 +366,7 @@ pub fn Split(env: *const lola.runtime.Environment, context: lola.runtime.Context
 
     return lola.runtime.Value.fromArray(lola.runtime.Array{
         .allocator = env.allocator,
-        .contents = items.toOwnedSlice(),
+        .contents = try items.toOwnedSlice(),
     });
 }
 
@@ -395,7 +395,7 @@ pub fn Join(env: *const lola.runtime.Environment, context: lola.runtime.Context,
 
     return lola.runtime.Value.fromString(lola.runtime.String.initFromOwned(
         env.allocator,
-        result.toOwnedSlice(),
+        try result.toOwnedSlice(),
     ));
 }
 
@@ -650,7 +650,7 @@ pub fn Serialize(env: *lola.runtime.Environment, context: lola.runtime.Context, 
 
     try value.serialize(string_buffer.writer());
 
-    return lola.runtime.Value.fromString(lola.runtime.String.initFromOwned(env.allocator, string_buffer.toOwnedSlice()));
+    return lola.runtime.Value.fromString(lola.runtime.String.initFromOwned(env.allocator, try string_buffer.toOwnedSlice()));
 }
 
 pub fn Deserialize(env: *lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {

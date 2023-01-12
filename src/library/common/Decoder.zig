@@ -88,11 +88,11 @@ fn readInstruction(self: *Decoder) !ir.Instruction {
     const instr = try self.read(ir.InstructionName);
     inline for (std.meta.fields(ir.Instruction)) |fld| {
         if (instr == @field(ir.InstructionName, fld.name)) {
-            if (fld.field_type == ir.Instruction.Deprecated) {
+            if (fld.type == ir.Instruction.Deprecated) {
                 return error.DeprecatedInstruction;
-            } else if (fld.field_type == ir.Instruction.NoArg) {
+            } else if (fld.type == ir.Instruction.NoArg) {
                 return @unionInit(ir.Instruction, fld.name, .{});
-            } else if (fld.field_type == ir.Instruction.CallArg) {
+            } else if (fld.type == ir.Instruction.CallArg) {
                 const fun = self.readVarString() catch |err| return mapEndOfStreamToNotEnoughData(err);
                 const argc = self.read(u8) catch |err| return mapEndOfStreamToNotEnoughData(err);
                 return @unionInit(ir.Instruction, fld.name, ir.Instruction.CallArg{
@@ -100,13 +100,13 @@ fn readInstruction(self: *Decoder) !ir.Instruction {
                     .argc = argc,
                 });
             } else {
-                const ValType = std.meta.fieldInfo(fld.field_type, .value).field_type;
+                const ValType = std.meta.fieldInfo(fld.type, .value).type;
                 if (ValType == []const u8) {
-                    return @unionInit(ir.Instruction, fld.name, fld.field_type{
+                    return @unionInit(ir.Instruction, fld.name, fld.type{
                         .value = self.readVarString() catch |err| return mapEndOfStreamToNotEnoughData(err),
                     });
                 } else {
-                    return @unionInit(ir.Instruction, fld.name, fld.field_type{
+                    return @unionInit(ir.Instruction, fld.name, fld.type{
                         .value = self.read(ValType) catch |err| return mapEndOfStreamToNotEnoughData(err),
                     });
                 }
@@ -130,7 +130,7 @@ const decoderTestBlob = [_]u8{
     16, 0,       // u16
     32, 0, 0, 0, // u32
     12,          // Instruction "add"
-    5, 00, 'H', 'e', 'l', 'l', 'o', // String(*) "Hello"
+    5, 0, 'H', 'e', 'l', 'l', 'o', // String(*) "Hello"
     0x1F, 0x85, 0xEB, 0x51, 0xB8, 0x1E, 0x09, 0x40, // f64 = 3.14000000000000012434 == 0x40091EB851EB851F
     'B', 'y', 'e', 0, 0, 0, 0, 0, // String(8) "Bye"
 };
@@ -207,7 +207,7 @@ test "Decoder.read(Instruction)" {
                     } else if (FieldType == ir.Instruction.CallArg) {
                         return lhs.argc == rhs.argc and std.mem.eql(u8, lhs.function, rhs.function);
                     } else {
-                        const ValType = std.meta.fieldInfo(FieldType, .value).field_type;
+                        const ValType = std.meta.fieldInfo(FieldType, .value).type;
                         if (ValType == []const u8) {
                             return std.mem.eql(u8, lhs.value, rhs.value);
                         } else {

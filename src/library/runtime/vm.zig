@@ -766,7 +766,7 @@ pub const VM = struct {
         yield,
     };
 
-    fn executeNumberArithmetic(self: *Self, operator: fn (f64, f64) error{DivideByZero}!f64) !void {
+    fn executeNumberArithmetic(self: *Self, operator: *const fn (f64, f64) error{DivideByZero}!f64) !void {
         var rhs = try self.pop();
         defer rhs.deinit();
 

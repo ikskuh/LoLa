@@ -12,13 +12,13 @@ const Value = @import("value.zig").Value;
 /// a way to get methods as well as destroy the object when it's garbage collected.
 pub const Object = struct {
     const Interface = interfaces.Interface(struct {
-        getMethod: fn (self: *interfaces.SelfType, name: []const u8) ?Environment.Function,
-        destroyObject: fn (self: *interfaces.SelfType) void,
+        getMethod: *const (fn (self: *interfaces.SelfType, name: []const u8) ?Environment.Function),
+        destroyObject: *const (fn (self: *interfaces.SelfType) void),
     }, interfaces.Storage.NonOwning);
 
     const Class = interfaces.Interface(struct {
-        serializeObject: ?fn (self: *interfaces.SelfType, stream: OutputStream) anyerror!void,
-        deserializeObject: ?fn (stream: InputStream) anyerror!*interfaces.SelfType,
+        serializeObject: ?*const (fn (self: *interfaces.SelfType, stream: OutputStream) anyerror!void),
+        deserializeObject: ?*const (fn (stream: InputStream) anyerror!*interfaces.SelfType),
     }, interfaces.Storage.NonOwning);
 
     const Self = @This();
@@ -30,11 +30,12 @@ pub const Object = struct {
             .impl = Interface.init(ptr) catch unreachable,
         };
     }
-    fn getMethod(self: *const Self, name: []const u8) ?Environment.Function {
+
+    pub fn getMethod(self: *const Self, name: []const u8) ?Environment.Function {
         return self.impl.call("getMethod", .{name});
     }
 
-    fn destroyObject(self: *Self) void {
+    pub fn destroyObject(self: *Self) void {
         self.impl.call("destroyObject", .{});
         self.* = undefined;
     }
@@ -54,7 +55,7 @@ pub const InputStream = struct {
     pub const ErasedSelf = opaque {};
 
     self: *const ErasedSelf,
-    read: fn (self: *const ErasedSelf, buf: []u8) anyerror!usize,
+    read: *const fn (self: *const ErasedSelf, buf: []u8) anyerror!usize,
 
     fn from(reader_ptr: anytype) Self {
         const T = std.meta.Child(@TypeOf(reader_ptr));
@@ -86,7 +87,7 @@ pub const OutputStream = struct {
     pub const ErasedSelf = opaque {};
 
     self: *const ErasedSelf,
-    write: fn (self: *const ErasedSelf, buf: []const u8) anyerror!usize,
+    write: *const fn (self: *const ErasedSelf, buf: []const u8) anyerror!usize,
 
     fn from(writer_ptr: anytype) Self {
         const T = std.meta.Child(@TypeOf(writer_ptr));
@@ -120,9 +121,9 @@ pub const ObjectPoolInterface = struct {
 
     self: *ErasedSelf,
 
-    getMethodFn: fn (self: *ErasedSelf, handle: ObjectHandle, name: []const u8) ObjectGetError!?Environment.Function,
-    destroyObjectFn: fn (self: *ErasedSelf, handle: ObjectHandle) void,
-    isObjectValidFn: fn (self: *ErasedSelf, handle: ObjectHandle) bool,
+    getMethodFn: *const (fn (self: *ErasedSelf, handle: ObjectHandle, name: []const u8) ObjectGetError!?Environment.Function),
+    destroyObjectFn: *const (fn (self: *ErasedSelf, handle: ObjectHandle) void),
+    isObjectValidFn: *const (fn (self: *ErasedSelf, handle: ObjectHandle) bool),
 
     pub fn getMethod(self: @This(), handle: ObjectHandle, name: []const u8) ObjectGetError!?Environment.Function {
         return self.getMethodFn(self.self, handle, name);
@@ -197,8 +198,8 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
 
     const ClassInfo = struct {
         name: []const u8,
-        serialize: fn (stream: OutputStream, obj: Object) anyerror!void,
-        deserialize: fn (allocator: std.mem.Allocator, stream: InputStream) anyerror!Object,
+        serialize: *const fn (stream: OutputStream, obj: Object) anyerror!void,
+        deserialize: *const fn (allocator: std.mem.Allocator, stream: InputStream) anyerror!Object,
     };
 
     // Provide a huge-enough branch quota

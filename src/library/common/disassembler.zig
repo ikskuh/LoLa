@@ -64,11 +64,11 @@ pub fn disassemble(stream: anytype, cu: CompileUnit, options: DisassemblerOption
             inline for (std.meta.fields(ir.Instruction)) |fld| {
                 const instr_name = @field(ir.InstructionName, fld.name);
                 if (instr == instr_name) {
-                    if (fld.field_type == ir.Instruction.Deprecated) {
+                    if (fld.type == ir.Instruction.Deprecated) {
                         // no-op
-                    } else if (fld.field_type == ir.Instruction.NoArg) {
+                    } else if (fld.type == ir.Instruction.NoArg) {
                         // no-op
-                    } else if (fld.field_type == ir.Instruction.CallArg) {
+                    } else if (fld.type == ir.Instruction.CallArg) {
                         const args = @field(instr, fld.name);
                         try stream.print(" {s} {d}", .{ args.function, args.argc });
                     } else {

@@ -116,7 +116,6 @@ pub fn Exit(environment: *const lola.runtime.Environment, context: lola.runtime.
 }
 
 pub fn ReadFile(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
-    _ = environment;
     _ = context;
 
     if (args.len != 1)

@@ -155,17 +155,17 @@ pub const CodeWriter = struct {
         inline for (std.meta.fields(Instruction)) |fld| {
             if (instr == @field(InstructionName, fld.name)) {
                 const value = @field(instr, fld.name);
-                if (fld.field_type == Instruction.Deprecated) {
+                if (fld.type == Instruction.Deprecated) {
                     @panic("called emitInstruction with a deprecated instruction!"); // this is a API violation
-                } else if (fld.field_type == Instruction.NoArg) {
+                } else if (fld.type == Instruction.NoArg) {
                     // It's enough to emit the instruction name
                     return;
-                } else if (fld.field_type == Instruction.CallArg) {
+                } else if (fld.type == Instruction.CallArg) {
                     try self.emitString(value.function);
                     try self.emitU8(value.argc);
                     return;
                 } else {
-                    const ValType = std.meta.fieldInfo(fld.field_type, .value).field_type;
+                    const ValType = std.meta.fieldInfo(fld.type, .value).type;
                     switch (ValType) {
                         []const u8 => try self.emitString(value.value),
                         u8 => try self.emitU8(value.value),

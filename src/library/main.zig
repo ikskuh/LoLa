@@ -14,11 +14,14 @@ pub const CompileUnit = @import("common/CompileUnit.zig");
 
 /// Contains functions and structures for executing LoLa code.
 pub const runtime = struct {
-    usingnamespace @import("runtime/value.zig");
+    pub usingnamespace @import("runtime/value.zig");
+
     pub const Environment = @import("runtime/Environment.zig");
     pub const Context = @import("any-pointer").AnyPointer;
-    usingnamespace @import("runtime/vm.zig");
-    usingnamespace @import("runtime/objects.zig");
+
+    pub usingnamespace @import("runtime/vm.zig");
+    pub usingnamespace @import("runtime/objects.zig");
+
     pub const EnvironmentMap = @import("runtime/environmentmap.zig").EnvironmentMap;
 
     pub const ScriptFunction = Environment.ScriptFunction;

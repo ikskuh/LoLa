@@ -144,7 +144,7 @@ const API = struct {
 
                 return lola.runtime.Value.fromString(lola.runtime.String.initFromOwned(
                     allocator,
-                    buffer.toOwnedSlice(),
+                    try buffer.toOwnedSlice(),
                 ));
             }
         }.Read));
@@ -294,14 +294,16 @@ const exports = struct {
     }
 };
 
-pub fn log(
-    comptime message_level: std.log.Level,
-    comptime scope: @Type(.EnumLiteral),
-    comptime format: []const u8,
-    args: anytype,
-) void {
-    _ = message_level;
-    _ = scope;
-    _ = format;
-    _ = args;
-}
+pub const std_options = struct {
+    pub fn logFn(
+        comptime message_level: std.log.Level,
+        comptime scope: @Type(.EnumLiteral),
+        comptime format: []const u8,
+        args: anytype,
+    ) void {
+        _ = message_level;
+        _ = scope;
+        _ = format;
+        _ = args;
+    }
+};
