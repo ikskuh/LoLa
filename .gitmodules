@@ -1,15 +1,6 @@
-[submodule "libs/args"]
-	path = libs/args
-	url = https://github.com/MasterQ32/zig-args
-[submodule "libs/interface.zig"]
-	path = libs/interface.zig
-	url = https://github.com/MasterQ32/interface.zig
 [submodule "libs/ace-builds"]
 	path = libs/ace-builds
 	url = https://github.com/ajaxorg/ace-builds
-[submodule "libs/any-pointer"]
-	path = libs/any-pointer
-	url = https://github.com/MasterQ32/any-pointer
 [submodule "libs/koino"]
 	path = libs/koino
 	url = https://github.com/kivikakk/koino

@@ -30,24 +30,6 @@ pub fn createPackage(comptime package_name: []const u8) std.build.Pkg {
 const linkPcre = @import("libs/koino/vendor/libpcre/build.zig").linkPcre;
 
 const pkgs = struct {
-    const args = std.build.Pkg{
-        .name = "args",
-        .source = .{ .path = "libs/args/args.zig" },
-        .dependencies = &[_]std.build.Pkg{},
-    };
-
-    const interface = std.build.Pkg{
-        .name = "interface",
-        .source = .{ .path = "libs/interface.zig/interface.zig" },
-        .dependencies = &[_]std.build.Pkg{},
-    };
-
-    const lola = std.build.Pkg{
-        .name = "lola",
-        .source = .{ .path = "src/library/main.zig" },
-        .dependencies = &[_]std.build.Pkg{ interface, any_pointer },
-    };
-
     const koino = std.build.Pkg{
         .name = "koino",
         .source = .{ .path = "libs/koino/src/koino.zig" },
@@ -57,12 +39,6 @@ const pkgs = struct {
             std.build.Pkg{ .name = "clap", .source = .{ .path = "libs/koino/vendor/zig-clap/clap.zig" } },
             std.build.Pkg{ .name = "zunicode", .source = .{ .path = "libs/koino/vendor/zunicode/src/zunicode.zig" } },
         },
-    };
-
-    const any_pointer =
-        std.build.Pkg{
-        .name = "any-pointer",
-        .source = .{ .path = "libs/any-pointer/any-pointer.zig" },
     };
 };
 
@@ -89,22 +65,42 @@ const examples = [_]Example{
 pub fn build(b: *Builder) !void {
     const version_tag = b.option([]const u8, "version", "Sets the version displayed in the docs and for `lola version`");
 
-    const mode = b.standardReleaseOptions();
+    const optimize = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
+
+    const mod_args = b.dependency("args", .{}).module("args");
+    const mod_interface = b.dependency("interface", .{}).module("interface.zig");
+    const mod_any_pointer = b.dependency("any_pointer", .{}).module("any-pointer");
+
+    const mod_lola = b.addModule("lola", .{
+        .source_file = .{ .path = "src/library/main.zig" },
+        .dependencies = &.{
+            .{ .name = "interface", .module = mod_interface },
+            .{ .name = "any-pointer", .module = mod_any_pointer },
+        },
+    });
 
     const build_options = b.addOptions();
     build_options.addOption([]const u8, "version", version_tag orelse "development");
 
-    const exe = b.addExecutable("lola", "src/frontend/main.zig");
-    exe.setBuildMode(mode);
-    exe.setTarget(target);
-    exe.addPackage(pkgs.lola);
-    exe.addPackage(pkgs.args);
-    exe.addPackage(build_options.getPackage("build_options"));
+    const exe = b.addExecutable(.{
+        .name = "lola",
+        .root_source_file = .{ .path = "src/frontend/main.zig" },
+        .optimize = optimize,
+        .target = target,
+    });
+    exe.addModule("lola", mod_lola);
+    exe.addModule("args", mod_args);
+    exe.addAnonymousModule("build_options", .{
+        .source_file = build_options.getSource(),
+    });
     exe.install();
 
-    const benchmark_renderer = b.addExecutable("benchmark-render", "src/benchmark/render.zig");
-    benchmark_renderer.setBuildMode(mode);
+    const benchmark_renderer = b.addExecutable(.{
+        .name = "benchmark-render",
+        .root_source_file = .{ .path = "src/benchmark/render.zig" },
+        .optimize = optimize,
+    });
     benchmark_renderer.install();
 
     {
@@ -128,9 +124,12 @@ pub fn build(b: *Builder) !void {
     benchmark_step.dependOn(&render_benchmark.step);
 
     for (benchmark_modes) |benchmark_mode| {
-        const benchmark = b.addExecutable(b.fmt("benchmark-{s}", .{@tagName(benchmark_mode)}), "src/benchmark/perf.zig");
-        benchmark.setBuildMode(benchmark_mode);
-        benchmark.addPackage(pkgs.lola);
+        const benchmark = b.addExecutable(.{
+            .name = b.fmt("benchmark-{s}", .{@tagName(benchmark_mode)}),
+            .root_source_file = .{ .path = "src/benchmark/perf.zig" },
+            .optimize = benchmark_mode,
+        });
+        benchmark.addModule("lola", mod_lola);
 
         const run_benchmark = benchmark.run();
         run_benchmark.addArg(b.pathFromRoot("benchmarks/code"));
@@ -139,33 +138,39 @@ pub fn build(b: *Builder) !void {
         render_benchmark.step.dependOn(&run_benchmark.step);
     }
 
-    const wasm_runtime = b.addSharedLibrary("lola", "src/wasm-compiler/main.zig", .unversioned);
-    wasm_runtime.addPackage(pkgs.lola);
-    wasm_runtime.setTarget(.{ .cpu_arch = .wasm32, .os_tag = .freestanding });
-    wasm_runtime.setBuildMode(.ReleaseSafe);
+    const wasm_runtime = b.addSharedLibrary(.{
+        .name = "lola",
+        .root_source_file = .{ .path = "src/wasm-compiler/main.zig" },
+        .target = .{ .cpu_arch = .wasm32, .os_tag = .freestanding },
+        .optimize = .ReleaseSafe,
+    });
+    wasm_runtime.addModule("lola", mod_lola);
     wasm_runtime.install();
 
     const examples_step = b.step("examples", "Compiles all examples");
     inline for (examples) |example| {
-        const example_exe = b.addExecutable("example-" ++ example.name, example.path);
-        example_exe.setBuildMode(mode);
-        example_exe.setTarget(target);
-        example_exe.addPackage(pkgs.lola);
+        const example_exe = b.addExecutable(.{
+            .name = "example-" ++ example.name,
+            .root_source_file = .{ .path = example.path },
+            .optimize = optimize,
+            .target = target,
+        });
+        example_exe.addModule("lola", mod_lola);
 
         examples_step.dependOn(&b.addInstallArtifact(example_exe).step);
     }
 
-    var main_tests = b.addTest("src/library/test.zig");
-    if (pkgs.lola.dependencies) |deps| {
-        for (deps) |pkg| {
-            main_tests.addPackage(pkg);
-        }
-    }
+    var main_tests = b.addTest(.{
+        .root_source_file = .{ .path = "src/library/test.zig" },
+        .optimize = optimize,
+        .target = .{},
+    });
+    main_tests.addModule("interface", mod_interface);
+    main_tests.addModule("any-pointer", mod_any_pointer);
     main_tests.setMainPkgPath(".");
-    main_tests.setBuildMode(mode);
 
     const test_step = b.step("test", "Run test suite");
-    test_step.dependOn(&main_tests.step);
+    test_step.dependOn(&main_tests.run().step);
 
     // Run compiler test suites
     {
@@ -198,7 +203,7 @@ pub fn build(b: *Builder) !void {
             runlib_test.cwd = "zig-cache/tmp";
 
             // `Exit(123)` is the last call in the runtime suite
-            runlib_test.expected_exit_code = 123;
+            runlib_test.expectExitCode(123);
 
             runlib_test.expectStdOutEqual(
                 \\
@@ -250,45 +255,49 @@ pub fn build(b: *Builder) !void {
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
 
-    /////////////////////////////////////////////////////////////////////////
-    // Documentation and Website generation:
-    // this is disabed by-default so we don't depend on any vcpkgs
-    if (b.option(bool, "enable-website", "Enables website generation.") orelse false) {
-        // Generates documentation and future files.
-        const gen_website_step = b.step("website", "Generates the website and all required resources.");
+    // TODO: Re-enable website rendering
+    // /////////////////////////////////////////////////////////////////////////
+    // // Documentation and Website generation:
+    // // this is disabed by-default so we don't depend on any vcpkgs
+    // if (b.option(bool, "enable-website", "Enables website generation.") orelse false) {
+    //     // Generates documentation and future files.
+    //     const gen_website_step = b.step("website", "Generates the website and all required resources.");
 
-        const md_renderer = b.addExecutable("markdown-md-page", "src/tools/render-md-page.zig");
-        md_renderer.addPackage(pkgs.koino);
-        try linkPcre(md_renderer);
+    //     const md_renderer = b.addExecutable(.{
+    //         .name = "markdown-md-page",
+    //         .root_source_file = .{ .path = "src/tools/render-md-page.zig" },
+    //     });
+    //     md_renderer.addModule("koini", pkgs.koino);
+    //     try linkPcre(md_renderer);
 
-        const render = md_renderer.run();
-        render.addArg(version_tag orelse "development");
-        gen_website_step.dependOn(&render.step);
+    //     const render = md_renderer.run();
+    //     render.addArg(version_tag orelse "development");
+    //     gen_website_step.dependOn(&render.step);
 
-        const copy_wasm_runtime = b.addSystemCommand(&[_][]const u8{
-            "cp",
-        });
-        copy_wasm_runtime.addArtifactArg(wasm_runtime);
-        copy_wasm_runtime.addArg("website/lola.wasm");
-        gen_website_step.dependOn(&copy_wasm_runtime.step);
+    //     const copy_wasm_runtime = b.addSystemCommand(&[_][]const u8{
+    //         "cp",
+    //     });
+    //     copy_wasm_runtime.addArtifactArg(wasm_runtime);
+    //     copy_wasm_runtime.addArg("website/lola.wasm");
+    //     gen_website_step.dependOn(&copy_wasm_runtime.step);
 
-        var gen_docs_runner = b.addTest(pkgs.lola.source.path);
-        gen_docs_runner.emit_bin = .no_emit;
-        gen_docs_runner.emit_asm = .no_emit;
-        gen_docs_runner.emit_bin = .no_emit;
-        gen_docs_runner.emit_docs = .{ .emit_to = "website/docs" };
-        gen_docs_runner.emit_h = false;
-        gen_docs_runner.emit_llvm_ir = .no_emit;
-        for (pkgs.lola.dependencies.?) |dep| {
-            gen_docs_runner.addPackage(dep);
-        }
-        gen_docs_runner.setBuildMode(mode);
-        gen_docs_runner.setMainPkgPath(".");
+    //     var gen_docs_runner = b.addTest(pkgs.lola.source.path);
+    //     // gen_docs_runner.emit_bin = .no_emit;
+    //     gen_docs_runner.emit_asm = .no_emit;
+    //     gen_docs_runner.emit_bin = .no_emit;
+    //     gen_docs_runner.emit_docs = .{ .emit_to = "website/docs" };
+    //     gen_docs_runner.emit_h = false;
+    //     gen_docs_runner.emit_llvm_ir = .no_emit;
+    //     for (pkgs.lola.dependencies.?) |dep| {
+    //         gen_docs_runner.addPackage(dep);
+    //     }
+    //     gen_docs_runner.setBuildMode(optimize);
+    //     gen_docs_runner.setMainPkgPath(".");
 
-        gen_website_step.dependOn(&gen_docs_runner.step);
+    //     gen_website_step.dependOn(&gen_docs_runner.step);
 
-        // Only generates documentation
-        const gen_docs_step = b.step("docs", "Generate the code documentation");
-        gen_docs_step.dependOn(&gen_docs_runner.step);
-    }
+    //     // Only generates documentation
+    //     const gen_docs_step = b.step("docs", "Generate the code documentation");
+    //     gen_docs_step.dependOn(&gen_docs_runner.step);
+    // }
 }

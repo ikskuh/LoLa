@@ -115,7 +115,7 @@ fn isCompatibleFunctionSignature(comptime Destination: type, comptime Queried: t
         return false;
     }
 
-    for (ti_a.params) |arg_a, i| {
+    for (ti_a.params, 0..) |arg_a, i| {
         const arg_b = ti_b.params[i];
         const type_a = arg_a.type orelse opaque {};
         const type_b = arg_b.type orelse opaque {};

@@ -1,7 +1,7 @@
 const std = @import("std");
 
 pub const Type = enum {
-    @"void",
+    void,
     number,
     string,
     boolean,
@@ -19,7 +19,7 @@ pub const TypeSet = struct {
     const Self = @This();
 
     pub const empty = Self{
-        .@"void" = false,
+        .void = false,
         .number = false,
         .string = false,
         .boolean = false,
@@ -28,7 +28,7 @@ pub const TypeSet = struct {
     };
 
     pub const any = Self{
-        .@"void" = true,
+        .void = true,
         .number = true,
         .string = true,
         .boolean = true,
@@ -36,7 +36,7 @@ pub const TypeSet = struct {
         .object = true,
     };
 
-    @"void": bool,
+    void: bool,
     number: bool,
     string: bool,
     boolean: bool,
@@ -45,7 +45,7 @@ pub const TypeSet = struct {
 
     pub fn from(value_type: Type) Self {
         return Self{
-            .@"void" = (value_type == .@"void"),
+            .void = (value_type == .void),
             .number = (value_type == .number),
             .string = (value_type == .string),
             .boolean = (value_type == .boolean),
@@ -64,7 +64,7 @@ pub const TypeSet = struct {
 
     pub fn contains(self: Self, item: Type) bool {
         return switch (item) {
-            .@"void" => self.@"void",
+            .void => self.void,
             .number => self.number,
             .string => self.string,
             .boolean => self.boolean,

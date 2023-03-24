@@ -193,7 +193,7 @@ pub fn CreateList(environment: *lola.runtime.Environment, context: lola.runtime.
         errdefer for (list.data.items) |*item| {
             item.deinit();
         };
-        for (list.data.items) |*item, index| {
+        for (list.data.items, 0..) |*item, index| {
             item.* = try array.contents[index].clone();
         }
     }
@@ -404,7 +404,7 @@ pub const LoLaList = struct {
             var array = try lola.runtime.Array.init(list.allocator, list.data.items.len);
             errdefer array.deinit();
 
-            for (array.contents) |*item, index| {
+            for (array.contents, 0..) |*item, index| {
                 item.* = try list.data.items[index].clone();
             }
 
@@ -417,7 +417,7 @@ pub const LoLaList = struct {
             if (args.len != 1)
                 return error.InvalidArgs;
 
-            for (list.data.items) |item, index| {
+            for (list.data.items, 0..) |item, index| {
                 if (item.eql(args[0]))
                     return lola.runtime.Value.initInteger(usize, index);
             }
@@ -611,7 +611,7 @@ pub const LoLaDictionary = struct {
             if (args.len != 1)
                 return error.InvalidArgs;
 
-            for (dict.data.items) |*item, index| {
+            for (dict.data.items, 0..) |*item, index| {
                 if (item.key.eql(args[0])) {
 
                     // use a fast swap-remove here
@@ -654,7 +654,7 @@ pub const LoLaDictionary = struct {
             var arr = try lola.runtime.Array.init(dict.allocator, dict.data.items.len);
             errdefer arr.deinit();
 
-            for (dict.data.items) |item, index| {
+            for (dict.data.items, 0..) |item, index| {
                 arr.contents[index].replaceWith(try item.key.clone());
             }
 
@@ -669,7 +669,7 @@ pub const LoLaDictionary = struct {
             var arr = try lola.runtime.Array.init(dict.allocator, dict.data.items.len);
             errdefer arr.deinit();
 
-            for (dict.data.items) |item, index| {
+            for (dict.data.items, 0..) |item, index| {
                 arr.contents[index].replaceWith(try item.value.clone());
             }
 

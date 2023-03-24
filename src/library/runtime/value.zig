@@ -189,7 +189,7 @@ pub const Value = union(TypeId) {
 
     fn formatArray(a: Array, stream: anytype) !void {
         try stream.writeAll("[");
-        for (a.contents) |item, i| {
+        for (a.contents, 0..) |item, i| {
             if (i > 0)
                 try stream.writeAll(",");
 
@@ -569,7 +569,7 @@ pub const Array = struct {
     pub fn eql(lhs: Self, rhs: Self) bool {
         if (lhs.contents.len != rhs.contents.len)
             return false;
-        for (lhs.contents) |v, i| {
+        for (lhs.contents, 0..) |v, i| {
             if (!Value.eql(v, rhs.contents[i]))
                 return false;
         }

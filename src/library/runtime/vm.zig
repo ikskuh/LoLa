@@ -579,11 +579,11 @@ pub const VM = struct {
                         var result = try value_unit.Array.init(self.allocator, larr.len + rarr.len);
                         errdefer result.deinit();
 
-                        for (larr) |*item, i| {
+                        for (larr, 0..) |*item, i| {
                             result.contents[i].exchangeWith(item);
                         }
 
-                        for (rarr) |*item, i| {
+                        for (rarr, 0..) |*item, i| {
                             result.contents[larr.len + i].exchangeWith(item);
                         }
 

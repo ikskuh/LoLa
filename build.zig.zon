@@ -1,0 +1,19 @@
+.{
+    .name = "ashet-os",
+    .version = "0.1.0",
+
+    .dependencies = .{
+        .args = .{
+            .url = "https://github.com/MasterQ32/zig-args/archive/c84f9709405b31ef3e72ab26b20ba3c37826f8ec.tar.gz",
+            .hash = "1220e4ae687b355b164d986c6400eef6cfc2b1020718eaa72914865d344b2f192141",
+        },
+        .any_pointer = .{
+            .url = "https://github.com/MasterQ32/any-pointer/archive/54c96a8b3a4346b311185344b55d903d3fd85d81.tar.gz",
+            .hash = "122021aef7f314447316a800d0bd454d3209be5533fddebe43ffc1328f3561ed6345",
+        },
+        .interface = .{
+            .url = "https://github.com/MasterQ32/interface.zig/archive/08db064d77dcd0aef2456f17fadd7906db79a92b.tar.gz",
+            .hash = "12209dce7212e98557b3fd1344573c3821b6ae183928f9be0a18dceee3e39769dede",
+        },
+    },
+}

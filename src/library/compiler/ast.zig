@@ -169,7 +169,7 @@ pub fn dumpExpression(writer: anytype, expr: Expression) @TypeOf(writer).Error!v
         .variable_expr => |val| try writer.writeAll(val),
         .array_literal => |val| {
             try writer.writeAll("[ ");
-            for (val) |item, index| {
+            for (val, 0..) |item, index| {
                 if (index > 0) {
                     try writer.writeAll(", ");
                 }

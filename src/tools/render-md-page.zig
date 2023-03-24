@@ -52,7 +52,7 @@ pub fn main() !u8 {
 
     const version_name = args.next();
 
-    for (menu_items) |current_file, current_index| {
+    for (menu_items, 0..) |current_file, current_index| {
         const options = koino.Options{
             .extensions = .{
                 .table = true,
@@ -99,7 +99,7 @@ pub fn main() !u8 {
             \\          <ul id="listPkgs" class="packages">
         );
 
-        for (menu_items) |menu, i| {
+        for (menu_items, 0..) |menu, i| {
             var is_current = (current_index == i);
             var current_class = if (is_current)
                 @as([]const u8, "class=\"active\"")

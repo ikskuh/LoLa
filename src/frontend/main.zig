@@ -87,8 +87,8 @@ const CliVerb = union(enum) {
 };
 
 const DisassemblerCLI = struct {
-    @"output": ?[]const u8 = null,
-    @"metadata": bool = false,
+    output: ?[]const u8 = null,
+    metadata: bool = false,
     @"with-offset": bool = false,
     @"with-hexdump": bool = false,
     // @"intermix-source": bool = false,
@@ -172,7 +172,7 @@ fn disassemble(options: DisassemblerCLI, files: []const []const u8) !u8 {
 }
 
 const CompileCLI = struct {
-    @"output": ?[]const u8 = null,
+    output: ?[]const u8 = null,
     verify: bool = false,
 
     pub const shorthands = .{

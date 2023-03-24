@@ -219,7 +219,7 @@ pub fn IndexOf(env: *const lola.runtime.Environment, context: lola.runtime.Conte
             .void;
     } else if (args[0] == .array) {
         const haystack = args[0].array.contents;
-        for (haystack) |val, i| {
+        for (haystack, 0..) |val, i| {
             if (val.eql(args[1]))
                 return lola.runtime.Value.initNumber(@intToFloat(f64, i));
         }
@@ -386,7 +386,7 @@ pub fn Join(env: *const lola.runtime.Environment, context: lola.runtime.Context,
     var result = std.ArrayList(u8).init(env.allocator);
     defer result.deinit();
 
-    for (array.contents) |item, i| {
+    for (array.contents, 0..) |item, i| {
         if (i > 0) {
             try result.appendSlice(separator);
         }
@@ -424,14 +424,14 @@ pub fn Range(env: *const lola.runtime.Environment, context: lola.runtime.Context
         const length = try args[1].toInteger(usize);
 
         var arr = try lola.runtime.Array.init(env.allocator, length);
-        for (arr.contents) |*item, i| {
+        for (arr.contents, 0..) |*item, i| {
             item.* = lola.runtime.Value.initNumber(@intToFloat(f64, start + i));
         }
         return lola.runtime.Value.fromArray(arr);
     } else {
         const length = try args[0].toInteger(usize);
         var arr = try lola.runtime.Array.init(env.allocator, length);
-        for (arr.contents) |*item, i| {
+        for (arr.contents, 0..) |*item, i| {
             item.* = lola.runtime.Value.initNumber(@intToFloat(f64, i));
         }
         return lola.runtime.Value.fromArray(arr);
@@ -456,7 +456,7 @@ pub fn Slice(env: *const lola.runtime.Environment, context: lola.runtime.Context
     var arr = try lola.runtime.Array.init(env.allocator, actual_length);
     errdefer arr.deinit();
 
-    for (arr.contents) |*item, i| {
+    for (arr.contents, 0..) |*item, i| {
         item.* = try array.contents[start + i].clone();
     }
 

@@ -383,7 +383,7 @@ pub fn validate(allocator: std.mem.Allocator, diagnostics: *Diagnostics, program
 
     std.debug.assert(global_scope.return_point.items.len == 0);
 
-    for (program.functions) |function, i| {
+    for (program.functions, 0..) |function, i| {
         for (program.functions[0..i]) |other_fn| {
             if (std.mem.eql(u8, function.name, other_fn.name)) {
                 try diagnostics.emit(.@"error", function.location, "A function with the name {s} was already declared!", .{function.name});
@@ -449,7 +449,7 @@ fn expectAnalysisErrors(source: []const u8, expected_messages: []const []const u
     try std.testing.expectEqual(false, try validate(std.testing.allocator, &diagnostics, pgm));
 
     try std.testing.expectEqual(expected_messages.len, diagnostics.messages.items.len);
-    for (expected_messages) |expected, i| {
+    for (expected_messages, 0..) |expected, i| {
         try std.testing.expectEqualStrings(expected, diagnostics.messages.items[i].message);
     }
 }

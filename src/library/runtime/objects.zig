@@ -207,7 +207,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
 
     const class_lut = comptime if (all_classes_can_serialize) blk: {
         var lut: [classes.len]ClassInfo = undefined;
-        for (lut) |*info, i| {
+        for (&lut, 0..) |*info, i| {
             const Class = classes[i];
 
             const Interface = struct {
@@ -342,7 +342,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
                 @compileError("Passing a const pointer to ObjectPool.createObject is not allowed!");
 
             // Calculate the index of the type:
-            const type_index = inline for (classes) |class, index| {
+            const type_index = inline for (classes, 0..) |class, index| {
                 if (class == ObjectTypeInfo.child)
                     break index;
             } else @compileError("The type " ++ @typeName(ObjectTypeInfo.child) ++ " is not valid for this object pool. Add it to the class list in the type definition to allow creation.");
