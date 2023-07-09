@@ -10,7 +10,7 @@ fn sdkPath(comptime suffix: []const u8) []const u8 {
     };
 }
 
-const linkPcre = @import("libs/koino/vendor/libpcre/build.zig").linkPcre;
+// const linkPcre = @import("libs/koino/vendor/libpcre/build.zig").linkPcre;
 
 const pkgs = struct {
     const koino = std.build.Pkg{
