@@ -30,9 +30,9 @@ const DebugSyms = struct {
 
     fn push(self: *Self, location: Location) !void {
         try self.symbols.append(CompileUnit.DebugSymbol{
-            .offset = @intCast(u32, self.writer.code.items.len),
+            .offset = @as(u32, @intCast(self.writer.code.items.len)),
             .sourceLine = location.line,
-            .sourceColumn = @intCast(u16, location.column),
+            .sourceColumn = @as(u16, @intCast(location.column)),
         });
     }
 };
@@ -114,7 +114,7 @@ fn emitExpression(debug_symbols: *DebugSyms, scope: *Scope, writer: *CodeWriter,
                 try emitExpression(debug_symbols, scope, writer, array[i]);
             }
             try writer.emitInstruction(Instruction{
-                .array_pack = .{ .value = @intCast(u16, array.len) },
+                .array_pack = .{ .value = @as(u16, @intCast(array.len)) },
             });
         },
 
@@ -128,7 +128,7 @@ fn emitExpression(debug_symbols: *DebugSyms, scope: *Scope, writer: *CodeWriter,
             try writer.emitInstruction(Instruction{
                 .call_fn = .{
                     .function = call.function.type.variable_expr,
-                    .argc = @intCast(u8, call.arguments.len),
+                    .argc = @as(u8, @intCast(call.arguments.len)),
                 },
             });
         },
@@ -146,7 +146,7 @@ fn emitExpression(debug_symbols: *DebugSyms, scope: *Scope, writer: *CodeWriter,
             try writer.emitInstruction(Instruction{
                 .call_obj = .{
                     .function = call.name,
-                    .argc = @intCast(u8, call.arguments.len),
+                    .argc = @as(u8, @intCast(call.arguments.len)),
                 },
             });
         },
@@ -384,7 +384,7 @@ pub fn generateIR(
     std.debug.assert(global_scope.return_point.items.len == 0);
 
     for (program.functions) |function| {
-        const entry_point = @intCast(u32, writer.code.items.len);
+        const entry_point = @as(u32, @intCast(writer.code.items.len));
 
         var local_scope = Scope.init(allocator, &global_scope, false);
         defer local_scope.deinit();
@@ -403,14 +403,14 @@ pub fn generateIR(
         try functions.append(CompileUnit.Function{
             .name = try arena.allocator().dupe(u8, function.name),
             .entryPoint = entry_point,
-            .localCount = @intCast(u16, local_scope.max_locals),
+            .localCount = @as(u16, @intCast(local_scope.max_locals)),
         });
     }
 
     const code = try writer.finalize();
     defer allocator.free(code);
 
-    std.sort.sort(CompileUnit.DebugSymbol, debug_symbols.symbols.items, {}, struct {
+    std.sort.block(CompileUnit.DebugSymbol, debug_symbols.symbols.items, {}, struct {
         fn lessThan(v: void, lhs: CompileUnit.DebugSymbol, rhs: CompileUnit.DebugSymbol) bool {
             _ = v;
             return lhs.offset < rhs.offset;
@@ -419,8 +419,8 @@ pub fn generateIR(
 
     var cu = CompileUnit{
         .comment = try arena.allocator().dupe(u8, comment),
-        .globalCount = @intCast(u16, global_scope.global_variables.items.len),
-        .temporaryCount = @intCast(u16, global_scope.max_locals),
+        .globalCount = @as(u16, @intCast(global_scope.global_variables.items.len)),
+        .temporaryCount = @as(u16, @intCast(global_scope.max_locals)),
         .code = try arena.allocator().dupe(u8, code),
         .functions = try arena.allocator().dupe(CompileUnit.Function, functions.items),
         .debugSymbols = try arena.allocator().dupe(CompileUnit.DebugSymbol, debug_symbols.symbols.items),

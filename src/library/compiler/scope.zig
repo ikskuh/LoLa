@@ -85,7 +85,7 @@ pub const Scope = struct {
             if (self.global_variables.items.len == std.math.maxInt(u16))
                 return error.TooManyVariables;
             try self.global_variables.append(Variable{
-                .storage_slot = @intCast(u16, self.global_variables.items.len),
+                .storage_slot = @as(u16, @intCast(self.global_variables.items.len)),
                 .name = try self.arena.allocator().dupe(u8, name),
                 .type = .global,
                 .is_const = is_const,
@@ -94,13 +94,13 @@ pub const Scope = struct {
             if (self.local_variables.items.len == std.math.maxInt(u16))
                 return error.TooManyVariables;
             try self.local_variables.append(Variable{
-                .storage_slot = @intCast(u16, self.local_variables.items.len),
+                .storage_slot = @as(u16, @intCast(self.local_variables.items.len)),
                 .name = try self.arena.allocator().dupe(u8, name),
                 .type = .local,
                 .is_const = is_const,
             });
 
-            self.max_locals = std.math.max(self.max_locals, self.local_variables.items.len);
+            self.max_locals = @max(self.max_locals, self.local_variables.items.len);
         }
     }
 

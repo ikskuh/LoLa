@@ -71,7 +71,7 @@ pub const CodeWriter = struct {
     pub fn createLabel(self: *Self) !Label {
         if (self.next_label == std.math.maxInt(u32))
             return error.TooManyLabels;
-        const id = @intToEnum(Label, self.next_label);
+        const id = @as(Label, @enumFromInt(self.next_label));
         self.next_label += 1;
         return id;
     }
@@ -84,7 +84,7 @@ pub const CodeWriter = struct {
         const item = try self.labels.getOrPut(lbl);
         if (item.found_existing)
             return error.LabelAlreadyDefined;
-        item.value_ptr.* = @intCast(u32, self.code.items.len);
+        item.value_ptr.* = @as(u32, @intCast(self.code.items.len));
 
         // resolve all forward references to this label, so we
         // have a empty patch list when every referenced label was also defined.
@@ -139,7 +139,7 @@ pub const CodeWriter = struct {
         } else {
             try self.patches.append(Patch{
                 .label = label,
-                .offset = @intCast(u32, self.code.items.len),
+                .offset = @as(u32, @intCast(self.code.items.len)),
             });
             try self.emitU32(0xFFFFFFFF);
         }
@@ -147,7 +147,7 @@ pub const CodeWriter = struct {
 
     /// Emits a raw instruction name without the corresponding instruction arguments.
     pub fn emitInstructionName(self: *Self, name: InstructionName) !void {
-        try self.emitU8(@enumToInt(name));
+        try self.emitU8(@intFromEnum(name));
     }
 
     pub fn emitInstruction(self: *Self, instr: Instruction) !void {

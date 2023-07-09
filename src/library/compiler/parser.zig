@@ -746,7 +746,7 @@ pub fn parse(
                 },
                 .number_literal => {
                     const val = if (std.mem.startsWith(u8, token.text, "0x"))
-                        @intToFloat(f64, std.fmt.parseInt(i54, token.text[2..], 16) catch return self.emitDiagnostics("`{s}` is not a valid hexadecimal number!", .{token.text}))
+                        @as(f64, @floatFromInt(std.fmt.parseInt(i54, token.text[2..], 16) catch return self.emitDiagnostics("`{s}` is not a valid hexadecimal number!", .{token.text})))
                     else
                         std.fmt.parseFloat(f64, token.text) catch return self.emitDiagnostics("`{s}` is not a valid number!", .{token.text});
 
@@ -789,7 +789,7 @@ pub fn parse(
                     return ast.Expression{
                         .location = token.location,
                         .type = .{
-                            .number_literal = @intToFloat(f64, value),
+                            .number_literal = @as(f64, @floatFromInt(value)),
                         },
                     };
                 },

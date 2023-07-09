@@ -850,9 +850,9 @@ pub const VM = struct {
         }
 
         for (self.calls.items) |item| {
-            try stream.writeIntLittle(u16, @intCast(u16, item.locals.len));
+            try stream.writeIntLittle(u16, @as(u16, @intCast(item.locals.len)));
             try stream.writeIntLittle(u32, item.decoder.offset); // we don't need to store the CompileUnit of the decoder, as it is implicitly referenced by the environment
-            try stream.writeIntLittle(u32, @intCast(u32, item.stackBalance));
+            try stream.writeIntLittle(u32, @as(u32, @intCast(item.stackBalance)));
             if (envmap.queryByPtr(item.environment)) |env_id| {
                 try stream.writeIntLittle(u32, env_id);
             } else {
@@ -958,7 +958,7 @@ fn runTest(comptime TestRunner: type) !void {
 test "VM basic execution" {
     try runTest(struct {
         var code = [_]u8{
-            @enumToInt(ir.InstructionName.ret),
+            @intFromEnum(ir.InstructionName.ret),
         };
 
         fn verify(vm: *VM) !void {
@@ -972,7 +972,7 @@ test "VM basic execution" {
 test "VM endless loop exhaustion" {
     try runTest(struct {
         var code = [_]u8{
-            @enumToInt(ir.InstructionName.jmp),
+            @intFromEnum(ir.InstructionName.jmp),
             0x00,
             0x00,
             0x00,
@@ -989,7 +989,7 @@ test "VM endless loop exhaustion" {
 test "VM invalid code panic" {
     try runTest(struct {
         var code = [_]u8{
-            @enumToInt(ir.InstructionName.jmp),
+            @intFromEnum(ir.InstructionName.jmp),
             0x00,
             0x00,
             0x00,
@@ -1004,7 +1004,7 @@ test "VM invalid code panic" {
 test "VM invalid jump panic" {
     try runTest(struct {
         var code = [_]u8{
-            @enumToInt(ir.InstructionName.jmp),
+            @intFromEnum(ir.InstructionName.jmp),
             0x00,
             0x00,
             0x00,

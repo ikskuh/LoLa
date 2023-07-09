@@ -128,7 +128,7 @@ pub fn loadFromStream(allocator: std.mem.Allocator, stream: anytype) !CompileUni
             .sourceColumn = sourceColumn,
         };
     }
-    std.sort.sort(DebugSymbol, debugSymbols, {}, struct {
+    std.sort.block(DebugSymbol, debugSymbols, {}, struct {
         fn lessThan(context: void, lhs: DebugSymbol, rhs: DebugSymbol) bool {
             _ = context;
             return lhs.offset < rhs.offset;
@@ -147,9 +147,9 @@ pub fn saveToStream(self: CompileUnit, stream: anytype) !void {
     try stream.writeByteNTimes(0, 256 - self.comment.len);
     try stream.writeIntLittle(u16, self.globalCount);
     try stream.writeIntLittle(u16, self.temporaryCount);
-    try stream.writeIntLittle(u16, @intCast(u16, self.functions.len));
-    try stream.writeIntLittle(u32, @intCast(u32, self.code.len));
-    try stream.writeIntLittle(u32, @intCast(u32, self.debugSymbols.len));
+    try stream.writeIntLittle(u16, @as(u16, @intCast(self.functions.len)));
+    try stream.writeIntLittle(u32, @as(u32, @intCast(self.code.len)));
+    try stream.writeIntLittle(u32, @as(u32, @intCast(self.debugSymbols.len)));
     for (self.functions) |fun| {
         try stream.writeAll(fun.name);
         try stream.writeByteNTimes(0, 128 - fun.name.len);

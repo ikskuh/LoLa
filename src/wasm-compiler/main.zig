@@ -30,7 +30,7 @@ const JS = struct {
 
 const API = struct {
     fn writeLog(_: void, str: []const u8) !usize {
-        JS.writeString(str.ptr, @intCast(u32, str.len));
+        JS.writeString(str.ptr, @as(u32, @intCast(str.len)));
         return str.len;
     }
 
@@ -41,12 +41,12 @@ const API = struct {
 
         while (std.mem.indexOf(u8, rest, "\n")) |off| {
             var mid = rest[0..off];
-            JS.writeString(mid.ptr, @intCast(u32, mid.len));
+            JS.writeString(mid.ptr, @as(u32, @intCast(mid.len)));
             JS.writeString("\r\n", 2);
             rest = rest[off + 1 ..];
         }
 
-        JS.writeString(rest.ptr, @intCast(u32, rest.len));
+        JS.writeString(rest.ptr, @as(u32, @intCast(rest.len)));
         return str.len;
     }
 

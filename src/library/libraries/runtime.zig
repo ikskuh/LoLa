@@ -251,7 +251,7 @@ pub const LoLaList = struct {
     }
 
     pub fn serializeObject(writer: lola.runtime.OutputStream.Writer, object: *Self) !void {
-        try writer.writeIntLittle(u32, @intCast(u32, object.data.items.len));
+        try writer.writeIntLittle(u32, @as(u32, @intCast(object.data.items.len)));
         for (object.data.items) |item| {
             try item.serialize(writer);
         }
@@ -506,7 +506,7 @@ pub const LoLaDictionary = struct {
     }
 
     pub fn serializeObject(writer: lola.runtime.OutputStream.Writer, object: *Self) !void {
-        try writer.writeIntLittle(u32, @intCast(u32, object.data.items.len));
+        try writer.writeIntLittle(u32, @as(u32, @intCast(object.data.items.len)));
         for (object.data.items) |item| {
             try item.key.serialize(writer);
             try item.value.serialize(writer);

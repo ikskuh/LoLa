@@ -38,7 +38,7 @@ pub fn main() !u8 {
 
             series.data = try loadSeries(gpa.allocator(), file);
 
-            std.sort.sort(DataPoint, series.data, {}, orderDataPoint);
+            std.sort.block(DataPoint, series.data, {}, orderDataPoint);
 
             try data.append(series);
         }
@@ -73,11 +73,11 @@ pub fn renderSeriesSet(dst_dir: std.fs.Dir, file_name: []const u8, all_series: [
 
     for (all_series) |series| {
         if (filter(series)) {
-            start_time = std.math.min(start_time, series.data[0].date.getLinearSortVal());
-            end_time = std.math.max(end_time, series.data[series.data.len - 1].date.getLinearSortVal());
+            start_time = @min(start_time, series.data[0].date.getLinearSortVal());
+            end_time = @max(end_time, series.data[series.data.len - 1].date.getLinearSortVal());
 
             for (series.data) |dp| {
-                high = std.math.max(high, @intToFloat(f32, @field(dp, field)));
+                high = @max(high, @as(f32, @floatFromInt(@field(dp, field))));
             }
         }
     }
@@ -133,8 +133,8 @@ pub fn renderSeriesSet(dst_dir: std.fs.Dir, file_name: []const u8, all_series: [
             try writer.print("  <path d=\"M", .{});
 
             for (series.data) |dp| {
-                const dx = viewport_size * @intToFloat(f32, dp.date.getLinearSortVal() - start_time) / @intToFloat(f32, time_range);
-                const dy = size_y * (1.0 - @intToFloat(f32, @field(dp, field)) / high);
+                const dx = viewport_size * @as(f32, @floatFromInt(dp.date.getLinearSortVal() - start_time)) / @as(f32, @floatFromInt(time_range));
+                const dy = size_y * (1.0 - @as(f32, @floatFromInt(@field(dp, field))) / high);
 
                 try writer.print(" {d:.4} {d:.4}", .{ dx, dy });
             }

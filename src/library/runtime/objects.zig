@@ -60,10 +60,10 @@ pub const InputStream = struct {
     fn from(reader_ptr: anytype) Self {
         const T = std.meta.Child(@TypeOf(reader_ptr));
         return Self{
-            .self = @ptrCast(*const ErasedSelf, reader_ptr),
+            .self = @as(*const ErasedSelf, @ptrCast(reader_ptr)),
             .read = struct {
                 fn read(self: *const ErasedSelf, buf: []u8) anyerror!usize {
-                    return @ptrCast(*const T, @alignCast(@alignOf(T), self)).read(buf);
+                    return @as(*const T, @ptrCast(@alignCast(self))).read(buf);
                 }
             }.read,
         };
@@ -92,10 +92,10 @@ pub const OutputStream = struct {
     fn from(writer_ptr: anytype) Self {
         const T = std.meta.Child(@TypeOf(writer_ptr));
         return Self{
-            .self = @ptrCast(*const ErasedSelf, writer_ptr),
+            .self = @as(*const ErasedSelf, @ptrCast(writer_ptr)),
             .write = struct {
                 fn write(self: *const ErasedSelf, buf: []const u8) anyerror!usize {
-                    return @ptrCast(*const T, @alignCast(@alignOf(T), self)).write(buf);
+                    return @as(*const T, @ptrCast(@alignCast(self))).write(buf);
                 }
             }.write,
         };
@@ -138,7 +138,7 @@ pub const ObjectPoolInterface = struct {
     }
 
     pub fn castTo(self: *@This(), comptime PoolType: type) *PoolType {
-        return @ptrCast(*PoolType, @alignCast(@alignOf(PoolType), self.self));
+        return @as(*PoolType, @ptrCast(@alignCast(self.self)));
     }
 };
 
@@ -193,7 +193,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
         .unsigned,
         // We need 1 extra value, so 0xFFFF… is never a valid type index
         // this marks the end of objects in the stream
-        std.mem.alignForward(std.math.log2_int_ceil(usize, classes.len + 1), 8),
+        std.mem.alignForward(usize, std.math.log2_int_ceil(usize, classes.len + 1), 8),
     );
 
     const ClassInfo = struct {
@@ -212,7 +212,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
 
             const Interface = struct {
                 fn serialize(stream: OutputStream, obj: Object) anyerror!void {
-                    try Class.serializeObject(stream.writer(), @ptrCast(*Class, @alignCast(@alignOf(Class), obj.impl.storage.erased_ptr)));
+                    try Class.serializeObject(stream.writer(), @as(*Class, @ptrCast(@alignCast(obj.impl.storage.erased_ptr))));
                 }
 
                 fn deserialize(allocator: std.mem.Allocator, stream: InputStream) anyerror!Object {
@@ -282,7 +282,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
                     var class = class_lut[obj.class_id];
 
                     try stream.writeIntLittle(TypeIndex, obj.class_id);
-                    try stream.writeIntLittle(u64, @enumToInt(entry.key_ptr.*));
+                    try stream.writeIntLittle(u64, @intFromEnum(entry.key_ptr.*));
 
                     try class.serialize(OutputStream.from(&stream), obj.object);
                 }
@@ -312,7 +312,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
                     const object_id = try stream.readIntLittle(u64);
                     pool.objectCounter = std.math.max(object_id + 1, pool.objectCounter);
 
-                    const gop = try pool.objects.getOrPut(@intToEnum(ObjectHandle, object_id));
+                    const gop = try pool.objects.getOrPut(@as(ObjectHandle, @enumFromInt(object_id)));
                     if (gop.found_existing)
                         return error.InvalidStream;
 
@@ -351,7 +351,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
 
             self.objectCounter += 1;
             errdefer self.objectCounter -= 1;
-            const handle = @intToEnum(ObjectHandle, self.objectCounter);
+            const handle = @as(ObjectHandle, @enumFromInt(self.objectCounter));
             try self.objects.putNoClobber(handle, ManagedObject{
                 .object = object,
                 .refcount = 0,
@@ -482,7 +482,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
                 const ErasedSelf = ObjectPoolInterface.ErasedSelf;
 
                 fn cast(erased_self: *ErasedSelf) *Self {
-                    return @ptrCast(*Self, @alignCast(@alignOf(Self), erased_self));
+                    return @as(*Self, @ptrCast(@alignCast(erased_self)));
                 }
                 fn getMethod(erased_self: *ErasedSelf, handle: ObjectHandle, name: []const u8) ObjectGetError!?Environment.Function {
                     return cast(erased_self).getMethod(handle, name);
@@ -496,7 +496,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
             };
 
             return ObjectPoolInterface{
-                .self = @ptrCast(*ObjectPoolInterface.ErasedSelf, self),
+                .self = @as(*ObjectPoolInterface.ErasedSelf, @ptrCast(self)),
                 .destroyObjectFn = Impl.destroyObject,
                 .getMethodFn = Impl.getMethod,
                 .isObjectValidFn = Impl.isObjectValid,

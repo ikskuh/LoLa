@@ -31,7 +31,7 @@ pub fn readRaw(self: *Decoder, dest: []u8) !void {
     if (self.offset + dest.len > self.data.len)
         return error.NotEnoughData;
     std.mem.copy(u8, dest, self.data[self.offset .. self.offset + dest.len]);
-    self.offset += @intCast(u32, dest.len);
+    self.offset += @as(u32, @intCast(dest.len));
 }
 
 pub fn readBytes(self: *Decoder, comptime count: comptime_int) ![count]u8 {
@@ -50,7 +50,7 @@ pub fn read(self: *Decoder, comptime T: type) !T {
     const data = try self.readBytes(@sizeOf(T));
     switch (T) {
         u8, u16, u32 => return std.mem.readIntLittle(T, &data),
-        f64 => return @bitCast(f64, data),
+        f64 => return @as(f64, @bitCast(data)),
         ir.InstructionName => return try std.meta.intToEnum(ir.InstructionName, data[0]),
         else => @compileError("Unsupported type " ++ @typeName(T) ++ " for Decoder.read!"),
     }

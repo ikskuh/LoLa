@@ -423,10 +423,10 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
             \\
         , .{
             cycle,
-            (@intToFloat(f64, total_time) / @intToFloat(f64, cycle)) / std.time.ns_per_us,
-            @intToFloat(f64, stats.instructions) / @intToFloat(f64, cycle),
-            @intToFloat(f64, stats.stalls) / @intToFloat(f64, cycle),
-            std.time.ns_per_s * @intToFloat(f64, stats.instructions) / @intToFloat(f64, total_time),
+            (@as(f64, @floatFromInt(total_time)) / @as(f64, @floatFromInt(cycle))) / std.time.ns_per_us,
+            @as(f64, @floatFromInt(stats.instructions)) / @as(f64, @floatFromInt(cycle)),
+            @as(f64, @floatFromInt(stats.stalls)) / @as(f64, @floatFromInt(cycle)),
+            std.time.ns_per_s * @as(f64, @floatFromInt(stats.instructions)) / @as(f64, @floatFromInt(total_time)),
         });
     }
 

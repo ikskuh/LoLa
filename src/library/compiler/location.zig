@@ -40,8 +40,8 @@ pub const Location = struct {
             .chunk = a.chunk,
             .line = min.line,
             .column = min.column,
-            .offset_start = std.math.min(a.offset_start, b.offset_start),
-            .offset_end = std.math.max(a.offset_end, b.offset_end),
+            .offset_start = @min(a.offset_start, b.offset_start),
+            .offset_end = @max(a.offset_end, b.offset_end),
         };
     }
 };

@@ -462,7 +462,7 @@ pub const Function = union(enum) {
             const info = @typeInfo(Target);
             switch (info) {
                 .Int => return try value.toInteger(Target),
-                .Float => return @floatCast(Target, try value.toNumber()),
+                .Float => return @as(Target, @floatCast(try value.toNumber())),
 
                 .Optional => {
                     if (value == .void)

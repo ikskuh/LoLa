@@ -23,7 +23,7 @@ pub fn main() !u8 {
     }
 
     const date_time = std.time.epoch.EpochSeconds{
-        .secs = @intCast(u64, std.time.timestamp()),
+        .secs = @as(u64, @intCast(std.time.timestamp())),
     };
     const time = date_time.getDaySeconds();
     const date = date_time.getEpochDay();
@@ -112,7 +112,7 @@ pub const Unit = enum(u64) {
     TeBi = 1024 * 1024 * 1024 * 1024,
 };
 pub fn size(comptime val: comptime_float, comptime unit: Unit) usize {
-    return @floatToInt(usize, std.math.floor(@as(f64, @as(comptime_int, @enumToInt(unit)) * val)));
+    return @as(usize, @intFromFloat(std.math.floor(@as(f64, @as(comptime_int, @intFromEnum(unit)) * val))));
 }
 
 pub const BenchmarkResult = struct {
@@ -154,7 +154,7 @@ const Benchmark = struct {
         defer compile_unit.deinit();
 
         const setup_start = std.time.nanoTimestamp();
-        result.compile_time = @intCast(u128, setup_start - compile_start);
+        result.compile_time = @as(u128, @intCast(setup_start - compile_start));
 
         var pool = ObjectPool.init(allocator);
         defer pool.deinit();
@@ -169,7 +169,7 @@ const Benchmark = struct {
         defer vm.deinit();
 
         const runtime_start = std.time.nanoTimestamp();
-        result.setup_time = @intCast(u128, runtime_start - setup_start);
+        result.setup_time = @as(u128, @intCast(runtime_start - setup_start));
 
         while (true) {
             var res = try vm.execute(1_000_000);
@@ -183,7 +183,7 @@ const Benchmark = struct {
                 break;
         }
 
-        result.run_time = @intCast(u128, std.time.nanoTimestamp() - runtime_start);
+        result.run_time = @as(u128, @intCast(std.time.nanoTimestamp() - runtime_start));
 
         return result;
     }

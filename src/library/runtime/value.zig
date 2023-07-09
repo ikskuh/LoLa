@@ -34,7 +34,7 @@ pub const Value = union(TypeId) {
 
     pub fn initInteger(comptime T: type, val: T) Self {
         comptime std.debug.assert(@typeInfo(T) == .Int);
-        return Self{ .number = @intToFloat(f64, val) };
+        return Self{ .number = @as(f64, @floatFromInt(val)) };
     }
 
     pub fn initObject(id: objects.ObjectHandle) Self {
@@ -140,7 +140,7 @@ pub const Value = union(TypeId) {
             return error.OutOfRange;
         if (num > std.math.maxInt(T))
             return error.OutOfRange;
-        return @floatToInt(T, num);
+        return @as(T, @intFromFloat(num));
     }
 
     pub fn toBoolean(self: Self) ConversionError!bool {
@@ -221,11 +221,11 @@ pub const Value = union(TypeId) {
     /// Note that this does not serialize object values but only references. It is required to serialize the corresponding
     /// object pool as well to gain restorability of objects.
     pub fn serialize(self: Self, writer: anytype) (@TypeOf(writer).Error || error{ NotSupported, ObjectTooLarge })!void {
-        try writer.writeByte(@enumToInt(@as(TypeId, self)));
+        try writer.writeByte(@intFromEnum(@as(TypeId, self)));
         switch (self) {
             .void => return, // void values are empty \o/
             .number => |val| try writer.writeAll(std.mem.asBytes(&val)),
-            .object => |val| try writer.writeIntLittle(u64, @enumToInt(val)),
+            .object => |val| try writer.writeIntLittle(u64, @intFromEnum(val)),
             .boolean => |val| try writer.writeByte(if (val) @as(u8, 1) else 0),
             .string => |val| {
                 try writer.writeIntLittle(u32, std.math.cast(u32, val.contents.len) orelse return error.ObjectTooLarge);
@@ -259,9 +259,9 @@ pub const Value = union(TypeId) {
 
                 try reader.readNoEof(&buffer);
 
-                break :blk initNumber(@bitCast(f64, buffer));
+                break :blk initNumber(@as(f64, @bitCast(buffer)));
             },
-            .object => initObject(@intToEnum(objects.ObjectHandle, try reader.readIntLittle(std.meta.Tag(objects.ObjectHandle)))),
+            .object => initObject(@as(objects.ObjectHandle, @enumFromInt(try reader.readIntLittle(std.meta.Tag(objects.ObjectHandle))))),
             .boolean => initBoolean((try reader.readByte()) != 0),
             .string => blk: {
                 const size = try reader.readIntLittle(u32);
@@ -326,10 +326,10 @@ test "Value.boolean" {
 }
 
 test "Value.object" {
-    var value = Value{ .object = @intToEnum(objects.ObjectHandle, 2394) };
+    var value = Value{ .object = @as(objects.ObjectHandle, @enumFromInt(2394)) };
     defer value.deinit();
     std.debug.assert(value == .object);
-    std.debug.assert(value.object == @intToEnum(objects.ObjectHandle, 2394));
+    std.debug.assert(value.object == @as(objects.ObjectHandle, @enumFromInt(2394)));
 }
 
 test "Value.string (move)" {
@@ -378,9 +378,9 @@ test "Value.eql (number)" {
 }
 
 test "Value.eql (object)" {
-    var v1 = Value.initObject(@intToEnum(objects.ObjectHandle, 1));
-    var v2 = Value.initObject(@intToEnum(objects.ObjectHandle, 1));
-    var v3 = Value.initObject(@intToEnum(objects.ObjectHandle, 2));
+    var v1 = Value.initObject(@as(objects.ObjectHandle, @enumFromInt(1)));
+    var v2 = Value.initObject(@as(objects.ObjectHandle, @enumFromInt(1)));
+    var v3 = Value.initObject(@as(objects.ObjectHandle, @enumFromInt(2)));
 
     std.debug.assert(v1.eql(v2));
     std.debug.assert(v2.eql(v1));
@@ -417,7 +417,7 @@ pub const String = struct {
     pub fn initUninitialized(allocator: std.mem.Allocator, length: usize) !Self {
         const alignment = @alignOf(usize);
 
-        const ptr_offset = std.mem.alignForward(length, alignment);
+        const ptr_offset = std.mem.alignForward(usize, length, alignment);
         const buffer = try allocator.alignedAlloc(
             u8,
             alignment,
@@ -428,7 +428,7 @@ pub const String = struct {
         return Self{
             .allocator = allocator,
             .contents = buffer[0..length],
-            .refcount = @ptrCast(*usize, @alignCast(alignment, buffer.ptr + ptr_offset)),
+            .refcount = @ptrCast(@alignCast(buffer.ptr + ptr_offset)),
         };
     }
 
@@ -463,7 +463,7 @@ pub const String = struct {
                 return error.Forbidden;
         }
         // this is safe as we allocated the memory, so it is actually mutable
-        return @intToPtr([*]u8, @ptrToInt(self.contents.ptr))[0..self.contents.len];
+        return @as([*]u8, @ptrFromInt(@intFromPtr(self.contents.ptr)))[0..self.contents.len];
     }
 
     pub fn clone(self: Self) error{OutOfMemory}!Self {
@@ -491,7 +491,7 @@ pub const String = struct {
                 return;
 
             // patch-up the old length so the allocator will know what happened
-            self.contents.len = std.mem.alignForward(self.contents.len, @alignOf(usize)) + @sizeOf(usize);
+            self.contents.len = std.mem.alignForward(usize, self.contents.len, @alignOf(usize)) + @sizeOf(usize);
         }
         self.allocator.free(self.contents);
         self.* = undefined;

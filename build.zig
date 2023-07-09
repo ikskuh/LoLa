@@ -10,23 +10,6 @@ fn sdkPath(comptime suffix: []const u8) []const u8 {
     };
 }
 
-pub fn createPackage(comptime package_name: []const u8) std.build.Pkg {
-    return comptime std.build.Pkg{
-        .name = package_name,
-        .source = .{ .path = sdkPath("/src/library/main.zig") },
-        .dependencies = &[_]std.build.Pkg{
-            std.build.Pkg{
-                .name = "interface",
-                .source = .{ .path = sdkPath("/libs/interface.zig/interface.zig") },
-            },
-            std.build.Pkg{
-                .name = "any-pointer",
-                .source = .{ .path = sdkPath("/libs/any-pointer/any-pointer.zig") },
-            },
-        },
-    };
-}
-
 const linkPcre = @import("libs/koino/vendor/libpcre/build.zig").linkPcre;
 
 const pkgs = struct {
@@ -94,19 +77,19 @@ pub fn build(b: *Builder) !void {
     exe.addAnonymousModule("build_options", .{
         .source_file = build_options.getSource(),
     });
-    exe.install();
+    b.installArtifact(exe);
 
     const benchmark_renderer = b.addExecutable(.{
         .name = "benchmark-render",
         .root_source_file = .{ .path = "src/benchmark/render.zig" },
         .optimize = optimize,
     });
-    benchmark_renderer.install();
+    b.installArtifact(benchmark_renderer);
 
     {
         const render_benchmark_step = b.step("render-benchmarks", "Runs the benchmark suite.");
 
-        const only_render_benchmark = benchmark_renderer.run();
+        const only_render_benchmark = b.addRunArtifact(benchmark_renderer);
         only_render_benchmark.addArg(b.pathFromRoot("benchmarks/data"));
         only_render_benchmark.addArg(b.pathFromRoot("benchmarks/visualization"));
 
@@ -118,7 +101,7 @@ pub fn build(b: *Builder) !void {
     };
     const benchmark_step = b.step("benchmark", "Runs the benchmark suite.");
 
-    const render_benchmark = benchmark_renderer.run();
+    const render_benchmark = b.addRunArtifact(benchmark_renderer);
     render_benchmark.addArg(b.pathFromRoot("benchmarks/data"));
     render_benchmark.addArg(b.pathFromRoot("benchmarks/visualization"));
     benchmark_step.dependOn(&render_benchmark.step);
@@ -131,7 +114,7 @@ pub fn build(b: *Builder) !void {
         });
         benchmark.addModule("lola", mod_lola);
 
-        const run_benchmark = benchmark.run();
+        const run_benchmark = b.addRunArtifact(benchmark);
         run_benchmark.addArg(b.pathFromRoot("benchmarks/code"));
         run_benchmark.addArg(b.pathFromRoot("benchmarks/data"));
 
@@ -145,7 +128,7 @@ pub fn build(b: *Builder) !void {
         .optimize = .ReleaseSafe,
     });
     wasm_runtime.addModule("lola", mod_lola);
-    wasm_runtime.install();
+    b.installArtifact(wasm_runtime);
 
     const examples_step = b.step("examples", "Compiles all examples");
     inline for (examples) |example| {
@@ -170,20 +153,20 @@ pub fn build(b: *Builder) !void {
     main_tests.setMainPkgPath(".");
 
     const test_step = b.step("test", "Run test suite");
-    test_step.dependOn(&main_tests.run().step);
+    test_step.dependOn(&b.addRunArtifact(main_tests).step);
 
     // Run compiler test suites
     {
         const prefix = "src/test/";
 
-        const behaviour_tests = exe.run();
+        const behaviour_tests = b.addRunArtifact(exe);
         behaviour_tests.addArg("run");
         behaviour_tests.addArg("--no-stdlib"); // we don't want the behaviour tests to be run with any stdlib functions
         behaviour_tests.addArg(prefix ++ "behaviour.lola");
         behaviour_tests.expectStdOutEqual("Behaviour test suite passed.\n");
         test_step.dependOn(&behaviour_tests.step);
 
-        const stdib_test = exe.run();
+        const stdib_test = b.addRunArtifact(exe);
         stdib_test.addArg("run");
         stdib_test.addArg(prefix ++ "stdlib.lola");
         stdib_test.expectStdOutEqual("Standard library test suite passed.\n");
@@ -196,7 +179,7 @@ pub fn build(b: *Builder) !void {
                 else => |e| return e,
             };
 
-            const runlib_test = exe.run();
+            const runlib_test = b.addRunArtifact(exe);
 
             // execute in the zig-cache directory so we have a "safe" playfield
             // for file I/O
@@ -223,25 +206,25 @@ pub fn build(b: *Builder) !void {
             test_step.dependOn(&runlib_test.step);
         }
 
-        const emptyfile_test = exe.run();
+        const emptyfile_test = b.addRunArtifact(exe);
         emptyfile_test.addArg("run");
         emptyfile_test.addArg(prefix ++ "empty.lola");
         emptyfile_test.expectStdOutEqual("");
         test_step.dependOn(&emptyfile_test.step);
 
-        const globreturn_test = exe.run();
+        const globreturn_test = b.addRunArtifact(exe);
         globreturn_test.addArg("run");
         globreturn_test.addArg(prefix ++ "global-return.lola");
         globreturn_test.expectStdOutEqual("");
         test_step.dependOn(&globreturn_test.step);
 
-        const extended_behaviour_test = exe.run();
+        const extended_behaviour_test = b.addRunArtifact(exe);
         extended_behaviour_test.addArg("run");
         extended_behaviour_test.addArg(prefix ++ "behaviour-with-stdlib.lola");
         extended_behaviour_test.expectStdOutEqual("Extended behaviour test suite passed.\n");
         test_step.dependOn(&extended_behaviour_test.step);
 
-        const compiler_test = exe.run();
+        const compiler_test = b.addRunArtifact(exe);
         compiler_test.addArg("compile");
         compiler_test.addArg("--verify"); // verify should not emit a compiled module
         compiler_test.addArg(prefix ++ "compiler.lola");
@@ -249,7 +232,7 @@ pub fn build(b: *Builder) !void {
         test_step.dependOn(&compiler_test.step);
     }
 
-    const run_cmd = exe.run();
+    const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
 
     const run_step = b.step("run", "Run the app");
@@ -270,7 +253,7 @@ pub fn build(b: *Builder) !void {
     //     md_renderer.addModule("koini", pkgs.koino);
     //     try linkPcre(md_renderer);
 
-    //     const render = md_renderer.run();
+    //     const render = b.addRunArtifact(md_renderer);
     //     render.addArg(version_tag orelse "development");
     //     gen_website_step.dependOn(&render.step);
 
