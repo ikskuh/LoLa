@@ -310,7 +310,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
                     if (type_index >= class_lut.len)
                         return error.InvalidStream;
                     const object_id = try stream.readIntLittle(u64);
-                    pool.objectCounter = std.math.max(object_id + 1, pool.objectCounter);
+                    pool.objectCounter = @max(object_id + 1, pool.objectCounter);
 
                     const gop = try pool.objects.getOrPut(@as(ObjectHandle, @enumFromInt(object_id)));
                     if (gop.found_existing)

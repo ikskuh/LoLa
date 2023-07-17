@@ -492,8 +492,11 @@ pub const String = struct {
 
             // patch-up the old length so the allocator will know what happened
             self.contents.len = std.mem.alignForward(usize, self.contents.len, @alignOf(usize)) + @sizeOf(usize);
+            self.allocator.free(@as([]align(@alignOf(usize)) const u8, @alignCast(self.contents)));
+        } else {
+            self.allocator.free(self.contents);
         }
-        self.allocator.free(self.contents);
+
         self.* = undefined;
     }
 };

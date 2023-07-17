@@ -156,7 +156,7 @@ pub fn installModule(self: *Environment, comptime Module: type, context: AnyPoin
             // @compileLog("Install", decl.name, "query", FnType);
 
             if (comptime isCompatibleFunctionSignature(UserFunctionCall, FnType)) {
-                logger.debug("Install synchronous function {s} to environment", .{decl.name});
+                // logger.debug("Install synchronous function {s} to environment", .{decl.name});
                 try self.installFunction(decl.name, Function{
                     .syncUser = UserFunction{
                         .context = context,
@@ -165,7 +165,7 @@ pub fn installModule(self: *Environment, comptime Module: type, context: AnyPoin
                     },
                 });
             } else if (comptime isCompatibleFunctionSignature(AsyncUserFunctionCall, FnType)) {
-                logger.debug("Install asynchronous function {s} to environment", .{decl.name});
+                // logger.debug("Install asynchronous function {s} to environment", .{decl.name});
                 try self.installFunction(decl.name, Function{
                     .asyncUser = AsyncUserFunction{
                         .context = context,

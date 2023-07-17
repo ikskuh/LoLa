@@ -10,21 +10,6 @@ fn sdkPath(comptime suffix: []const u8) []const u8 {
     };
 }
 
-// const linkPcre = @import("libs/koino/vendor/libpcre/build.zig").linkPcre;
-
-const pkgs = struct {
-    const koino = std.build.Pkg{
-        .name = "koino",
-        .source = .{ .path = "libs/koino/src/koino.zig" },
-        .dependencies = &[_]std.build.Pkg{
-            std.build.Pkg{ .name = "libpcre", .source = .{ .path = "libs/koino/vendor/libpcre/src/main.zig" } },
-            std.build.Pkg{ .name = "htmlentities", .source = .{ .path = "libs/koino/vendor/htmlentities/src/main.zig" } },
-            std.build.Pkg{ .name = "clap", .source = .{ .path = "libs/koino/vendor/zig-clap/clap.zig" } },
-            std.build.Pkg{ .name = "zunicode", .source = .{ .path = "libs/koino/vendor/zunicode/src/zunicode.zig" } },
-        },
-    };
-};
-
 const Example = struct {
     name: []const u8,
     path: []const u8,
