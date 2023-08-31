@@ -125,7 +125,7 @@ pub fn build(b: *Builder) !void {
         });
         example_exe.addModule("lola", mod_lola);
 
-        examples_step.dependOn(&b.addInstallArtifact(example_exe).step);
+        examples_step.dependOn(&b.addInstallArtifact(example_exe, .{}).step);
     }
 
     var main_tests = b.addTest(.{
@@ -135,7 +135,7 @@ pub fn build(b: *Builder) !void {
     });
     main_tests.addModule("interface", mod_interface);
     main_tests.addModule("any-pointer", mod_any_pointer);
-    main_tests.setMainPkgPath(".");
+    main_tests.main_pkg_path = .{ .path = "." };
 
     const test_step = b.step("test", "Run test suite");
     test_step.dependOn(&b.addRunArtifact(main_tests).step);
