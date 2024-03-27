@@ -127,7 +127,7 @@ pub fn ReadFile(environment: *const lola.runtime.Environment, context: lola.runt
     defer file.close();
 
     // 2 GB
-    var contents = try file.readToEndAlloc(environment.allocator, 2 << 30);
+    const contents = try file.readToEndAlloc(environment.allocator, 2 << 30);
 
     return lola.runtime.Value.fromString(lola.runtime.String.initFromOwned(environment.allocator, contents));
 }
@@ -251,14 +251,14 @@ pub const LoLaList = struct {
     }
 
     pub fn serializeObject(writer: lola.runtime.OutputStream.Writer, object: *Self) !void {
-        try writer.writeIntLittle(u32, @as(u32, @intCast(object.data.items.len)));
+        try writer.writeInt(u32, @as(u32, @intCast(object.data.items.len)), .little);
         for (object.data.items) |item| {
             try item.serialize(writer);
         }
     }
 
     pub fn deserializeObject(allocator: std.mem.Allocator, reader: lola.runtime.InputStream.Reader) !*Self {
-        const item_count = try reader.readIntLittle(u32);
+        const item_count = try reader.readInt(u32, .little);
         var list = try allocator.create(Self);
         list.* = Self{
             .allocator = allocator,
@@ -282,7 +282,7 @@ pub const LoLaList = struct {
     }
 
     const funcs = struct {
-        fn Add(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+        pub fn Add(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
             _ = environment;
             const list = context.cast(*Self);
             if (args.len != 1)
@@ -296,7 +296,7 @@ pub const LoLaList = struct {
             return .void;
         }
 
-        fn Remove(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+        pub fn Remove(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
             _ = environment;
             const list = context.cast(*Self);
             if (args.len != 1)
@@ -338,7 +338,7 @@ pub const LoLaList = struct {
             return .void;
         }
 
-        fn RemoveAt(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+        pub fn RemoveAt(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
             _ = environment;
             const list = context.cast(*Self);
             if (args.len != 1)
@@ -348,7 +348,7 @@ pub const LoLaList = struct {
 
             if (index < list.data.items.len) {
                 list.data.items[index].deinit();
-                std.mem.copy(
+                std.mem.copyForwards(
                     lola.runtime.Value,
                     list.data.items[index..],
                     list.data.items[index + 1 ..],
@@ -359,7 +359,7 @@ pub const LoLaList = struct {
             return .void;
         }
 
-        fn GetCount(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+        pub fn GetCount(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
             _ = environment;
             const list = context.cast(*Self);
             if (args.len != 0)
@@ -367,7 +367,7 @@ pub const LoLaList = struct {
             return lola.runtime.Value.initInteger(usize, list.data.items.len);
         }
 
-        fn GetItem(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+        pub fn GetItem(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
             _ = environment;
             const list = context.cast(*Self);
             if (args.len != 1)
@@ -379,7 +379,7 @@ pub const LoLaList = struct {
             return try list.data.items[index].clone();
         }
 
-        fn SetItem(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+        pub fn SetItem(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
             _ = environment;
             const list = context.cast(*Self);
             if (args.len != 2)
@@ -388,14 +388,14 @@ pub const LoLaList = struct {
             if (index >= list.data.items.len)
                 return error.OutOfRange;
 
-            var cloned = try args[1].clone();
+            const cloned = try args[1].clone();
 
             list.data.items[index].replaceWith(cloned);
 
             return .void;
         }
 
-        fn ToArray(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+        pub fn ToArray(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
             _ = environment;
             const list = context.cast(*Self);
             if (args.len != 0)
@@ -411,7 +411,7 @@ pub const LoLaList = struct {
             return lola.runtime.Value.fromArray(array);
         }
 
-        fn IndexOf(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+        pub fn IndexOf(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
             _ = environment;
             const list = context.cast(*Self);
             if (args.len != 1)
@@ -425,7 +425,7 @@ pub const LoLaList = struct {
             return .void;
         }
 
-        fn Resize(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+        pub fn Resize(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
             _ = environment;
             const list = context.cast(*Self);
             if (args.len != 1)
@@ -449,7 +449,7 @@ pub const LoLaList = struct {
             return .void;
         }
 
-        fn Clear(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+        pub fn Clear(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
             _ = environment;
             const list = context.cast(*Self);
             if (args.len != 0)
@@ -506,7 +506,7 @@ pub const LoLaDictionary = struct {
     }
 
     pub fn serializeObject(writer: lola.runtime.OutputStream.Writer, object: *Self) !void {
-        try writer.writeIntLittle(u32, @as(u32, @intCast(object.data.items.len)));
+        try writer.writeInt(u32, @as(u32, @intCast(object.data.items.len)), .little);
         for (object.data.items) |item| {
             try item.key.serialize(writer);
             try item.value.serialize(writer);
@@ -514,7 +514,7 @@ pub const LoLaDictionary = struct {
     }
 
     pub fn deserializeObject(allocator: std.mem.Allocator, reader: lola.runtime.InputStream.Reader) !*Self {
-        const item_count = try reader.readIntLittle(u32);
+        const item_count = try reader.readInt(u32, .little);
         var list = try allocator.create(Self);
         list.* = Self{
             .allocator = allocator,
@@ -542,7 +542,7 @@ pub const LoLaDictionary = struct {
     }
 
     const funcs = struct {
-        fn Set(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+        pub fn Set(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
             const dict = context.cast(*Self);
             if (args.len != 2)
                 return error.InvalidArgs;
@@ -575,7 +575,7 @@ pub const LoLaDictionary = struct {
             return .void;
         }
 
-        fn Get(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+        pub fn Get(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
             _ = environment;
             const dict = context.cast(*Self);
             if (args.len != 1)
@@ -590,7 +590,7 @@ pub const LoLaDictionary = struct {
             return .void;
         }
 
-        fn Contains(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+        pub fn Contains(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
             _ = environment;
             const dict = context.cast(*Self);
             if (args.len != 1)
@@ -605,7 +605,7 @@ pub const LoLaDictionary = struct {
             return lola.runtime.Value.initBoolean(false);
         }
 
-        fn Remove(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+        pub fn Remove(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
             _ = environment;
             const dict = context.cast(*Self);
             if (args.len != 1)
@@ -626,7 +626,7 @@ pub const LoLaDictionary = struct {
             return lola.runtime.Value.initBoolean(false);
         }
 
-        fn Clear(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+        pub fn Clear(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
             _ = environment;
             const dict = context.cast(*Self);
             if (args.len != 0)
@@ -638,7 +638,7 @@ pub const LoLaDictionary = struct {
             return .void;
         }
 
-        fn GetCount(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+        pub fn GetCount(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
             _ = environment;
             const dict = context.cast(*Self);
             if (args.len != 0)
@@ -646,7 +646,7 @@ pub const LoLaDictionary = struct {
             return lola.runtime.Value.initInteger(usize, dict.data.items.len);
         }
 
-        fn GetKeys(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+        pub fn GetKeys(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
             _ = environment;
             const dict = context.cast(*Self);
             if (args.len != 0)
@@ -661,7 +661,7 @@ pub const LoLaDictionary = struct {
             return lola.runtime.Value.fromArray(arr);
         }
 
-        fn GetValues(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+        pub fn GetValues(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
             _ = environment;
             const dict = context.cast(*Self);
             if (args.len != 0)

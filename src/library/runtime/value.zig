@@ -225,21 +225,21 @@ pub const Value = union(TypeId) {
         switch (self) {
             .void => return, // void values are empty \o/
             .number => |val| try writer.writeAll(std.mem.asBytes(&val)),
-            .object => |val| try writer.writeIntLittle(u64, @intFromEnum(val)),
+            .object => |val| try writer.writeInt(u64, @intFromEnum(val), .little),
             .boolean => |val| try writer.writeByte(if (val) @as(u8, 1) else 0),
             .string => |val| {
-                try writer.writeIntLittle(u32, std.math.cast(u32, val.contents.len) orelse return error.ObjectTooLarge);
+                try writer.writeInt(u32, std.math.cast(u32, val.contents.len) orelse return error.ObjectTooLarge, .little);
                 try writer.writeAll(val.contents);
             },
             .array => |arr| {
-                try writer.writeIntLittle(u32, std.math.cast(u32, arr.contents.len) orelse return error.ObjectTooLarge);
+                try writer.writeInt(u32, std.math.cast(u32, arr.contents.len) orelse return error.ObjectTooLarge, .little);
                 for (arr.contents) |item| {
                     try item.serialize(writer);
                 }
             },
             .enumerator => |e| {
-                try writer.writeIntLittle(u32, std.math.cast(u32, e.array.contents.len) orelse return error.ObjectTooLarge);
-                try writer.writeIntLittle(u32, std.math.cast(u32, e.index) orelse return error.ObjectTooLarge);
+                try writer.writeInt(u32, std.math.cast(u32, e.array.contents.len) orelse return error.ObjectTooLarge, .little);
+                try writer.writeInt(u32, std.math.cast(u32, e.index) orelse return error.ObjectTooLarge, .little);
                 for (e.array.contents) |item| {
                     try item.serialize(writer);
                 }
@@ -261,10 +261,10 @@ pub const Value = union(TypeId) {
 
                 break :blk initNumber(@as(f64, @bitCast(buffer)));
             },
-            .object => initObject(@as(objects.ObjectHandle, @enumFromInt(try reader.readIntLittle(std.meta.Tag(objects.ObjectHandle))))),
+            .object => initObject(@as(objects.ObjectHandle, @enumFromInt(try reader.readInt(std.meta.Tag(objects.ObjectHandle), .little)))),
             .boolean => initBoolean((try reader.readByte()) != 0),
             .string => blk: {
-                const size = try reader.readIntLittle(u32);
+                const size = try reader.readInt(u32, .little);
 
                 const buffer = try allocator.alloc(u8, size);
                 errdefer allocator.free(buffer);
@@ -274,7 +274,7 @@ pub const Value = union(TypeId) {
                 break :blk fromString(String.initFromOwned(allocator, buffer));
             },
             .array => blk: {
-                const size = try reader.readIntLittle(u32);
+                const size = try reader.readInt(u32, .little);
                 var array = try Array.init(allocator, size);
                 errdefer array.deinit();
 
@@ -285,8 +285,8 @@ pub const Value = union(TypeId) {
                 break :blk fromArray(array);
             },
             .enumerator => blk: {
-                const size = try reader.readIntLittle(u32);
-                const index = try reader.readIntLittle(u32);
+                const size = try reader.readInt(u32, .little);
+                const index = try reader.readInt(u32, .little);
 
                 var array = try Array.init(allocator, size);
                 errdefer array.deinit();
@@ -349,16 +349,16 @@ test "Value.string (init)" {
 }
 
 test "Value.eql (void)" {
-    var v1: Value = .void;
-    var v2: Value = .void;
+    const v1: Value = .void;
+    const v2: Value = .void;
 
     std.debug.assert(v1.eql(v2));
 }
 
 test "Value.eql (boolean)" {
-    var v1 = Value.initBoolean(true);
-    var v2 = Value.initBoolean(true);
-    var v3 = Value.initBoolean(false);
+    const v1 = Value.initBoolean(true);
+    const v2 = Value.initBoolean(true);
+    const v3 = Value.initBoolean(false);
 
     std.debug.assert(v1.eql(v2));
     std.debug.assert(v2.eql(v1));
@@ -367,9 +367,9 @@ test "Value.eql (boolean)" {
 }
 
 test "Value.eql (number)" {
-    var v1 = Value.initNumber(1.3);
-    var v2 = Value.initNumber(1.3);
-    var v3 = Value.initNumber(2.3);
+    const v1 = Value.initNumber(1.3);
+    const v2 = Value.initNumber(1.3);
+    const v3 = Value.initNumber(2.3);
 
     std.debug.assert(v1.eql(v2));
     std.debug.assert(v2.eql(v1));
@@ -378,9 +378,9 @@ test "Value.eql (number)" {
 }
 
 test "Value.eql (object)" {
-    var v1 = Value.initObject(@as(objects.ObjectHandle, @enumFromInt(1)));
-    var v2 = Value.initObject(@as(objects.ObjectHandle, @enumFromInt(1)));
-    var v3 = Value.initObject(@as(objects.ObjectHandle, @enumFromInt(2)));
+    const v1 = Value.initObject(@as(objects.ObjectHandle, @enumFromInt(1)));
+    const v2 = Value.initObject(@as(objects.ObjectHandle, @enumFromInt(1)));
+    const v3 = Value.initObject(@as(objects.ObjectHandle, @enumFromInt(2)));
 
     std.debug.assert(v1.eql(v2));
     std.debug.assert(v2.eql(v1));
@@ -423,7 +423,7 @@ pub const String = struct {
             alignment,
             ptr_offset + @sizeOf(usize),
         );
-        std.mem.writeIntNative(usize, buffer[ptr_offset..][0..@sizeOf(usize)], 1);
+        std.mem.writeInt(usize, buffer[ptr_offset..][0..@sizeOf(usize)], 1, .little);
 
         return Self{
             .allocator = allocator,
@@ -436,8 +436,7 @@ pub const String = struct {
     /// duplicated value.
     pub fn init(allocator: std.mem.Allocator, text: []const u8) !Self {
         var string = try initUninitialized(allocator, text.len);
-        std.mem.copy(
-            u8,
+        @memcpy(
             string.obtainMutableStorage() catch unreachable,
             text,
         );
@@ -536,7 +535,7 @@ pub const Array = struct {
     contents: []Value,
 
     pub fn init(allocator: std.mem.Allocator, size: usize) !Self {
-        var arr = Self{
+        const arr = Self{
             .allocator = allocator,
             .contents = try allocator.alloc(Value, size),
         };

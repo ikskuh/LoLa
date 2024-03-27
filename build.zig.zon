@@ -4,16 +4,18 @@
 
     .dependencies = .{
         .args = .{
-            .url = "https://github.com/MasterQ32/zig-args/archive/bb2eced8ddf28114b3a1ff761c2d80b90b1a61e2.tar.gz",
-            .hash = "12208556082c280af264ca2a174fd04fc7a35f865bfe59e2c61f4a977bf7a65063e4",
+            .url = "https://github.com/MasterQ32/zig-args/archive/01d72b9a0128c474aeeb9019edd48605fa6d95f7.tar.gz",
+            .hash = "12208a1de366740d11de525db7289345949f5fd46527db3f89eecc7bb49b012c0732",
         },
         .any_pointer = .{
-            .url = "https://github.com/MasterQ32/any-pointer/archive/88bd1b406d58bc9e82159581ea3e71a004011058.tar.gz",
-            .hash = "1220d00cd17f9b1f840ea4bee9b552547e1ca5938517018078046c83b71f332d3b5e",
+            .url = "https://github.com/MasterQ32/any-pointer/archive/e57d13c9f5476d9cf6dc3fa541d5a78827da96fb.tar.gz",
+            .hash = "12205a42860518c1ef0391686d047a3ec16ef0e7f70f0b0bba5c597bdd6afbcd0d10",
         },
-        .interface = .{
-            .url = "https://github.com/MasterQ32/interface.zig/archive/a5ebd920d2953167152f94c005043d49c258e7a1.tar.gz",
-            .hash = "122039c0c0e050acb36fb7b7eee5e0051695bf1964d3835b74e7e02790b922bc3e33",
-        },
+        // .interface = .{
+        //     .url = "https://github.com/MasterQ32/interface.zig/archive/a5ebd920d2953167152f94c005043d49c258e7a1.tar.gz",
+        //     .hash = "122039c0c0e050acb36fb7b7eee5e0051695bf1964d3835b74e7e02790b922bc3e33",
+        // },
     },
+
+    .paths = .{"."},
 }

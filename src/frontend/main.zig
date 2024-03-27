@@ -200,8 +200,8 @@ fn compile(options: CompileCLI, files: []const []const u8) !u8 {
         name
     else blk: {
         var name = try allocator.alloc(u8, inname.len + 3);
-        std.mem.copy(u8, name[0..inname.len], inname);
-        std.mem.copy(u8, name[inname.len..], ".lm");
+        @memcpy(name[0..inname.len], inname);
+        @memcpy(name[inname.len..], ".lm");
         break :blk name;
     };
     defer if (options.output == null)
@@ -323,7 +323,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
         defer vm.deinit();
 
         while (true) {
-            var result = vm.execute(options.limit) catch |err| {
+            const result = vm.execute(options.limit) catch |err| {
                 var stderr = std.io.getStdErr().writer();
 
                 if (builtin.mode == .Debug) {
@@ -378,8 +378,8 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
             var timer = try std.time.Timer.start();
 
             emulation: while (true) {
-                var result = vm.execute(options.limit) catch |err| {
-                    var stderr = std.io.getStdErr().writer();
+                const result = vm.execute(options.limit) catch |err| {
+                    const stderr = std.io.getStdErr().writer();
                     try stderr.print("Panic during execution: {s}\n", .{@errorName(err)});
                     try stderr.print("Call stack:\n", .{});
 
@@ -435,7 +435,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
 
 fn compileFileToUnit(allocator: std.mem.Allocator, fileName: []const u8) !lola.CompileUnit {
     const maxLength = 1 << 20; // 1 MB
-    var source = blk: {
+    const source = blk: {
         var file = try std.fs.cwd().openFile(fileName, .{ .mode = .read_only });
         defer file.close();
 
@@ -462,7 +462,7 @@ fn compileFileToUnit(allocator: std.mem.Allocator, fileName: []const u8) !lola.C
     if (!successful)
         return error.CompileError;
 
-    var compile_unit = try lola.compiler.generateIR(allocator, pgm, fileName);
+    const compile_unit = try lola.compiler.generateIR(allocator, pgm, fileName);
     errdefer compile_unit;
 
     return compile_unit;

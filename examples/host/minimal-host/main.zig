@@ -74,7 +74,7 @@ pub fn main() anyerror!u8 {
     while (true) {
 
         // Run the virtual machine for up to 150 instructions
-        var result = vm.execute(150) catch |err| {
+        const result = vm.execute(150) catch |err| {
             // When the virtua machine panics, we receive a Zig error
             std.debug.print("LoLa panic: {s}\n", .{@errorName(err)});
             return 1;

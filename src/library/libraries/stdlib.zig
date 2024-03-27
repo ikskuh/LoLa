@@ -302,7 +302,8 @@ pub fn NumToString(env: *const lola.runtime.Environment, context: lola.runtime.C
         var stream = std.io.fixedBufferStream(&buffer);
 
         const val = try args[0].toNumber();
-        try std.fmt.formatFloatDecimal(val, .{}, stream.writer());
+
+        try stream.writer().print("{d}", .{val});
 
         break :blk stream.getWritten();
     };
@@ -407,7 +408,7 @@ pub fn Array(env: *const lola.runtime.Environment, context: lola.runtime.Context
     const length = try args[0].toInteger(usize);
     const init_val = if (args.len > 1) args[1] else .void;
 
-    var arr = try lola.runtime.Array.init(env.allocator, length);
+    const arr = try lola.runtime.Array.init(env.allocator, length);
     for (arr.contents) |*item| {
         item.* = try init_val.clone();
     }
@@ -423,14 +424,14 @@ pub fn Range(env: *const lola.runtime.Environment, context: lola.runtime.Context
         const start = try args[0].toInteger(usize);
         const length = try args[1].toInteger(usize);
 
-        var arr = try lola.runtime.Array.init(env.allocator, length);
+        const arr = try lola.runtime.Array.init(env.allocator, length);
         for (arr.contents, 0..) |*item, i| {
             item.* = lola.runtime.Value.initNumber(@as(f64, @floatFromInt(start + i)));
         }
         return lola.runtime.Value.fromArray(arr);
     } else {
         const length = try args[0].toInteger(usize);
-        var arr = try lola.runtime.Array.init(env.allocator, length);
+        const arr = try lola.runtime.Array.init(env.allocator, length);
         for (arr.contents, 0..) |*item, i| {
             item.* = lola.runtime.Value.initNumber(@as(f64, @floatFromInt(i)));
         }
@@ -471,7 +472,7 @@ pub fn DeltaEqual(env: *const lola.runtime.Environment, context: lola.runtime.Co
     const a = try args[0].toNumber();
     const b = try args[1].toNumber();
     const delta = try args[2].toNumber();
-    return lola.runtime.Value.initBoolean(@fabs(a - b) < delta);
+    return lola.runtime.Value.initBoolean(@abs(a - b) < delta);
 }
 
 pub fn Floor(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
@@ -531,7 +532,6 @@ pub fn Atan(env: *const lola.runtime.Environment, context: lola.runtime.Context,
         );
     } else if (args.len == 2) {
         return lola.runtime.Value.initNumber(std.math.atan2(
-            f64,
             try args[0].toNumber(),
             try args[1].toNumber(),
         ));
@@ -615,7 +615,7 @@ pub fn ToString(env: *const lola.runtime.Environment, context: lola.runtime.Cont
     if (args.len != 1)
         return error.InvalidArgs;
 
-    var str = try std.fmt.allocPrint(env.allocator, "{}", .{args[0]});
+    const str = try std.fmt.allocPrint(env.allocator, "{}", .{args[0]});
 
     return lola.runtime.Value.fromString(lola.runtime.String.initFromOwned(env.allocator, str));
 }
@@ -624,14 +624,15 @@ pub fn HasFunction(env: *const lola.runtime.Environment, context: lola.runtime.C
     _ = context;
     switch (args.len) {
         1 => {
-            var name = try args[0].toString();
+            const name = try args[0].toString();
             return lola.runtime.Value.initBoolean(env.functions.get(name) != null);
         },
         2 => {
-            var obj = try args[0].toObject();
-            var name = try args[1].toString();
+            const obj = try args[0].toObject();
+            const name = try args[1].toString();
 
             const maybe_method = try env.objectPool.getMethod(obj, name);
+
             return lola.runtime.Value.initBoolean(maybe_method != null);
         },
         else => return error.InvalidArgs,

@@ -440,7 +440,7 @@ test "code generation" {
     var diagnostics = Diagnostics.init(std.testing.allocator);
     defer diagnostics.deinit();
 
-    const seq = try @import("tokenizer.zig").tokenize(std.testing.allocator, &diagnostics, "src/test/compiler.lola", @embedFile("../../test/compiler.lola"));
+    const seq = try @import("tokenizer.zig").tokenize(std.testing.allocator, &diagnostics, "src/test/compiler.lola", @embedFile("compiler.lola"));
     defer std.testing.allocator.free(seq);
 
     var pgm = try @import("parser.zig").parse(std.testing.allocator, &diagnostics, seq);

@@ -62,7 +62,7 @@ pub fn loadFromStream(allocator: std.mem.Allocator, stream: anytype) !CompileUni
     };
     if (!std.mem.eql(u8, &header, "LoLa\xB9\x40\x80\x5A"))
         return error.InvalidFormat;
-    const version = try stream.readIntLittle(u32);
+    const version = try stream.readInt(u32, .little);
     if (version != 1)
         return error.UnsupportedVersion;
 
@@ -82,12 +82,12 @@ pub fn loadFromStream(allocator: std.mem.Allocator, stream: anytype) !CompileUni
 
     unit.comment = try unit.arena.allocator().dupe(u8, utility.clampFixedString(&comment));
 
-    unit.globalCount = try stream.readIntLittle(u16);
-    unit.temporaryCount = try stream.readIntLittle(u16);
+    unit.globalCount = try stream.readInt(u16, .little);
+    unit.temporaryCount = try stream.readInt(u16, .little);
 
-    const functionCount = try stream.readIntLittle(u16);
-    const codeSize = try stream.readIntLittle(u32);
-    const numSymbols = try stream.readIntLittle(u32);
+    const functionCount = try stream.readInt(u16, .little);
+    const codeSize = try stream.readInt(u32, .little);
+    const numSymbols = try stream.readInt(u32, .little);
 
     if (functionCount > codeSize or numSymbols > codeSize) {
         // It is not reasonable to have multiple functions per
@@ -104,8 +104,8 @@ pub fn loadFromStream(allocator: std.mem.Allocator, stream: anytype) !CompileUni
         var name: [128]u8 = undefined;
         try stream.readNoEof(&name);
 
-        const entryPoint = try stream.readIntLittle(u32);
-        const localCount = try stream.readIntLittle(u16);
+        const entryPoint = try stream.readInt(u32, .little);
+        const localCount = try stream.readInt(u16, .little);
 
         fun.* = Function{
             .name = try unit.arena.allocator().dupe(u8, utility.clampFixedString(&name)),
@@ -119,9 +119,9 @@ pub fn loadFromStream(allocator: std.mem.Allocator, stream: anytype) !CompileUni
     unit.code = code;
 
     for (debugSymbols) |*sym| {
-        const offset = try stream.readIntLittle(u32);
-        const sourceLine = try stream.readIntLittle(u32);
-        const sourceColumn = try stream.readIntLittle(u16);
+        const offset = try stream.readInt(u32, .little);
+        const sourceLine = try stream.readInt(u32, .little);
+        const sourceColumn = try stream.readInt(u16, .little);
         sym.* = DebugSymbol{
             .offset = offset,
             .sourceLine = sourceLine,
@@ -142,25 +142,25 @@ pub fn loadFromStream(allocator: std.mem.Allocator, stream: anytype) !CompileUni
 /// Saves a compile unit to a data stream.
 pub fn saveToStream(self: CompileUnit, stream: anytype) !void {
     try stream.writeAll("LoLa\xB9\x40\x80\x5A");
-    try stream.writeIntLittle(u32, 1);
+    try stream.writeInt(u32, 1, .little);
     try stream.writeAll(self.comment);
     try stream.writeByteNTimes(0, 256 - self.comment.len);
-    try stream.writeIntLittle(u16, self.globalCount);
-    try stream.writeIntLittle(u16, self.temporaryCount);
-    try stream.writeIntLittle(u16, @as(u16, @intCast(self.functions.len)));
-    try stream.writeIntLittle(u32, @as(u32, @intCast(self.code.len)));
-    try stream.writeIntLittle(u32, @as(u32, @intCast(self.debugSymbols.len)));
+    try stream.writeInt(u16, self.globalCount, .little);
+    try stream.writeInt(u16, self.temporaryCount, .little);
+    try stream.writeInt(u16, @as(u16, @intCast(self.functions.len)), .little);
+    try stream.writeInt(u32, @as(u32, @intCast(self.code.len)), .little);
+    try stream.writeInt(u32, @as(u32, @intCast(self.debugSymbols.len)), .little);
     for (self.functions) |fun| {
         try stream.writeAll(fun.name);
         try stream.writeByteNTimes(0, 128 - fun.name.len);
-        try stream.writeIntNative(u32, fun.entryPoint);
-        try stream.writeIntNative(u16, fun.localCount);
+        try stream.writeInt(u32, fun.entryPoint, .little);
+        try stream.writeInt(u16, fun.localCount, .little);
     }
     try stream.writeAll(self.code);
     for (self.debugSymbols) |sym| {
-        try stream.writeIntNative(u32, sym.offset);
-        try stream.writeIntNative(u32, sym.sourceLine);
-        try stream.writeIntNative(u16, sym.sourceColumn);
+        try stream.writeInt(u32, sym.offset, .little);
+        try stream.writeInt(u32, sym.sourceLine, .little);
+        try stream.writeInt(u16, sym.sourceColumn, .little);
     }
 }
 

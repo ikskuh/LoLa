@@ -388,27 +388,34 @@ pub fn tokenize(allocator: std.mem.Allocator, diagnostics: *Diagnostics, chunk_n
     }
 }
 
+fn expectEqual(expected: anytype, actual: anytype) !void {
+    const T = @TypeOf(expected);
+    return try std.testing.expectEqual(expected, @as(T, actual));
+}
+
+const expectEqualStrings = std.testing.expectEqualStrings;
+
 test "Tokenizer empty string" {
     var tokenizer = Tokenizer.init("??", "");
-    try std.testing.expectEqual(std.meta.Tag(Tokenizer.Result).end_of_file, tokenizer.next());
+    try expectEqual(std.meta.Tag(Tokenizer.Result).end_of_file, tokenizer.next());
 }
 
 test "Tokenizer invalid bytes" {
     var tokenizer = Tokenizer.init("??", "\\``?`a##§");
     {
         const item = tokenizer.next();
-        try std.testing.expectEqual(std.meta.Tag(Tokenizer.Result).invalid_sequence, item);
-        try std.testing.expectEqualStrings("\\``?`", item.invalid_sequence);
+        try expectEqual(std.meta.Tag(Tokenizer.Result).invalid_sequence, item);
+        try expectEqualStrings("\\``?`", item.invalid_sequence);
     }
     {
         const item = tokenizer.next();
-        try std.testing.expectEqual(std.meta.Tag(Tokenizer.Result).token, item);
-        try std.testing.expectEqualStrings("a", item.token.text);
+        try expectEqual(std.meta.Tag(Tokenizer.Result).token, item);
+        try expectEqualStrings("a", item.token.text);
     }
     {
         const item = tokenizer.next();
-        try std.testing.expectEqual(std.meta.Tag(Tokenizer.Result).invalid_sequence, item);
-        try std.testing.expectEqualStrings("##§", item.invalid_sequence);
+        try expectEqual(std.meta.Tag(Tokenizer.Result).invalid_sequence, item);
+        try expectEqualStrings("##§", item.invalid_sequence);
     }
 }
 

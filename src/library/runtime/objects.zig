@@ -1,6 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
-const interfaces = @import("interface");
+const interfaces = @import("../common/interface.zig");
 
 const Environment = @import("Environment.zig");
 
@@ -11,32 +11,34 @@ const Value = @import("value.zig").Value;
 /// It is associated with a object handle in the `ObjectPool` and provides
 /// a way to get methods as well as destroy the object when it's garbage collected.
 pub const Object = struct {
-    const Interface = interfaces.Interface(struct {
-        getMethod: *const (fn (self: *interfaces.SelfType, name: []const u8) ?Environment.Function),
-        destroyObject: *const (fn (self: *interfaces.SelfType) void),
-    }, interfaces.Storage.NonOwning);
+    const Interface = interfaces.Interfaces(.{
+        .getMethod = fn (self: *interfaces.Self, name: []const u8) ?Environment.Function,
+        .destroyObject = fn (self: *interfaces.Self) void,
+    });
 
-    const Class = interfaces.Interface(struct {
-        serializeObject: ?*const (fn (self: *interfaces.SelfType, stream: OutputStream) anyerror!void),
-        deserializeObject: ?*const (fn (stream: InputStream) anyerror!*interfaces.SelfType),
-    }, interfaces.Storage.NonOwning);
+    const ClassVTable = interfaces.Interfaces(.{
+        .serializeObject = fn (self: *interfaces.Self, stream: OutputStream) anyerror!void,
+        .deserializeObject = fn (stream: InputStream) anyerror!*interfaces.Self,
+    });
 
     const Self = @This();
 
-    impl: Interface,
+    ptr: *anyopaque,
+    vtable: *const Interface.VTable,
 
     pub fn init(ptr: anytype) Self {
         return Self{
-            .impl = Interface.init(ptr) catch unreachable,
+            .ptr = ptr,
+            .vtable = Interface.createVTable(@TypeOf(ptr.*)),
         };
     }
 
     pub fn getMethod(self: *const Self, name: []const u8) ?Environment.Function {
-        return self.impl.call("getMethod", .{name});
+        return self.vtable.getMethod(self.ptr, name);
     }
 
     pub fn destroyObject(self: *Self) void {
-        self.impl.call("destroyObject", .{});
+        self.vtable.destroyObject(self.ptr);
         self.* = undefined;
     }
 };
@@ -212,11 +214,11 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
 
             const Interface = struct {
                 fn serialize(stream: OutputStream, obj: Object) anyerror!void {
-                    try Class.serializeObject(stream.writer(), @as(*Class, @ptrCast(@alignCast(obj.impl.storage.erased_ptr))));
+                    try Class.serializeObject(stream.writer(), @as(*Class, @ptrCast(@alignCast(obj.ptr))));
                 }
 
                 fn deserialize(allocator: std.mem.Allocator, stream: InputStream) anyerror!Object {
-                    var ptr = try Class.deserializeObject(allocator, stream.reader());
+                    const ptr = try Class.deserializeObject(allocator, stream.reader());
                     return Object.init(ptr);
                 }
             };
@@ -274,20 +276,20 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
         /// Serializes the whole object pool into the `stream`.
         pub fn serialize(self: Self, stream: anytype) !void {
             if (all_classes_can_serialize) {
-                try stream.writeIntLittle(u64, pool_signature);
+                try stream.writeInt(u64, pool_signature, .little);
 
                 var iter = self.objects.iterator();
                 while (iter.next()) |entry| {
                     const obj = entry.value_ptr;
                     var class = class_lut[obj.class_id];
 
-                    try stream.writeIntLittle(TypeIndex, obj.class_id);
-                    try stream.writeIntLittle(u64, @intFromEnum(entry.key_ptr.*));
+                    try stream.writeInt(TypeIndex, obj.class_id, .little);
+                    try stream.writeInt(u64, @intFromEnum(entry.key_ptr.*), .little);
 
                     try class.serialize(OutputStream.from(&stream), obj.object);
                 }
 
-                try stream.writeIntLittle(TypeIndex, std.math.maxInt(TypeIndex));
+                try stream.writeInt(TypeIndex, std.math.maxInt(TypeIndex), .little);
             } else {
                 @compileError("This ObjectPool is not serializable!");
             }
@@ -299,17 +301,17 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
                 var pool = init(allocator);
                 errdefer pool.deinit();
 
-                var signature = try stream.readIntLittle(u64);
+                const signature = try stream.readInt(u64, .little);
                 if (signature != pool_signature)
                     return error.InvalidStream;
 
                 while (true) {
-                    const type_index = try stream.readIntLittle(TypeIndex);
+                    const type_index = try stream.readInt(TypeIndex, .little);
                     if (type_index == std.math.maxInt(TypeIndex))
                         break; // end of objects
                     if (type_index >= class_lut.len)
                         return error.InvalidStream;
-                    const object_id = try stream.readIntLittle(u64);
+                    const object_id = try stream.readInt(u64, .little);
                     pool.objectCounter = @max(object_id + 1, pool.objectCounter);
 
                     const gop = try pool.objects.getOrPut(@as(ObjectHandle, @enumFromInt(object_id)));
@@ -347,7 +349,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
                     break index;
             } else @compileError("The type " ++ @typeName(ObjectTypeInfo.child) ++ " is not valid for this object pool. Add it to the class list in the type definition to allow creation.");
 
-            var object = Object.init(object_ptr);
+            const object = Object.init(object_ptr);
 
             self.objectCounter += 1;
             errdefer self.objectCounter -= 1;

@@ -1,6 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
-const Builder = std.build.Builder;
+const Build = std.Build;
 
 fn sdkPath(comptime suffix: []const u8) []const u8 {
     if (suffix[0] != '/') @compileError("sdkPath requires an absolute path!");
@@ -30,20 +30,20 @@ const examples = [_]Example{
     },
 };
 
-pub fn build(b: *Builder) !void {
+pub fn build(b: *Build) !void {
     const version_tag = b.option([]const u8, "version", "Sets the version displayed in the docs and for `lola version`");
 
     const optimize = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
 
     const mod_args = b.dependency("args", .{}).module("args");
-    const mod_interface = b.dependency("interface", .{}).module("interface.zig");
+    // const mod_interface = b.dependency("interface", .{}).module("interface.zig");
     const mod_any_pointer = b.dependency("any_pointer", .{}).module("any-pointer");
 
     const mod_lola = b.addModule("lola", .{
-        .source_file = .{ .path = "src/library/main.zig" },
-        .dependencies = &.{
-            .{ .name = "interface", .module = mod_interface },
+        .root_source_file = .{ .path = "src/library/main.zig" },
+        .imports = &.{
+            // .{ .name = "interface", .module = mod_interface },
             .{ .name = "any-pointer", .module = mod_any_pointer },
         },
     });
@@ -57,10 +57,10 @@ pub fn build(b: *Builder) !void {
         .optimize = optimize,
         .target = target,
     });
-    exe.addModule("lola", mod_lola);
-    exe.addModule("args", mod_args);
-    exe.addAnonymousModule("build_options", .{
-        .source_file = build_options.getSource(),
+    exe.root_module.addImport("lola", mod_lola);
+    exe.root_module.addImport("args", mod_args);
+    exe.root_module.addAnonymousImport("build_options", .{
+        .root_source_file = build_options.getSource(),
     });
     b.installArtifact(exe);
 
@@ -68,6 +68,7 @@ pub fn build(b: *Builder) !void {
         .name = "benchmark-render",
         .root_source_file = .{ .path = "src/benchmark/render.zig" },
         .optimize = optimize,
+        .target = b.host,
     });
     b.installArtifact(benchmark_renderer);
 
@@ -96,8 +97,9 @@ pub fn build(b: *Builder) !void {
             .name = b.fmt("benchmark-{s}", .{@tagName(benchmark_mode)}),
             .root_source_file = .{ .path = "src/benchmark/perf.zig" },
             .optimize = benchmark_mode,
+            .target = b.host,
         });
-        benchmark.addModule("lola", mod_lola);
+        benchmark.root_module.addImport("lola", mod_lola);
 
         const run_benchmark = b.addRunArtifact(benchmark);
         run_benchmark.addArg(b.pathFromRoot("benchmarks/code"));
@@ -106,13 +108,14 @@ pub fn build(b: *Builder) !void {
         render_benchmark.step.dependOn(&run_benchmark.step);
     }
 
-    const wasm_runtime = b.addSharedLibrary(.{
+    const wasm_runtime = b.addExecutable(.{
         .name = "lola",
         .root_source_file = .{ .path = "src/wasm-compiler/main.zig" },
-        .target = .{ .cpu_arch = .wasm32, .os_tag = .freestanding },
+        .target = b.resolveTargetQuery(.{ .cpu_arch = .wasm32, .os_tag = .freestanding }),
         .optimize = .ReleaseSafe,
     });
-    wasm_runtime.addModule("lola", mod_lola);
+    wasm_runtime.entry = .disabled;
+    wasm_runtime.root_module.addImport("lola", mod_lola);
     b.installArtifact(wasm_runtime);
 
     const examples_step = b.step("examples", "Compiles all examples");
@@ -123,19 +126,24 @@ pub fn build(b: *Builder) !void {
             .optimize = optimize,
             .target = target,
         });
-        example_exe.addModule("lola", mod_lola);
+        example_exe.root_module.addImport("lola", mod_lola);
 
         examples_step.dependOn(&b.addInstallArtifact(example_exe, .{}).step);
     }
 
+    const compiler_lola_mod = b.createModule(.{
+        .root_source_file = .{ .path = "src/test/compiler.lola" },
+    });
+
     var main_tests = b.addTest(.{
         .root_source_file = .{ .path = "src/library/test.zig" },
         .optimize = optimize,
-        .target = .{},
+        .target = b.host,
     });
-    main_tests.addModule("interface", mod_interface);
-    main_tests.addModule("any-pointer", mod_any_pointer);
-    main_tests.main_pkg_path = .{ .path = "." };
+    // main_tests.root_module.addImport("interface", mod_interface);
+    main_tests.root_module.addImport("any-pointer", mod_any_pointer);
+    main_tests.root_module.addImport("compiler.lola", compiler_lola_mod);
+    // main_tests.main_pkg_path = .{ .path = "." };
 
     const test_step = b.step("test", "Run test suite");
     test_step.dependOn(&b.addRunArtifact(main_tests).step);
@@ -168,7 +176,7 @@ pub fn build(b: *Builder) !void {
 
             // execute in the zig-cache directory so we have a "safe" playfield
             // for file I/O
-            runlib_test.cwd = "zig-cache/tmp";
+            runlib_test.cwd = .{ .path = "zig-cache/tmp" };
 
             // `Exit(123)` is the last call in the runtime suite
             runlib_test.expectExitCode(123);

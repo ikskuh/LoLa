@@ -443,10 +443,10 @@ pub fn parse(
 
             var expr = try self.acceptComparisonExpression();
             while (true) {
-                var and_or = self.accept(oneOf(.{ .@"and", .@"or" })) catch break;
-                var rhs = try self.acceptComparisonExpression();
+                const and_or = self.accept(oneOf(.{ .@"and", .@"or" })) catch break;
+                const rhs = try self.acceptComparisonExpression();
 
-                var new_expr = ast.Expression{
+                const new_expr = ast.Expression{
                     .location = expr.location.merge(and_or.location).merge(rhs.location),
                     .type = .{
                         .binary_operator = .{
@@ -471,7 +471,7 @@ pub fn parse(
 
             var expr = try self.acceptSumExpression();
             while (true) {
-                var and_or = self.accept(oneOf(.{
+                const and_or = self.accept(oneOf(.{
                     .@"<=",
                     .@">=",
                     .@">",
@@ -479,9 +479,9 @@ pub fn parse(
                     .@"==",
                     .@"!=",
                 })) catch break;
-                var rhs = try self.acceptSumExpression();
+                const rhs = try self.acceptSumExpression();
 
-                var new_expr = ast.Expression{
+                const new_expr = ast.Expression{
                     .location = expr.location.merge(and_or.location).merge(rhs.location),
                     .type = .{
                         .binary_operator = .{
@@ -510,13 +510,13 @@ pub fn parse(
 
             var expr = try self.acceptMulExpression();
             while (true) {
-                var and_or = self.accept(oneOf(.{
+                const and_or = self.accept(oneOf(.{
                     .@"+",
                     .@"-",
                 })) catch break;
-                var rhs = try self.acceptMulExpression();
+                const rhs = try self.acceptMulExpression();
 
-                var new_expr = ast.Expression{
+                const new_expr = ast.Expression{
                     .location = expr.location.merge(and_or.location).merge(rhs.location),
                     .type = .{
                         .binary_operator = .{
@@ -541,14 +541,14 @@ pub fn parse(
 
             var expr = try self.acceptUnaryPrefixOperatorExpression();
             while (true) {
-                var and_or = self.accept(oneOf(.{
+                const and_or = self.accept(oneOf(.{
                     .@"*",
                     .@"/",
                     .@"%",
                 })) catch break;
-                var rhs = try self.acceptUnaryPrefixOperatorExpression();
+                const rhs = try self.acceptUnaryPrefixOperatorExpression();
 
-                var new_expr = ast.Expression{
+                const new_expr = ast.Expression{
                     .location = expr.location.merge(and_or.location).merge(rhs.location),
                     .type = .{
                         .binary_operator = .{
@@ -604,7 +604,7 @@ pub fn parse(
 
                 _ = try self.accept(is(.@"]"));
 
-                var new_value = ast.Expression{
+                const new_value = ast.Expression{
                     .location = value.location.merge(index.location),
                     .type = .{
                         .array_indexer = .{
@@ -626,7 +626,7 @@ pub fn parse(
             var value = try self.acceptValueExpression();
 
             while (self.accept(oneOf(.{ .@"(", .@"." }))) |sym| {
-                var new_value = switch (sym.type) {
+                const new_value = switch (sym.type) {
                     // call
                     .@"(" => blk: {
                         var args = std.ArrayList(ast.Expression).init(self.allocator);
@@ -871,6 +871,13 @@ fn testTokenize(str: []const u8) ![]lexer.Token {
     }
 }
 
+fn expectEqual(expected: anytype, actual: anytype) !void {
+    const T = @TypeOf(expected);
+    return try std.testing.expectEqual(expected, @as(T, actual));
+}
+
+const expectEqualStrings = std.testing.expectEqualStrings;
+
 test "empty file parsing" {
     var diagnostics = diag.Diagnostics.init(std.testing.allocator);
     defer diagnostics.deinit();
@@ -879,11 +886,11 @@ test "empty file parsing" {
     defer pgm.deinit();
 
     // assert that an empty file results in a empty AST
-    try std.testing.expectEqual(@as(usize, 0), pgm.root_script.len);
-    try std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
+    try expectEqual(@as(usize, 0), pgm.root_script.len);
+    try expectEqual(@as(usize, 0), pgm.functions.len);
 
     // assert that we didn't encounter syntax errors
-    try std.testing.expectEqual(@as(usize, 0), diagnostics.messages.items.len);
+    try expectEqual(@as(usize, 0), diagnostics.messages.items.len);
 }
 
 fn parseTest(string: []const u8) !ast.Program {
@@ -902,10 +909,10 @@ test "parse single top level statement" {
     var pgm = try parseTest(";");
     defer pgm.deinit();
 
-    try std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+    try expectEqual(@as(usize, 0), pgm.functions.len);
+    try expectEqual(@as(usize, 1), pgm.root_script.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.empty, pgm.root_script[0].type);
+    try expectEqual(ast.Statement.Type.empty, pgm.root_script[0].type);
 }
 
 test "parse single empty function" {
@@ -914,15 +921,15 @@ test "parse single empty function" {
         var pgm = try parseTest("function empty(){}");
         defer pgm.deinit();
 
-        try std.testing.expectEqual(@as(usize, 1), pgm.functions.len);
-        try std.testing.expectEqual(@as(usize, 0), pgm.root_script.len);
+        try expectEqual(@as(usize, 1), pgm.functions.len);
+        try expectEqual(@as(usize, 0), pgm.root_script.len);
 
         const fun = pgm.functions[0];
 
         try std.testing.expectEqualStrings("empty", fun.name);
-        try std.testing.expectEqual(ast.Statement.Type.block, fun.body.type);
-        try std.testing.expectEqual(@as(usize, 0), fun.body.type.block.len);
-        try std.testing.expectEqual(@as(usize, 0), fun.parameters.len);
+        try expectEqual(ast.Statement.Type.block, fun.body.type);
+        try expectEqual(@as(usize, 0), fun.body.type.block.len);
+        try expectEqual(@as(usize, 0), fun.parameters.len);
     }
 
     // 1 param
@@ -930,15 +937,15 @@ test "parse single empty function" {
         var pgm = try parseTest("function empty(p0){}");
         defer pgm.deinit();
 
-        try std.testing.expectEqual(@as(usize, 1), pgm.functions.len);
-        try std.testing.expectEqual(@as(usize, 0), pgm.root_script.len);
+        try expectEqual(@as(usize, 1), pgm.functions.len);
+        try expectEqual(@as(usize, 0), pgm.root_script.len);
 
         const fun = pgm.functions[0];
 
         try std.testing.expectEqualStrings("empty", fun.name);
-        try std.testing.expectEqual(ast.Statement.Type.block, fun.body.type);
-        try std.testing.expectEqual(@as(usize, 0), fun.body.type.block.len);
-        try std.testing.expectEqual(@as(usize, 1), fun.parameters.len);
+        try expectEqual(ast.Statement.Type.block, fun.body.type);
+        try expectEqual(@as(usize, 0), fun.body.type.block.len);
+        try expectEqual(@as(usize, 1), fun.parameters.len);
         try std.testing.expectEqualStrings("p0", fun.parameters[0]);
     }
 
@@ -947,15 +954,15 @@ test "parse single empty function" {
         var pgm = try parseTest("function empty(p0,p1,p2){}");
         defer pgm.deinit();
 
-        try std.testing.expectEqual(@as(usize, 1), pgm.functions.len);
-        try std.testing.expectEqual(@as(usize, 0), pgm.root_script.len);
+        try expectEqual(@as(usize, 1), pgm.functions.len);
+        try expectEqual(@as(usize, 0), pgm.root_script.len);
 
         const fun = pgm.functions[0];
 
         try std.testing.expectEqualStrings("empty", fun.name);
-        try std.testing.expectEqual(ast.Statement.Type.block, fun.body.type);
-        try std.testing.expectEqual(@as(usize, 0), fun.body.type.block.len);
-        try std.testing.expectEqual(@as(usize, 3), fun.parameters.len);
+        try expectEqual(ast.Statement.Type.block, fun.body.type);
+        try expectEqual(@as(usize, 0), fun.body.type.block.len);
+        try expectEqual(@as(usize, 3), fun.parameters.len);
         try std.testing.expectEqualStrings("p0", fun.parameters[0]);
         try std.testing.expectEqualStrings("p1", fun.parameters[1]);
         try std.testing.expectEqualStrings("p2", fun.parameters[2]);
@@ -968,30 +975,30 @@ test "parse multiple top level statements" {
     var pgm = try parseTest(";;;");
     defer pgm.deinit();
 
-    try std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 3), pgm.root_script.len);
+    try expectEqual(@as(usize, 0), pgm.functions.len);
+    try expectEqual(@as(usize, 3), pgm.root_script.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.empty, pgm.root_script[0].type);
-    try std.testing.expectEqual(ast.Statement.Type.empty, pgm.root_script[1].type);
-    try std.testing.expectEqual(ast.Statement.Type.empty, pgm.root_script[2].type);
+    try expectEqual(ast.Statement.Type.empty, pgm.root_script[0].type);
+    try expectEqual(ast.Statement.Type.empty, pgm.root_script[1].type);
+    try expectEqual(ast.Statement.Type.empty, pgm.root_script[2].type);
 }
 
 test "parse mixed function and top level statement" {
     var pgm = try parseTest(";function n(){};");
     defer pgm.deinit();
 
-    try std.testing.expectEqual(@as(usize, 1), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 2), pgm.root_script.len);
+    try expectEqual(@as(usize, 1), pgm.functions.len);
+    try expectEqual(@as(usize, 2), pgm.root_script.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.empty, pgm.root_script[0].type);
-    try std.testing.expectEqual(ast.Statement.Type.empty, pgm.root_script[1].type);
+    try expectEqual(ast.Statement.Type.empty, pgm.root_script[0].type);
+    try expectEqual(ast.Statement.Type.empty, pgm.root_script[1].type);
 
     const fun = pgm.functions[0];
 
     try std.testing.expectEqualStrings("n", fun.name);
-    try std.testing.expectEqual(ast.Statement.Type.block, fun.body.type);
-    try std.testing.expectEqual(@as(usize, 0), fun.body.type.block.len);
-    try std.testing.expectEqual(@as(usize, 0), fun.parameters.len);
+    try expectEqual(ast.Statement.Type.block, fun.body.type);
+    try expectEqual(@as(usize, 0), fun.body.type.block.len);
+    try expectEqual(@as(usize, 0), fun.parameters.len);
 }
 
 test "nested blocks" {
@@ -1006,26 +1013,26 @@ test "nested blocks" {
     );
     defer pgm.deinit();
 
-    try std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 3), pgm.root_script.len);
+    try expectEqual(@as(usize, 0), pgm.functions.len);
+    try expectEqual(@as(usize, 3), pgm.root_script.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.block, pgm.root_script[0].type);
-    try std.testing.expectEqual(ast.Statement.Type.block, pgm.root_script[1].type);
-    try std.testing.expectEqual(ast.Statement.Type.block, pgm.root_script[2].type);
+    try expectEqual(ast.Statement.Type.block, pgm.root_script[0].type);
+    try expectEqual(ast.Statement.Type.block, pgm.root_script[1].type);
+    try expectEqual(ast.Statement.Type.block, pgm.root_script[2].type);
 
-    try std.testing.expectEqual(@as(usize, 0), pgm.root_script[0].type.block.len);
-    try std.testing.expectEqual(@as(usize, 3), pgm.root_script[1].type.block.len);
-    try std.testing.expectEqual(@as(usize, 0), pgm.root_script[2].type.block.len);
+    try expectEqual(@as(usize, 0), pgm.root_script[0].type.block.len);
+    try expectEqual(@as(usize, 3), pgm.root_script[1].type.block.len);
+    try expectEqual(@as(usize, 0), pgm.root_script[2].type.block.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.block, pgm.root_script[1].type.block[0].type);
-    try std.testing.expectEqual(ast.Statement.Type.block, pgm.root_script[1].type.block[1].type);
-    try std.testing.expectEqual(ast.Statement.Type.empty, pgm.root_script[1].type.block[2].type);
+    try expectEqual(ast.Statement.Type.block, pgm.root_script[1].type.block[0].type);
+    try expectEqual(ast.Statement.Type.block, pgm.root_script[1].type.block[1].type);
+    try expectEqual(ast.Statement.Type.empty, pgm.root_script[1].type.block[2].type);
 
-    try std.testing.expectEqual(@as(usize, 1), pgm.root_script[1].type.block[0].type.block.len);
-    try std.testing.expectEqual(@as(usize, 2), pgm.root_script[1].type.block[1].type.block.len);
+    try expectEqual(@as(usize, 1), pgm.root_script[1].type.block[0].type.block.len);
+    try expectEqual(@as(usize, 2), pgm.root_script[1].type.block[1].type.block.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.empty, pgm.root_script[1].type.block[1].type.block[0].type);
-    try std.testing.expectEqual(ast.Statement.Type.empty, pgm.root_script[1].type.block[1].type.block[0].type);
+    try expectEqual(ast.Statement.Type.empty, pgm.root_script[1].type.block[1].type.block[0].type);
+    try expectEqual(ast.Statement.Type.empty, pgm.root_script[1].type.block[1].type.block[0].type);
 }
 
 test "nested blocks in functions" {
@@ -1042,262 +1049,262 @@ test "nested blocks in functions" {
     );
     defer pgm.deinit();
 
-    try std.testing.expectEqual(@as(usize, 1), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 0), pgm.root_script.len);
+    try expectEqual(@as(usize, 1), pgm.functions.len);
+    try expectEqual(@as(usize, 0), pgm.root_script.len);
 
     const fun = pgm.functions[0];
 
-    try std.testing.expectEqual(ast.Statement.Type.block, fun.body.type);
+    try expectEqual(ast.Statement.Type.block, fun.body.type);
 
     const items = fun.body.type.block;
 
-    try std.testing.expectEqual(ast.Statement.Type.block, items[0].type);
-    try std.testing.expectEqual(ast.Statement.Type.block, items[1].type);
-    try std.testing.expectEqual(ast.Statement.Type.block, items[2].type);
+    try expectEqual(ast.Statement.Type.block, items[0].type);
+    try expectEqual(ast.Statement.Type.block, items[1].type);
+    try expectEqual(ast.Statement.Type.block, items[2].type);
 
-    try std.testing.expectEqual(@as(usize, 0), items[0].type.block.len);
-    try std.testing.expectEqual(@as(usize, 3), items[1].type.block.len);
-    try std.testing.expectEqual(@as(usize, 0), items[2].type.block.len);
+    try expectEqual(@as(usize, 0), items[0].type.block.len);
+    try expectEqual(@as(usize, 3), items[1].type.block.len);
+    try expectEqual(@as(usize, 0), items[2].type.block.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.block, items[1].type.block[0].type);
-    try std.testing.expectEqual(ast.Statement.Type.block, items[1].type.block[1].type);
-    try std.testing.expectEqual(ast.Statement.Type.empty, items[1].type.block[2].type);
+    try expectEqual(ast.Statement.Type.block, items[1].type.block[0].type);
+    try expectEqual(ast.Statement.Type.block, items[1].type.block[1].type);
+    try expectEqual(ast.Statement.Type.empty, items[1].type.block[2].type);
 
-    try std.testing.expectEqual(@as(usize, 1), items[1].type.block[0].type.block.len);
-    try std.testing.expectEqual(@as(usize, 2), items[1].type.block[1].type.block.len);
+    try expectEqual(@as(usize, 1), items[1].type.block[0].type.block.len);
+    try expectEqual(@as(usize, 2), items[1].type.block[1].type.block.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.empty, items[1].type.block[1].type.block[0].type);
-    try std.testing.expectEqual(ast.Statement.Type.empty, items[1].type.block[1].type.block[0].type);
+    try expectEqual(ast.Statement.Type.empty, items[1].type.block[1].type.block[0].type);
+    try expectEqual(ast.Statement.Type.empty, items[1].type.block[1].type.block[0].type);
 }
 
 test "parsing break" {
     var pgm = try parseTest("break;");
     defer pgm.deinit();
 
-    try std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+    try expectEqual(@as(usize, 0), pgm.functions.len);
+    try expectEqual(@as(usize, 1), pgm.root_script.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.@"break", pgm.root_script[0].type);
+    try expectEqual(ast.Statement.Type.@"break", pgm.root_script[0].type);
 }
 
 test "parsing continue" {
     var pgm = try parseTest("continue;");
     defer pgm.deinit();
 
-    try std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+    try expectEqual(@as(usize, 0), pgm.functions.len);
+    try expectEqual(@as(usize, 1), pgm.root_script.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.@"continue", pgm.root_script[0].type);
+    try expectEqual(ast.Statement.Type.@"continue", pgm.root_script[0].type);
 }
 
 test "parsing while" {
     var pgm = try parseTest("while(1) { }");
     defer pgm.deinit();
 
-    try std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+    try expectEqual(@as(usize, 0), pgm.functions.len);
+    try expectEqual(@as(usize, 1), pgm.root_script.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.while_loop, pgm.root_script[0].type);
-    try std.testing.expectEqual(ast.Statement.Type.block, pgm.root_script[0].type.while_loop.body.type);
-    try std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.while_loop.condition.type);
+    try expectEqual(ast.Statement.Type.while_loop, pgm.root_script[0].type);
+    try expectEqual(ast.Statement.Type.block, pgm.root_script[0].type.while_loop.body.type);
+    try expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.while_loop.condition.type);
 }
 
 test "parsing for" {
     var pgm = try parseTest("for(name in 1) { }");
     defer pgm.deinit();
 
-    try std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+    try expectEqual(@as(usize, 0), pgm.functions.len);
+    try expectEqual(@as(usize, 1), pgm.root_script.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.for_loop, pgm.root_script[0].type);
-    try std.testing.expectEqualStrings("name", pgm.root_script[0].type.for_loop.variable);
-    try std.testing.expectEqual(ast.Statement.Type.block, pgm.root_script[0].type.for_loop.body.type);
-    try std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.for_loop.source.type);
+    try expectEqual(ast.Statement.Type.for_loop, pgm.root_script[0].type);
+    try expectEqualStrings("name", pgm.root_script[0].type.for_loop.variable);
+    try expectEqual(ast.Statement.Type.block, pgm.root_script[0].type.for_loop.body.type);
+    try expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.for_loop.source.type);
 }
 
 test "parsing single if" {
     var pgm = try parseTest("if(1) { }");
     defer pgm.deinit();
 
-    try std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+    try expectEqual(@as(usize, 0), pgm.functions.len);
+    try expectEqual(@as(usize, 1), pgm.root_script.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.if_statement, pgm.root_script[0].type);
-    try std.testing.expectEqual(ast.Statement.Type.block, pgm.root_script[0].type.if_statement.true_body.type);
-    try std.testing.expectEqual(@as(?*ast.Statement, null), pgm.root_script[0].type.if_statement.false_body);
-    try std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.if_statement.condition.type);
+    try expectEqual(ast.Statement.Type.if_statement, pgm.root_script[0].type);
+    try expectEqual(ast.Statement.Type.block, pgm.root_script[0].type.if_statement.true_body.type);
+    try expectEqual(@as(?*ast.Statement, null), pgm.root_script[0].type.if_statement.false_body);
+    try expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.if_statement.condition.type);
 }
 
 test "parsing if-else" {
     var pgm = try parseTest("if(1) { } else ;");
     defer pgm.deinit();
 
-    try std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+    try expectEqual(@as(usize, 0), pgm.functions.len);
+    try expectEqual(@as(usize, 1), pgm.root_script.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.if_statement, pgm.root_script[0].type);
-    try std.testing.expectEqual(ast.Statement.Type.block, pgm.root_script[0].type.if_statement.true_body.type);
-    try std.testing.expectEqual(ast.Statement.Type.empty, pgm.root_script[0].type.if_statement.false_body.?.type);
-    try std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.if_statement.condition.type);
+    try expectEqual(ast.Statement.Type.if_statement, pgm.root_script[0].type);
+    try expectEqual(ast.Statement.Type.block, pgm.root_script[0].type.if_statement.true_body.type);
+    try expectEqual(ast.Statement.Type.empty, pgm.root_script[0].type.if_statement.false_body.?.type);
+    try expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.if_statement.condition.type);
 }
 
 test "parsing return (void)" {
     var pgm = try parseTest("return;");
     defer pgm.deinit();
 
-    try std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+    try expectEqual(@as(usize, 0), pgm.functions.len);
+    try expectEqual(@as(usize, 1), pgm.root_script.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.return_void, pgm.root_script[0].type);
+    try expectEqual(ast.Statement.Type.return_void, pgm.root_script[0].type);
 }
 
 test "parsing return (value)" {
     var pgm = try parseTest("return 1;");
     defer pgm.deinit();
 
-    try std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+    try expectEqual(@as(usize, 0), pgm.functions.len);
+    try expectEqual(@as(usize, 1), pgm.root_script.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.return_expr, pgm.root_script[0].type);
-    try std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.return_expr.type);
+    try expectEqual(ast.Statement.Type.return_expr, pgm.root_script[0].type);
+    try expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.return_expr.type);
 }
 
 test "parsing var declaration (no value)" {
     var pgm = try parseTest("var name;");
     defer pgm.deinit();
 
-    try std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+    try expectEqual(@as(usize, 0), pgm.functions.len);
+    try expectEqual(@as(usize, 1), pgm.root_script.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.declaration, pgm.root_script[0].type);
-    try std.testing.expectEqualStrings("name", pgm.root_script[0].type.declaration.variable);
-    try std.testing.expectEqual(false, pgm.root_script[0].type.declaration.is_const);
-    try std.testing.expectEqual(@as(?ast.Expression, null), pgm.root_script[0].type.declaration.initial_value);
+    try expectEqual(ast.Statement.Type.declaration, pgm.root_script[0].type);
+    try expectEqualStrings("name", pgm.root_script[0].type.declaration.variable);
+    try expectEqual(false, pgm.root_script[0].type.declaration.is_const);
+    try expectEqual(@as(?ast.Expression, null), pgm.root_script[0].type.declaration.initial_value);
 }
 
 test "parsing var declaration (initial value)" {
     var pgm = try parseTest("var name = 1;");
     defer pgm.deinit();
 
-    try std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+    try expectEqual(@as(usize, 0), pgm.functions.len);
+    try expectEqual(@as(usize, 1), pgm.root_script.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.declaration, pgm.root_script[0].type);
-    try std.testing.expectEqualStrings("name", pgm.root_script[0].type.declaration.variable);
-    try std.testing.expectEqual(false, pgm.root_script[0].type.declaration.is_const);
-    try std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.declaration.initial_value.?.type);
+    try expectEqual(ast.Statement.Type.declaration, pgm.root_script[0].type);
+    try expectEqualStrings("name", pgm.root_script[0].type.declaration.variable);
+    try expectEqual(false, pgm.root_script[0].type.declaration.is_const);
+    try expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.declaration.initial_value.?.type);
 }
 
 test "parsing const declaration (no value)" {
     var pgm = try parseTest("const name;");
     defer pgm.deinit();
 
-    try std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+    try expectEqual(@as(usize, 0), pgm.functions.len);
+    try expectEqual(@as(usize, 1), pgm.root_script.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.declaration, pgm.root_script[0].type);
-    try std.testing.expectEqualStrings("name", pgm.root_script[0].type.declaration.variable);
-    try std.testing.expectEqual(true, pgm.root_script[0].type.declaration.is_const);
-    try std.testing.expectEqual(@as(?ast.Expression, null), pgm.root_script[0].type.declaration.initial_value);
+    try expectEqual(ast.Statement.Type.declaration, pgm.root_script[0].type);
+    try expectEqualStrings("name", pgm.root_script[0].type.declaration.variable);
+    try expectEqual(true, pgm.root_script[0].type.declaration.is_const);
+    try expectEqual(@as(?ast.Expression, null), pgm.root_script[0].type.declaration.initial_value);
 }
 
 test "parsing const declaration (initial value)" {
     var pgm = try parseTest("const name = 1;");
     defer pgm.deinit();
 
-    try std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+    try expectEqual(@as(usize, 0), pgm.functions.len);
+    try expectEqual(@as(usize, 1), pgm.root_script.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.declaration, pgm.root_script[0].type);
-    try std.testing.expectEqualStrings("name", pgm.root_script[0].type.declaration.variable);
-    try std.testing.expectEqual(true, pgm.root_script[0].type.declaration.is_const);
-    try std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.declaration.initial_value.?.type);
+    try expectEqual(ast.Statement.Type.declaration, pgm.root_script[0].type);
+    try expectEqualStrings("name", pgm.root_script[0].type.declaration.variable);
+    try expectEqual(true, pgm.root_script[0].type.declaration.is_const);
+    try expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.declaration.initial_value.?.type);
 }
 
 test "parsing assignment" {
     var pgm = try parseTest("1 = 1;");
     defer pgm.deinit();
 
-    try std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+    try expectEqual(@as(usize, 0), pgm.functions.len);
+    try expectEqual(@as(usize, 1), pgm.root_script.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.assignment, pgm.root_script[0].type);
-    try std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.target.type);
-    try std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.value.type);
+    try expectEqual(ast.Statement.Type.assignment, pgm.root_script[0].type);
+    try expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.target.type);
+    try expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.value.type);
 }
 
 test "parsing operator-assignment addition" {
     var pgm = try parseTest("1 += 1;");
     defer pgm.deinit();
 
-    try std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+    try expectEqual(@as(usize, 0), pgm.functions.len);
+    try expectEqual(@as(usize, 1), pgm.root_script.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.assignment, pgm.root_script[0].type);
-    try std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.target.type);
-    try std.testing.expectEqual(ast.Expression.Type.binary_operator, pgm.root_script[0].type.assignment.value.type);
-    try std.testing.expectEqual(ast.BinaryOperator.add, pgm.root_script[0].type.assignment.value.type.binary_operator.operator);
+    try expectEqual(ast.Statement.Type.assignment, pgm.root_script[0].type);
+    try expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.target.type);
+    try expectEqual(ast.Expression.Type.binary_operator, pgm.root_script[0].type.assignment.value.type);
+    try expectEqual(ast.BinaryOperator.add, pgm.root_script[0].type.assignment.value.type.binary_operator.operator);
 }
 
 test "parsing operator-assignment subtraction" {
     var pgm = try parseTest("1 -= 1;");
     defer pgm.deinit();
 
-    try std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+    try expectEqual(@as(usize, 0), pgm.functions.len);
+    try expectEqual(@as(usize, 1), pgm.root_script.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.assignment, pgm.root_script[0].type);
-    try std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.target.type);
-    try std.testing.expectEqual(ast.Expression.Type.binary_operator, pgm.root_script[0].type.assignment.value.type);
-    try std.testing.expectEqual(ast.BinaryOperator.subtract, pgm.root_script[0].type.assignment.value.type.binary_operator.operator);
+    try expectEqual(ast.Statement.Type.assignment, pgm.root_script[0].type);
+    try expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.target.type);
+    try expectEqual(ast.Expression.Type.binary_operator, pgm.root_script[0].type.assignment.value.type);
+    try expectEqual(ast.BinaryOperator.subtract, pgm.root_script[0].type.assignment.value.type.binary_operator.operator);
 }
 
 test "parsing operator-assignment multiplication" {
     var pgm = try parseTest("1 *= 1;");
     defer pgm.deinit();
 
-    try std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+    try expectEqual(@as(usize, 0), pgm.functions.len);
+    try expectEqual(@as(usize, 1), pgm.root_script.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.assignment, pgm.root_script[0].type);
-    try std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.target.type);
-    try std.testing.expectEqual(ast.Expression.Type.binary_operator, pgm.root_script[0].type.assignment.value.type);
-    try std.testing.expectEqual(ast.BinaryOperator.multiply, pgm.root_script[0].type.assignment.value.type.binary_operator.operator);
+    try expectEqual(ast.Statement.Type.assignment, pgm.root_script[0].type);
+    try expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.target.type);
+    try expectEqual(ast.Expression.Type.binary_operator, pgm.root_script[0].type.assignment.value.type);
+    try expectEqual(ast.BinaryOperator.multiply, pgm.root_script[0].type.assignment.value.type.binary_operator.operator);
 }
 
 test "parsing operator-assignment division" {
     var pgm = try parseTest("1 /= 1;");
     defer pgm.deinit();
 
-    try std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+    try expectEqual(@as(usize, 0), pgm.functions.len);
+    try expectEqual(@as(usize, 1), pgm.root_script.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.assignment, pgm.root_script[0].type);
-    try std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.target.type);
-    try std.testing.expectEqual(ast.Expression.Type.binary_operator, pgm.root_script[0].type.assignment.value.type);
-    try std.testing.expectEqual(ast.BinaryOperator.divide, pgm.root_script[0].type.assignment.value.type.binary_operator.operator);
+    try expectEqual(ast.Statement.Type.assignment, pgm.root_script[0].type);
+    try expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.target.type);
+    try expectEqual(ast.Expression.Type.binary_operator, pgm.root_script[0].type.assignment.value.type);
+    try expectEqual(ast.BinaryOperator.divide, pgm.root_script[0].type.assignment.value.type.binary_operator.operator);
 }
 
 test "parsing operator-assignment modulus" {
     var pgm = try parseTest("1 %= 1;");
     defer pgm.deinit();
 
-    try std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
+    try expectEqual(@as(usize, 0), pgm.functions.len);
+    try expectEqual(@as(usize, 1), pgm.root_script.len);
 
-    try std.testing.expectEqual(ast.Statement.Type.assignment, pgm.root_script[0].type);
-    try std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.target.type);
-    try std.testing.expectEqual(ast.Expression.Type.binary_operator, pgm.root_script[0].type.assignment.value.type);
-    try std.testing.expectEqual(ast.BinaryOperator.modulus, pgm.root_script[0].type.assignment.value.type.binary_operator.operator);
+    try expectEqual(ast.Statement.Type.assignment, pgm.root_script[0].type);
+    try expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.target.type);
+    try expectEqual(ast.Expression.Type.binary_operator, pgm.root_script[0].type.assignment.value.type);
+    try expectEqual(ast.BinaryOperator.modulus, pgm.root_script[0].type.assignment.value.type.binary_operator.operator);
 }
 
 /// Parse a program with `1 = $(EXPR)`, will return `$(EXPR)`
 fn getTestExpr(pgm: ast.Program) !ast.Expression {
-    try std.testing.expectEqual(@as(usize, 0), pgm.functions.len);
-    try std.testing.expectEqual(@as(usize, 1), pgm.root_script.len);
-    try std.testing.expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.target.type);
+    try expectEqual(@as(usize, 0), pgm.functions.len);
+    try expectEqual(@as(usize, 1), pgm.root_script.len);
+    try expectEqual(ast.Expression.Type.number_literal, pgm.root_script[0].type.assignment.target.type);
 
-    var expr = pgm.root_script[0].type.assignment.value;
+    const expr = pgm.root_script[0].type.assignment.value;
 
     return expr;
 }
@@ -1308,7 +1315,7 @@ test "integer literal" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.number_literal, expr.type);
+    try expectEqual(ast.Expression.Type.number_literal, expr.type);
     try std.testing.expectApproxEqAbs(@as(f64, 1), expr.type.number_literal, 0.000001);
 }
 
@@ -1318,7 +1325,7 @@ test "decimal literal" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.number_literal, expr.type);
+    try expectEqual(ast.Expression.Type.number_literal, expr.type);
     try std.testing.expectApproxEqAbs(@as(f64, 1), expr.type.number_literal, 0.000001);
 }
 
@@ -1328,7 +1335,7 @@ test "hexadecimal literal" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.number_literal, expr.type);
+    try expectEqual(ast.Expression.Type.number_literal, expr.type);
     try std.testing.expectApproxEqAbs(@as(f64, 1), expr.type.number_literal, 0.000001);
 }
 
@@ -1338,8 +1345,8 @@ test "string literal" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.string_literal, expr.type);
-    try std.testing.expectEqualStrings("string content", expr.type.string_literal);
+    try expectEqual(ast.Expression.Type.string_literal, expr.type);
+    try expectEqualStrings("string content", expr.type.string_literal);
 }
 
 test "escaped string literal" {
@@ -1348,8 +1355,8 @@ test "escaped string literal" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.string_literal, expr.type);
-    try std.testing.expectEqualStrings("\"content\"", expr.type.string_literal);
+    try expectEqual(ast.Expression.Type.string_literal, expr.type);
+    try expectEqualStrings("\"content\"", expr.type.string_literal);
 }
 
 test "character literal" {
@@ -1358,8 +1365,8 @@ test "character literal" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.number_literal, expr.type);
-    try std.testing.expectEqual(@as(f64, ' '), expr.type.number_literal);
+    try expectEqual(ast.Expression.Type.number_literal, expr.type);
+    try expectEqual(@as(f64, ' '), expr.type.number_literal);
 }
 
 test "variable reference" {
@@ -1368,8 +1375,8 @@ test "variable reference" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.variable_expr, expr.type);
-    try std.testing.expectEqualStrings("variable_name", expr.type.variable_expr);
+    try expectEqual(ast.Expression.Type.variable_expr, expr.type);
+    try expectEqualStrings("variable_name", expr.type.variable_expr);
 }
 
 test "addition expression" {
@@ -1378,8 +1385,8 @@ test "addition expression" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
-    try std.testing.expectEqual(ast.BinaryOperator.add, expr.type.binary_operator.operator);
+    try expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    try expectEqual(ast.BinaryOperator.add, expr.type.binary_operator.operator);
 }
 
 test "subtraction expression" {
@@ -1388,8 +1395,8 @@ test "subtraction expression" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
-    try std.testing.expectEqual(ast.BinaryOperator.subtract, expr.type.binary_operator.operator);
+    try expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    try expectEqual(ast.BinaryOperator.subtract, expr.type.binary_operator.operator);
 }
 
 test "multiplication expression" {
@@ -1398,8 +1405,8 @@ test "multiplication expression" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
-    try std.testing.expectEqual(ast.BinaryOperator.multiply, expr.type.binary_operator.operator);
+    try expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    try expectEqual(ast.BinaryOperator.multiply, expr.type.binary_operator.operator);
 }
 
 test "division expression" {
@@ -1408,8 +1415,8 @@ test "division expression" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
-    try std.testing.expectEqual(ast.BinaryOperator.divide, expr.type.binary_operator.operator);
+    try expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    try expectEqual(ast.BinaryOperator.divide, expr.type.binary_operator.operator);
 }
 
 test "modulus expression" {
@@ -1418,8 +1425,8 @@ test "modulus expression" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
-    try std.testing.expectEqual(ast.BinaryOperator.modulus, expr.type.binary_operator.operator);
+    try expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    try expectEqual(ast.BinaryOperator.modulus, expr.type.binary_operator.operator);
 }
 
 test "boolean or expression" {
@@ -1428,8 +1435,8 @@ test "boolean or expression" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
-    try std.testing.expectEqual(ast.BinaryOperator.boolean_or, expr.type.binary_operator.operator);
+    try expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    try expectEqual(ast.BinaryOperator.boolean_or, expr.type.binary_operator.operator);
 }
 
 test "boolean and expression" {
@@ -1438,8 +1445,8 @@ test "boolean and expression" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
-    try std.testing.expectEqual(ast.BinaryOperator.boolean_and, expr.type.binary_operator.operator);
+    try expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    try expectEqual(ast.BinaryOperator.boolean_and, expr.type.binary_operator.operator);
 }
 
 test "greater than expression" {
@@ -1448,8 +1455,8 @@ test "greater than expression" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
-    try std.testing.expectEqual(ast.BinaryOperator.greater_than, expr.type.binary_operator.operator);
+    try expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    try expectEqual(ast.BinaryOperator.greater_than, expr.type.binary_operator.operator);
 }
 
 test "less than expression" {
@@ -1458,8 +1465,8 @@ test "less than expression" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
-    try std.testing.expectEqual(ast.BinaryOperator.less_than, expr.type.binary_operator.operator);
+    try expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    try expectEqual(ast.BinaryOperator.less_than, expr.type.binary_operator.operator);
 }
 
 test "greater or equal than expression" {
@@ -1468,8 +1475,8 @@ test "greater or equal than expression" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
-    try std.testing.expectEqual(ast.BinaryOperator.greater_or_equal_than, expr.type.binary_operator.operator);
+    try expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    try expectEqual(ast.BinaryOperator.greater_or_equal_than, expr.type.binary_operator.operator);
 }
 
 test "less or equal than expression" {
@@ -1478,8 +1485,8 @@ test "less or equal than expression" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
-    try std.testing.expectEqual(ast.BinaryOperator.less_or_equal_than, expr.type.binary_operator.operator);
+    try expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    try expectEqual(ast.BinaryOperator.less_or_equal_than, expr.type.binary_operator.operator);
 }
 
 test "equal expression" {
@@ -1488,8 +1495,8 @@ test "equal expression" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
-    try std.testing.expectEqual(ast.BinaryOperator.equal, expr.type.binary_operator.operator);
+    try expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    try expectEqual(ast.BinaryOperator.equal, expr.type.binary_operator.operator);
 }
 
 test "different expression" {
@@ -1498,8 +1505,8 @@ test "different expression" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
-    try std.testing.expectEqual(ast.BinaryOperator.different, expr.type.binary_operator.operator);
+    try expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    try expectEqual(ast.BinaryOperator.different, expr.type.binary_operator.operator);
 }
 
 test "operator precedence (binaries)" {
@@ -1508,11 +1515,11 @@ test "operator precedence (binaries)" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
-    try std.testing.expectEqual(ast.BinaryOperator.add, expr.type.binary_operator.operator);
+    try expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    try expectEqual(ast.BinaryOperator.add, expr.type.binary_operator.operator);
 
-    try std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type.binary_operator.rhs.type);
-    try std.testing.expectEqual(ast.BinaryOperator.multiply, expr.type.binary_operator.rhs.type.binary_operator.operator);
+    try expectEqual(ast.Expression.Type.binary_operator, expr.type.binary_operator.rhs.type);
+    try expectEqual(ast.BinaryOperator.multiply, expr.type.binary_operator.rhs.type.binary_operator.operator);
 }
 
 test "operator precedence (unary and binary mixed)" {
@@ -1521,11 +1528,11 @@ test "operator precedence (unary and binary mixed)" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
-    try std.testing.expectEqual(ast.BinaryOperator.multiply, expr.type.binary_operator.operator);
+    try expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    try expectEqual(ast.BinaryOperator.multiply, expr.type.binary_operator.operator);
 
-    try std.testing.expectEqual(ast.Expression.Type.unary_operator, expr.type.binary_operator.lhs.type);
-    try std.testing.expectEqual(ast.UnaryOperator.negate, expr.type.binary_operator.lhs.type.unary_operator.operator);
+    try expectEqual(ast.Expression.Type.unary_operator, expr.type.binary_operator.lhs.type);
+    try expectEqual(ast.UnaryOperator.negate, expr.type.binary_operator.lhs.type.unary_operator.operator);
 }
 
 test "invers operator precedence with parens" {
@@ -1534,11 +1541,11 @@ test "invers operator precedence with parens" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type);
-    try std.testing.expectEqual(ast.BinaryOperator.multiply, expr.type.binary_operator.operator);
+    try expectEqual(ast.Expression.Type.binary_operator, expr.type);
+    try expectEqual(ast.BinaryOperator.multiply, expr.type.binary_operator.operator);
 
-    try std.testing.expectEqual(ast.Expression.Type.binary_operator, expr.type.binary_operator.rhs.type);
-    try std.testing.expectEqual(ast.BinaryOperator.add, expr.type.binary_operator.rhs.type.binary_operator.operator);
+    try expectEqual(ast.Expression.Type.binary_operator, expr.type.binary_operator.rhs.type);
+    try expectEqual(ast.BinaryOperator.add, expr.type.binary_operator.rhs.type.binary_operator.operator);
 }
 
 test "unary minus expression" {
@@ -1547,8 +1554,8 @@ test "unary minus expression" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.unary_operator, expr.type);
-    try std.testing.expectEqual(ast.UnaryOperator.negate, expr.type.unary_operator.operator);
+    try expectEqual(ast.Expression.Type.unary_operator, expr.type);
+    try expectEqual(ast.UnaryOperator.negate, expr.type.unary_operator.operator);
 }
 
 test "unary not expression" {
@@ -1557,8 +1564,8 @@ test "unary not expression" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.unary_operator, expr.type);
-    try std.testing.expectEqual(ast.UnaryOperator.boolean_not, expr.type.unary_operator.operator);
+    try expectEqual(ast.Expression.Type.unary_operator, expr.type);
+    try expectEqual(ast.UnaryOperator.boolean_not, expr.type.unary_operator.operator);
 }
 
 test "single array indexing expression" {
@@ -1567,9 +1574,9 @@ test "single array indexing expression" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.array_indexer, expr.type);
-    try std.testing.expectEqual(ast.Expression.Type.number_literal, expr.type.array_indexer.value.type);
-    try std.testing.expectEqual(ast.Expression.Type.string_literal, expr.type.array_indexer.index.type);
+    try expectEqual(ast.Expression.Type.array_indexer, expr.type);
+    try expectEqual(ast.Expression.Type.number_literal, expr.type.array_indexer.value.type);
+    try expectEqual(ast.Expression.Type.string_literal, expr.type.array_indexer.index.type);
 }
 
 test "multiple array indexing expressions" {
@@ -1578,16 +1585,16 @@ test "multiple array indexing expressions" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.array_indexer, expr.type);
-    try std.testing.expectEqual(ast.Expression.Type.array_indexer, expr.type.array_indexer.value.type);
-    try std.testing.expectEqual(ast.Expression.Type.variable_expr, expr.type.array_indexer.index.type);
-    try std.testing.expectEqualStrings("c", expr.type.array_indexer.index.type.variable_expr);
+    try expectEqual(ast.Expression.Type.array_indexer, expr.type);
+    try expectEqual(ast.Expression.Type.array_indexer, expr.type.array_indexer.value.type);
+    try expectEqual(ast.Expression.Type.variable_expr, expr.type.array_indexer.index.type);
+    try expectEqualStrings("c", expr.type.array_indexer.index.type.variable_expr);
 
-    try std.testing.expectEqual(ast.Expression.Type.variable_expr, expr.type.array_indexer.value.type.array_indexer.value.type);
-    try std.testing.expectEqual(ast.Expression.Type.variable_expr, expr.type.array_indexer.value.type.array_indexer.index.type);
+    try expectEqual(ast.Expression.Type.variable_expr, expr.type.array_indexer.value.type.array_indexer.value.type);
+    try expectEqual(ast.Expression.Type.variable_expr, expr.type.array_indexer.value.type.array_indexer.index.type);
 
-    try std.testing.expectEqualStrings("a", expr.type.array_indexer.value.type.array_indexer.value.type.variable_expr);
-    try std.testing.expectEqualStrings("b", expr.type.array_indexer.value.type.array_indexer.index.type.variable_expr);
+    try expectEqualStrings("a", expr.type.array_indexer.value.type.array_indexer.value.type.variable_expr);
+    try expectEqualStrings("b", expr.type.array_indexer.value.type.array_indexer.index.type.variable_expr);
 }
 
 test "zero parameter function call expression" {
@@ -1596,9 +1603,9 @@ test "zero parameter function call expression" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.function_call, expr.type);
-    try std.testing.expectEqual(ast.Expression.Type.variable_expr, expr.type.function_call.function.type);
-    try std.testing.expectEqual(@as(usize, 0), expr.type.function_call.arguments.len);
+    try expectEqual(ast.Expression.Type.function_call, expr.type);
+    try expectEqual(ast.Expression.Type.variable_expr, expr.type.function_call.function.type);
+    try expectEqual(@as(usize, 0), expr.type.function_call.arguments.len);
 }
 
 test "one parameter function call expression" {
@@ -1607,11 +1614,11 @@ test "one parameter function call expression" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.function_call, expr.type);
-    try std.testing.expectEqual(ast.Expression.Type.variable_expr, expr.type.function_call.function.type);
-    try std.testing.expectEqual(@as(usize, 1), expr.type.function_call.arguments.len);
+    try expectEqual(ast.Expression.Type.function_call, expr.type);
+    try expectEqual(ast.Expression.Type.variable_expr, expr.type.function_call.function.type);
+    try expectEqual(@as(usize, 1), expr.type.function_call.arguments.len);
 
-    try std.testing.expectEqualStrings("a", expr.type.function_call.arguments[0].type.variable_expr);
+    try expectEqualStrings("a", expr.type.function_call.arguments[0].type.variable_expr);
 }
 
 test "4 parameter function call expression" {
@@ -1620,14 +1627,14 @@ test "4 parameter function call expression" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.function_call, expr.type);
-    try std.testing.expectEqual(ast.Expression.Type.variable_expr, expr.type.function_call.function.type);
-    try std.testing.expectEqual(@as(usize, 4), expr.type.function_call.arguments.len);
+    try expectEqual(ast.Expression.Type.function_call, expr.type);
+    try expectEqual(ast.Expression.Type.variable_expr, expr.type.function_call.function.type);
+    try expectEqual(@as(usize, 4), expr.type.function_call.arguments.len);
 
-    try std.testing.expectEqualStrings("a", expr.type.function_call.arguments[0].type.variable_expr);
-    try std.testing.expectEqualStrings("b", expr.type.function_call.arguments[1].type.variable_expr);
-    try std.testing.expectEqualStrings("c", expr.type.function_call.arguments[2].type.variable_expr);
-    try std.testing.expectEqualStrings("d", expr.type.function_call.arguments[3].type.variable_expr);
+    try expectEqualStrings("a", expr.type.function_call.arguments[0].type.variable_expr);
+    try expectEqualStrings("b", expr.type.function_call.arguments[1].type.variable_expr);
+    try expectEqualStrings("c", expr.type.function_call.arguments[2].type.variable_expr);
+    try expectEqualStrings("d", expr.type.function_call.arguments[3].type.variable_expr);
 }
 
 test "zero parameter method call expression" {
@@ -1636,11 +1643,11 @@ test "zero parameter method call expression" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.method_call, expr.type);
+    try expectEqual(ast.Expression.Type.method_call, expr.type);
 
-    try std.testing.expectEqualStrings("foo", expr.type.method_call.name);
-    try std.testing.expectEqual(ast.Expression.Type.variable_expr, expr.type.method_call.object.type);
-    try std.testing.expectEqual(@as(usize, 0), expr.type.method_call.arguments.len);
+    try expectEqualStrings("foo", expr.type.method_call.name);
+    try expectEqual(ast.Expression.Type.variable_expr, expr.type.method_call.object.type);
+    try expectEqual(@as(usize, 0), expr.type.method_call.arguments.len);
 }
 
 test "one parameter method call expression" {
@@ -1649,13 +1656,13 @@ test "one parameter method call expression" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.method_call, expr.type);
+    try expectEqual(ast.Expression.Type.method_call, expr.type);
 
-    try std.testing.expectEqualStrings("foo", expr.type.method_call.name);
-    try std.testing.expectEqual(ast.Expression.Type.variable_expr, expr.type.method_call.object.type);
-    try std.testing.expectEqual(@as(usize, 1), expr.type.method_call.arguments.len);
+    try expectEqualStrings("foo", expr.type.method_call.name);
+    try expectEqual(ast.Expression.Type.variable_expr, expr.type.method_call.object.type);
+    try expectEqual(@as(usize, 1), expr.type.method_call.arguments.len);
 
-    try std.testing.expectEqualStrings("a", expr.type.method_call.arguments[0].type.variable_expr);
+    try expectEqualStrings("a", expr.type.method_call.arguments[0].type.variable_expr);
 }
 
 test "4 parameter method call expression" {
@@ -1664,16 +1671,16 @@ test "4 parameter method call expression" {
 
     const expr = try getTestExpr(pgm);
 
-    try std.testing.expectEqual(ast.Expression.Type.method_call, expr.type);
+    try expectEqual(ast.Expression.Type.method_call, expr.type);
 
-    try std.testing.expectEqualStrings("foo", expr.type.method_call.name);
-    try std.testing.expectEqual(ast.Expression.Type.variable_expr, expr.type.method_call.object.type);
-    try std.testing.expectEqual(@as(usize, 4), expr.type.method_call.arguments.len);
+    try expectEqualStrings("foo", expr.type.method_call.name);
+    try expectEqual(ast.Expression.Type.variable_expr, expr.type.method_call.object.type);
+    try expectEqual(@as(usize, 4), expr.type.method_call.arguments.len);
 
-    try std.testing.expectEqualStrings("a", expr.type.method_call.arguments[0].type.variable_expr);
-    try std.testing.expectEqualStrings("b", expr.type.method_call.arguments[1].type.variable_expr);
-    try std.testing.expectEqualStrings("c", expr.type.method_call.arguments[2].type.variable_expr);
-    try std.testing.expectEqualStrings("d", expr.type.method_call.arguments[3].type.variable_expr);
+    try expectEqualStrings("a", expr.type.method_call.arguments[0].type.variable_expr);
+    try expectEqualStrings("b", expr.type.method_call.arguments[1].type.variable_expr);
+    try expectEqualStrings("c", expr.type.method_call.arguments[2].type.variable_expr);
+    try expectEqualStrings("d", expr.type.method_call.arguments[3].type.variable_expr);
 }
 
 test "full suite parsing" {
@@ -1695,5 +1702,5 @@ test "full suite parsing" {
     try std.testing.expect(pgm.functions.len > 0);
 
     // assert that we didn't encounter syntax errors
-    try std.testing.expectEqual(@as(usize, 0), diagnostics.messages.items.len);
+    try expectEqual(@as(usize, 0), diagnostics.messages.items.len);
 }

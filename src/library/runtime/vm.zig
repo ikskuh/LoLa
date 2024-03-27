@@ -367,7 +367,7 @@ pub const VM = struct {
                         return error.IndexOutOfRange;
 
                     if (string.refcount != null and string.refcount.?.* > 1) {
-                        var new_string = try value_unit.String.init(self.allocator, string.contents);
+                        const new_string = try value_unit.String.init(self.allocator, string.contents);
 
                         string.deinit();
                         string.* = new_string;
@@ -389,7 +389,7 @@ pub const VM = struct {
                 errdefer array_val.deinit();
 
                 // is still owned by array_val and will be destroyed in case of array.
-                var array = try array_val.toArray();
+                const array = try array_val.toArray();
 
                 try self.push(Value.fromEnumerator(value_unit.Enumerator.initFromOwned(array)));
             },
@@ -566,8 +566,8 @@ pub const VM = struct {
 
                         const buffer = try string.obtainMutableStorage();
 
-                        std.mem.copy(u8, buffer[0..lstr.len], lstr);
-                        std.mem.copy(u8, buffer[lstr.len..buffer.len], rstr);
+                        @memcpy(buffer[0..lstr.len], lstr);
+                        @memcpy(buffer[lstr.len..buffer.len], rstr);
 
                         try self.push(Value.fromString(string));
                     },
@@ -681,7 +681,7 @@ pub const VM = struct {
                 break :blk false;
             },
             .syncUser => |fun| blk: {
-                var locals = try self.allocator.alloc(Value, call.argc);
+                const locals = try self.allocator.alloc(Value, call.argc);
                 for (locals) |*l| {
                     l.* = .void;
                 }
@@ -702,7 +702,7 @@ pub const VM = struct {
                 break :blk false;
             },
             .asyncUser => |fun| blk: {
-                var locals = try self.allocator.alloc(Value, call.argc);
+                const locals = try self.allocator.alloc(Value, call.argc);
                 for (locals) |*l| {
                     l.* = .void;
                 }
@@ -842,19 +842,19 @@ pub const VM = struct {
         if (self.currentAsynCall != null)
             return error.NotSupportedYet; // we cannot serialize async function that are in-flight atm
 
-        try stream.writeIntLittle(u64, self.stack.items.len);
-        try stream.writeIntLittle(u64, self.calls.items.len);
+        try stream.writeInt(u64, self.stack.items.len, .little);
+        try stream.writeInt(u64, self.calls.items.len, .little);
 
         for (self.stack.items) |item| {
             try item.serialize(stream);
         }
 
         for (self.calls.items) |item| {
-            try stream.writeIntLittle(u16, @as(u16, @intCast(item.locals.len)));
-            try stream.writeIntLittle(u32, item.decoder.offset); // we don't need to store the CompileUnit of the decoder, as it is implicitly referenced by the environment
-            try stream.writeIntLittle(u32, @as(u32, @intCast(item.stackBalance)));
+            try stream.writeInt(u16, @as(u16, @intCast(item.locals.len)), .little);
+            try stream.writeInt(u32, item.decoder.offset, .little); // we don't need to store the CompileUnit of the decoder, as it is implicitly referenced by the environment
+            try stream.writeInt(u32, @as(u32, @intCast(item.stackBalance)), .little);
             if (envmap.queryByPtr(item.environment)) |env_id| {
-                try stream.writeIntLittle(u32, env_id);
+                try stream.writeInt(u32, env_id, .little);
             } else {
                 return error.UnregisteredEnvironmentPointer;
             }
@@ -865,8 +865,8 @@ pub const VM = struct {
     }
 
     pub fn deserialize(allocator: std.mem.Allocator, envmap: *lola.runtime.EnvironmentMap, stream: anytype) !Self {
-        const stack_size = try stream.readIntLittle(u64);
-        const call_size = try stream.readIntLittle(u64);
+        const stack_size = try stream.readInt(u64, .little);
+        const call_size = try stream.readInt(u64, .little);
 
         var vm = Self{
             .allocator = allocator,
@@ -878,8 +878,8 @@ pub const VM = struct {
         errdefer vm.stack.deinit();
         errdefer vm.calls.deinit();
 
-        try vm.stack.ensureTotalCapacity(std.math.min(stack_size, 128));
-        try vm.calls.ensureTotalCapacity(std.math.min(call_size, 32));
+        try vm.stack.ensureTotalCapacity(@min(stack_size, 128));
+        try vm.calls.ensureTotalCapacity(@min(call_size, 32));
 
         try vm.stack.resize(stack_size);
         for (vm.stack.items) |*item| {
@@ -895,10 +895,10 @@ pub const VM = struct {
         {
             var i: usize = 0;
             while (i < call_size) : (i += 1) {
-                const local_count = try stream.readIntLittle(u16);
-                const offset = try stream.readIntLittle(u32);
-                const stack_balance = try stream.readIntLittle(u32);
-                const env_id = try stream.readIntLittle(u32);
+                const local_count = try stream.readInt(u16, .little);
+                const offset = try stream.readInt(u32, .little);
+                const stack_balance = try stream.readInt(u32, .little);
+                const env_id = try stream.readInt(u32, .little);
 
                 const env = envmap.queryById(env_id) orelse return error.UnregisteredEnvironmentPointer;
 

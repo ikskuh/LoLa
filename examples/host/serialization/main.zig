@@ -77,16 +77,16 @@ fn run_serialization(allocator: std.mem.Allocator, serialization_buffer: []u8) !
     var vm = try lola.runtime.VM.init(allocator, &env);
     defer vm.deinit();
 
-    var result = try vm.execute(405);
+    const result = try vm.execute(405);
     std.debug.assert(result == .exhausted); // we didn't finish running our nice example
 
-    var stdout = std.io.getStdOut().writer();
+    const stdout = std.io.getStdOut().writer();
     try stdout.writeAll("Suspend at\n");
     try vm.printStackTrace(stdout);
 
     {
         var stream = std.io.fixedBufferStream(serialization_buffer);
-        var writer = stream.writer();
+        const writer = stream.writer();
 
         try compile_unit.saveToStream(writer);
 
@@ -113,7 +113,7 @@ fn run_serialization(allocator: std.mem.Allocator, serialization_buffer: []u8) !
 
 fn run_deserialization(allocator: std.mem.Allocator, serialization_buffer: []u8) !void {
     var stream = std.io.fixedBufferStream(serialization_buffer);
-    var reader = stream.reader();
+    const reader = stream.reader();
 
     // Trivial deserialization:
     // Just load the compile unit from disk again

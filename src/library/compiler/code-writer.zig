@@ -93,7 +93,7 @@ pub const CodeWriter = struct {
         while (i < self.patches.items.len) {
             const patch = self.patches.items[i];
             if (patch.label == lbl) {
-                std.mem.writeIntLittle(u32, self.code.items[patch.offset..][0..4], item.value_ptr.*);
+                std.mem.writeInt(u32, self.code.items[patch.offset..][0..4], item.value_ptr.*, .little);
                 _ = self.patches.swapRemove(i);
             } else {
                 i += 1;
@@ -193,7 +193,7 @@ pub const CodeWriter = struct {
 
     fn emitInteger(self: *Self, comptime T: type, val: T) !void {
         var buf: [@sizeOf(T)]u8 = undefined;
-        std.mem.writeIntLittle(T, &buf, val);
+        std.mem.writeInt(T, &buf, val, .little);
         try self.emitRaw(&buf);
     }
 

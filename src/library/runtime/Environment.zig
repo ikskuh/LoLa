@@ -63,7 +63,7 @@ pub fn init(allocator: std.mem.Allocator, compileUnit: *const CompileUnit, objec
     errdefer self.functions.deinit();
 
     for (compileUnit.functions) |srcfun| {
-        var fun = Function{
+        const fun = Function{
             .script = ScriptFunction{
                 .environment = null, // this is a "self-contained" script function
                 .entryPoint = srcfun.entryPoint,
@@ -145,8 +145,6 @@ pub fn installModule(self: *Environment, comptime Module: type, context: AnyPoin
 
     // Install all functions from the namespace "functions":
     inline for (comptime std.meta.declarations(Module)) |decl| {
-        if (!decl.is_pub)
-            continue;
         const data = @field(Module, decl.name);
 
         if (@typeInfo(@TypeOf(data)) == .Fn) {
@@ -182,7 +180,7 @@ pub fn installModule(self: *Environment, comptime Module: type, context: AnyPoin
 
 /// Adds a function to the environment and makes it available for the script.
 pub fn installFunction(self: *Environment, name: []const u8, function: Function) !void {
-    var result = try self.functions.getOrPut(name);
+    const result = try self.functions.getOrPut(name);
     if (result.found_existing) {
         logger.err("tried to install already existing function '{s}'", .{name});
         return error.AlreadyExists;
@@ -228,7 +226,7 @@ fn computeSignature(self: Environment) u64 {
     // the comileUnit
     {
         var buf: [8]u8 = undefined;
-        std.mem.writeIntLittle(u64, &buf, self.scriptGlobals.len);
+        std.mem.writeInt(u64, &buf, self.scriptGlobals.len, .little);
         hasher.update(&buf);
     }
 
@@ -239,7 +237,7 @@ fn computeSignature(self: Environment) u64 {
 /// are restorable later.
 pub fn serialize(self: Environment, stream: anytype) !void {
     const sig = self.computeSignature();
-    try stream.writeIntLittle(u64, sig);
+    try stream.writeInt(u64, sig, .little);
 
     for (self.scriptGlobals) |glob| {
         try glob.serialize(stream);
@@ -251,7 +249,7 @@ pub fn serialize(self: Environment, stream: anytype) !void {
 /// is restored.
 pub fn deserialize(self: *Environment, stream: anytype) !void {
     const sig_env = self.computeSignature();
-    const sig_ser = try stream.readIntLittle(u64);
+    const sig_ser = try stream.readInt(u64, .little);
     if (sig_env != sig_ser)
         return error.SignatureMismatch;
 
@@ -583,7 +581,7 @@ pub const Function = union(enum) {
                     else => ReturnType,
                 };
 
-                var result: ActualReturnType = if (ReturnType != ActualReturnType)
+                const result: ActualReturnType = if (ReturnType != ActualReturnType)
                     try @call(.auto, function, zig_args)
                 else
                     @call(.auto, function, zig_args);
@@ -632,7 +630,7 @@ pub const Function = union(enum) {
                     else => ReturnType,
                 };
 
-                var result: ActualReturnType = if (ReturnType != ActualReturnType)
+                const result: ActualReturnType = if (ReturnType != ActualReturnType)
                     try @call(.{}, function, zig_args)
                 else
                     @call(.{}, function, zig_args);

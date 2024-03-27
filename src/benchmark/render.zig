@@ -10,7 +10,7 @@ pub fn main() !u8 {
         return 1;
     }
 
-    var src_dir = try std.fs.cwd().openIterableDir(argv[1], .{});
+    var src_dir = try std.fs.cwd().openDir(argv[1], .{ .iterate = true });
     defer src_dir.close();
 
     var dst_dir = try std.fs.cwd().openDir(argv[2], .{});
@@ -33,7 +33,7 @@ pub fn main() !u8 {
                 .data = undefined,
             };
 
-            var file = try src_dir.dir.openFile(entry.name, .{ .mode = .read_only });
+            var file = try src_dir.openFile(entry.name, .{ .mode = .read_only });
             defer file.close();
 
             series.data = try loadSeries(gpa.allocator(), file);
@@ -85,10 +85,10 @@ pub fn renderSeriesSet(dst_dir: std.fs.Dir, file_name: []const u8, all_series: [
 
     const time_range = end_time - start_time;
 
-    var size_x: f32 = 350;
-    var size_y: f32 = 200;
+    const size_x: f32 = 350;
+    const size_y: f32 = 200;
 
-    var legend_size: f32 = 50;
+    const legend_size: f32 = 50;
 
     const viewport_size: f32 = size_x - legend_size;
 

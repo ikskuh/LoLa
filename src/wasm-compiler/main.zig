@@ -40,7 +40,7 @@ const API = struct {
         var rest = str;
 
         while (std.mem.indexOf(u8, rest, "\n")) |off| {
-            var mid = rest[0..off];
+            const mid = rest[0..off];
             JS.writeString(mid.ptr, @as(u32, @intCast(mid.len)));
             JS.writeString("\r\n", 2);
             rest = rest[off + 1 ..];
@@ -170,7 +170,7 @@ const API = struct {
             return error.InvalidInterpreterState;
 
         // Run the virtual machine for up to 150 instructions
-        var result = vm.execute(steps) catch |err| {
+        const result = vm.execute(steps) catch |err| {
             // When the virtua machine panics, we receive a Zig error
             try std.fmt.format(debug_writer_lf, "\x1B[91mLoLa Panic: {s}\x1B[m\n", .{@errorName(err)});
 
@@ -220,7 +220,7 @@ const exports = struct {
     }
 
     export fn malloc(len: usize) [*]u8 {
-        var slice = allocator.alloc(u8, len) catch unreachable;
+        const slice = allocator.alloc(u8, len) catch unreachable;
         return slice.ptr;
     }
 
@@ -294,16 +294,17 @@ const exports = struct {
     }
 };
 
-pub const std_options = struct {
-    pub fn logFn(
-        comptime message_level: std.log.Level,
-        comptime scope: @Type(.EnumLiteral),
-        comptime format: []const u8,
-        args: anytype,
-    ) void {
-        _ = message_level;
-        _ = scope;
-        _ = format;
-        _ = args;
-    }
+pub const std_options = std.Options{
+    .logFn = log,
 };
+fn log(
+    comptime message_level: std.log.Level,
+    comptime scope: @Type(.EnumLiteral),
+    comptime format: []const u8,
+    args: anytype,
+) void {
+    _ = message_level;
+    _ = scope;
+    _ = format;
+    _ = args;
+}
