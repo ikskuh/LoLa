@@ -11,10 +11,6 @@
             .url = "https://github.com/MasterQ32/any-pointer/archive/e57d13c9f5476d9cf6dc3fa541d5a78827da96fb.tar.gz",
             .hash = "12205a42860518c1ef0391686d047a3ec16ef0e7f70f0b0bba5c597bdd6afbcd0d10",
         },
-        // .interface = .{
-        //     .url = "https://github.com/MasterQ32/interface.zig/archive/a5ebd920d2953167152f94c005043d49c258e7a1.tar.gz",
-        //     .hash = "122039c0c0e050acb36fb7b7eee5e0051695bf1964d3835b74e7e02790b922bc3e33",
-        // },
     },
 
     .paths = .{"."},

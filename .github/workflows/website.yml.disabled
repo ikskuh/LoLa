@@ -1,6 +1,8 @@
 name: Render Website
 
-on: [push]
+on:
+  push:
+    branch: none # disabled for now
 
 jobs:
   build:
@@ -13,7 +15,7 @@ jobs:
         submodules: 'recursive'
 
     - name: Setup Zig
-      uses: goto-bus-stop/setup-zig@v1
+      uses: goto-bus-stop/setup-zig@v2
       with:
         version: master
     
