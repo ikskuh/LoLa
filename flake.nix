@@ -2,7 +2,7 @@
   description = "Nerdgruppe build system";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/release-23.05";
+    nixpkgs.url = "github:nixos/nixpkgs/release-23.11";
     flake-utils.url = "github:numtide/flake-utils";
 
     # required for latest zig
@@ -41,7 +41,7 @@
       rec {
         devShells.default = pkgs.mkShell {
           nativeBuildInputs = [
-            pkgs.zigpkgs.master
+            pkgs.zigpkgs."0.12.0"
             pkgs.pkg-config
           ];
 
