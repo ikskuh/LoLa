@@ -41,7 +41,7 @@ pub fn build(b: *Build) !void {
     const mod_any_pointer = b.dependency("any_pointer", .{}).module("any-pointer");
 
     const mod_lola = b.addModule("lola", .{
-        .root_source_file = .{ .path = "src/library/main.zig" },
+        .root_source_file = b.path("src/library/main.zig"),
         .imports = &.{
             // .{ .name = "interface", .module = mod_interface },
             .{ .name = "any-pointer", .module = mod_any_pointer },
@@ -53,7 +53,7 @@ pub fn build(b: *Build) !void {
 
     const exe = b.addExecutable(.{
         .name = "lola",
-        .root_source_file = .{ .path = "src/frontend/main.zig" },
+        .root_source_file = b.path("src/frontend/main.zig"),
         .optimize = optimize,
         .target = target,
     });
@@ -66,7 +66,7 @@ pub fn build(b: *Build) !void {
 
     const benchmark_renderer = b.addExecutable(.{
         .name = "benchmark-render",
-        .root_source_file = .{ .path = "src/benchmark/render.zig" },
+        .root_source_file = b.path("src/benchmark/render.zig"),
         .optimize = optimize,
         .target = b.host,
     });
@@ -95,7 +95,7 @@ pub fn build(b: *Build) !void {
     for (benchmark_modes) |benchmark_mode| {
         const benchmark = b.addExecutable(.{
             .name = b.fmt("benchmark-{s}", .{@tagName(benchmark_mode)}),
-            .root_source_file = .{ .path = "src/benchmark/perf.zig" },
+            .root_source_file = b.path("src/benchmark/perf.zig"),
             .optimize = benchmark_mode,
             .target = b.host,
         });
@@ -110,7 +110,7 @@ pub fn build(b: *Build) !void {
 
     const wasm_runtime = b.addExecutable(.{
         .name = "lola",
-        .root_source_file = .{ .path = "src/wasm-compiler/main.zig" },
+        .root_source_file = b.path("src/wasm-compiler/main.zig"),
         .target = b.resolveTargetQuery(.{ .cpu_arch = .wasm32, .os_tag = .freestanding }),
         .optimize = .ReleaseSafe,
     });
@@ -122,7 +122,7 @@ pub fn build(b: *Build) !void {
     inline for (examples) |example| {
         const example_exe = b.addExecutable(.{
             .name = "example-" ++ example.name,
-            .root_source_file = .{ .path = example.path },
+            .root_source_file = b.path(example.path),
             .optimize = optimize,
             .target = target,
         });
@@ -132,18 +132,18 @@ pub fn build(b: *Build) !void {
     }
 
     const compiler_lola_mod = b.createModule(.{
-        .root_source_file = .{ .path = "src/test/compiler.lola" },
+        .root_source_file = b.path("src/test/compiler.lola"),
     });
 
     var main_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/library/test.zig" },
+        .root_source_file = b.path("src/library/test.zig"),
         .optimize = optimize,
         .target = b.host,
     });
     // main_tests.root_module.addImport("interface", mod_interface);
     main_tests.root_module.addImport("any-pointer", mod_any_pointer);
     main_tests.root_module.addImport("compiler.lola", compiler_lola_mod);
-    // main_tests.main_pkg_path = .{ .path = "." };
+    // main_tests.main_pkg_path = b.path(".");
 
     const test_step = b.step("test", "Run test suite");
     test_step.dependOn(&b.addRunArtifact(main_tests).step);
@@ -167,7 +167,7 @@ pub fn build(b: *Build) !void {
 
         // when the host is windows, this won't work :(
         if (builtin.os.tag != .windows) {
-            std.fs.cwd().makeDir("zig-cache/tmp") catch |err| switch (err) {
+            std.fs.cwd().makeDir(".zig-cache/tmp") catch |err| switch (err) {
                 error.PathAlreadyExists => {}, // nice
                 else => |e| return e,
             };
@@ -176,7 +176,7 @@ pub fn build(b: *Build) !void {
 
             // execute in the zig-cache directory so we have a "safe" playfield
             // for file I/O
-            runlib_test.cwd = .{ .path = "zig-cache/tmp" };
+            runlib_test.cwd = b.path(".zig-cache/tmp");
 
             // `Exit(123)` is the last call in the runtime suite
             runlib_test.expectExitCode(123);
@@ -241,7 +241,7 @@ pub fn build(b: *Build) !void {
 
     //     const md_renderer = b.addExecutable(.{
     //         .name = "markdown-md-page",
-    //         .root_source_file = .{ .path = "src/tools/render-md-page.zig" },
+    //         .root_source_file = b.path("src/tools/render-md-page.zig"),
     //     });
     //     md_renderer.addModule("koini", pkgs.koino);
     //     try linkPcre(md_renderer);

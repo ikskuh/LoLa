@@ -1,6 +1,6 @@
 # Custom Items
 *.lm
-zig-cache
+.zig-cache
 scratchpad
 docs/
 debug/

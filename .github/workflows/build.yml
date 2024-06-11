@@ -5,8 +5,6 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
-  schedule:
-    - cron: "0 5 * * *" # run at 5 AM UTC
 
 jobs:
   build:
@@ -23,7 +21,7 @@ jobs:
       - name: Setup Zig
         uses: goto-bus-stop/setup-zig@v2
         with:
-          version: 0.12
+          version: 0.13.0
 
       - name: Build toolchain
         run: |
