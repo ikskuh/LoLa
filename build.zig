@@ -231,31 +231,35 @@ pub fn build(b: *Build) !void {
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
 
-    // TODO: Re-enable website rendering
-    // /////////////////////////////////////////////////////////////////////////
-    // // Documentation and Website generation:
-    // // this is disabed by-default so we don't depend on any vcpkgs
-    // if (b.option(bool, "enable-website", "Enables website generation.") orelse false) {
-    //     // Generates documentation and future files.
-    //     const gen_website_step = b.step("website", "Generates the website and all required resources.");
+    // Documentation and Website generation.
+    if (b.option(bool, "enable-website", "Enables website generation.") orelse true) {
+        const mod_koino = b.dependency("koino", .{
+            .optimize = optimize,
+            .target = target,
+        }).module("koino");
 
-    //     const md_renderer = b.addExecutable(.{
-    //         .name = "markdown-md-page",
-    //         .root_source_file = b.path("src/tools/render-md-page.zig"),
-    //     });
-    //     md_renderer.addModule("koini", pkgs.koino);
-    //     try linkPcre(md_renderer);
+        // Generates documentation and future files.
+        const gen_website_step = b.step("website", "Generates the website and all required resources.");
 
-    //     const render = b.addRunArtifact(md_renderer);
-    //     render.addArg(version_tag orelse "development");
-    //     gen_website_step.dependOn(&render.step);
+        const md_renderer = b.addExecutable(.{
+            .name = "markdown-md-page",
+            .root_source_file = b.path("src/tools/render-md-page.zig"),
+            .optimize = optimize,
+            .target = target,
+        });
+        md_renderer.root_module.addImport("koino", mod_koino);
 
-    //     const copy_wasm_runtime = b.addSystemCommand(&[_][]const u8{
-    //         "cp",
-    //     });
-    //     copy_wasm_runtime.addArtifactArg(wasm_runtime);
-    //     copy_wasm_runtime.addArg("website/lola.wasm");
-    //     gen_website_step.dependOn(&copy_wasm_runtime.step);
+        const render = b.addRunArtifact(md_renderer);
+        render.addArg(version_tag orelse "development");
+        gen_website_step.dependOn(&render.step);
+
+        const copy_wasm_runtime = b.addSystemCommand(&[_][]const u8{
+            "cp",
+        });
+        copy_wasm_runtime.addArtifactArg(wasm_runtime);
+        copy_wasm_runtime.addArg("website/lola.wasm");
+        gen_website_step.dependOn(&copy_wasm_runtime.step);
+    }
 
     //     var gen_docs_runner = b.addTest(pkgs.lola.source.path);
     //     // gen_docs_runner.emit_bin = .no_emit;
@@ -275,5 +279,4 @@ pub fn build(b: *Build) !void {
     //     // Only generates documentation
     //     const gen_docs_step = b.step("docs", "Generate the code documentation");
     //     gen_docs_step.dependOn(&gen_docs_runner.step);
-    // }
 }
