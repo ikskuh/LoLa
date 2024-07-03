@@ -11,6 +11,10 @@
             .url = "https://github.com/MasterQ32/any-pointer/archive/33851c78c2dd6bd1921dee2aac17a441b285aec7.tar.gz",
             .hash = "122068e632c479fa771ed988bf36c10db5bd0b2918b92569b2fa440785e4013055a8",
         },
+        .koino = .{
+            .url = "https://github.com/kivikakk/koino/archive/0151bb37714d93688f31e3d7a3d0369106818f26.tar.gz",
+            .hash = "122055057fe62c0a8bcccb3c36a23115db58a185af2c18dd41d0bb4ac083f519ad5d",
+        },
     },
 
     .paths = .{"."},

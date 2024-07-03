@@ -64,10 +64,10 @@ pub fn main() !u8 {
         var infile = try std.fs.cwd().openFile(current_file.input_file_name, .{});
         defer infile.close();
 
-        var markdown = try infile.reader().readAllAlloc(allocator, 1024 * 1024 * 1024);
+        const markdown = try infile.reader().readAllAlloc(allocator, 1024 * 1024 * 1024);
         defer allocator.free(markdown);
 
-        var output = try markdownToHtml(allocator, options, markdown);
+        const output = try markdownToHtml(allocator, options, markdown);
         defer allocator.free(output);
 
         var outfile = try std.fs.cwd().createFile(current_file.output_file_name, .{});
@@ -100,8 +100,8 @@ pub fn main() !u8 {
         );
 
         for (menu_items, 0..) |menu, i| {
-            var is_current = (current_index == i);
-            var current_class = if (is_current)
+            const is_current = (current_index == i);
+            const current_class = if (is_current)
                 @as([]const u8, "class=\"active\"")
             else
                 "";
@@ -115,7 +115,7 @@ pub fn main() !u8 {
             });
         }
 
-        var version_name_str = @as(?[]const u8, version_name) orelse @as([]const u8, "development");
+        const version_name_str = @as(?[]const u8, version_name) orelse @as([]const u8, "development");
         try outfile.writer().print(
             \\          </ul>
             \\        </div>
