@@ -214,7 +214,7 @@ pub fn loadSeries(allocator: std.mem.Allocator, file: std.fs.File) ![]DataPoint 
         if (line_or_eof) |line| {
             if (line.len == 0)
                 continue;
-            var iter = std.mem.split(u8, line, ";");
+            var iter = std.mem.splitScalar(u8, line, ';');
             const time_str = iter.next() orelse return error.UnexpectedData;
             const compile_str = try std.fmt.parseInt(u64, iter.next() orelse return error.UnexpectedData, 10);
             const setup_str = try std.fmt.parseInt(u64, iter.next() orelse return error.UnexpectedData, 10);

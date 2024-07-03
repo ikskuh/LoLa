@@ -16,15 +16,15 @@ const Example = struct {
 };
 
 const examples = [_]Example{
-    Example{
+    .{
         .name = "minimal-host",
         .path = "examples/host/minimal-host/main.zig",
     },
-    Example{
+    .{
         .name = "multi-environment",
         .path = "examples/host/multi-environment/main.zig",
     },
-    Example{
+    .{
         .name = "serialization",
         .path = "examples/host/serialization/main.zig",
     },
@@ -59,16 +59,14 @@ pub fn build(b: *Build) !void {
     });
     exe.root_module.addImport("lola", mod_lola);
     exe.root_module.addImport("args", mod_args);
-    exe.root_module.addAnonymousImport("build_options", .{
-        .root_source_file = build_options.getSource(),
-    });
+    exe.root_module.addImport("build_options", build_options.createModule());
     b.installArtifact(exe);
 
     const benchmark_renderer = b.addExecutable(.{
         .name = "benchmark-render",
         .root_source_file = b.path("src/benchmark/render.zig"),
         .optimize = optimize,
-        .target = b.host,
+        .target = b.graph.host,
     });
     b.installArtifact(benchmark_renderer);
 
@@ -76,8 +74,8 @@ pub fn build(b: *Build) !void {
         const render_benchmark_step = b.step("render-benchmarks", "Runs the benchmark suite.");
 
         const only_render_benchmark = b.addRunArtifact(benchmark_renderer);
-        only_render_benchmark.addArg(b.pathFromRoot("benchmarks/data"));
-        only_render_benchmark.addArg(b.pathFromRoot("benchmarks/visualization"));
+        only_render_benchmark.addDirectoryArg(b.path("benchmarks/data"));
+        only_render_benchmark.addDirectoryArg(b.path("benchmarks/visualization"));
 
         render_benchmark_step.dependOn(&only_render_benchmark.step);
     }
@@ -88,8 +86,8 @@ pub fn build(b: *Build) !void {
     const benchmark_step = b.step("benchmark", "Runs the benchmark suite.");
 
     const render_benchmark = b.addRunArtifact(benchmark_renderer);
-    render_benchmark.addArg(b.pathFromRoot("benchmarks/data"));
-    render_benchmark.addArg(b.pathFromRoot("benchmarks/visualization"));
+    render_benchmark.addDirectoryArg(b.path("benchmarks/data"));
+    render_benchmark.addDirectoryArg(b.path("benchmarks/visualization"));
     benchmark_step.dependOn(&render_benchmark.step);
 
     for (benchmark_modes) |benchmark_mode| {
@@ -97,13 +95,13 @@ pub fn build(b: *Build) !void {
             .name = b.fmt("benchmark-{s}", .{@tagName(benchmark_mode)}),
             .root_source_file = b.path("src/benchmark/perf.zig"),
             .optimize = benchmark_mode,
-            .target = b.host,
+            .target = b.graph.host,
         });
         benchmark.root_module.addImport("lola", mod_lola);
 
         const run_benchmark = b.addRunArtifact(benchmark);
-        run_benchmark.addArg(b.pathFromRoot("benchmarks/code"));
-        run_benchmark.addArg(b.pathFromRoot("benchmarks/data"));
+        run_benchmark.addDirectoryArg(b.path("benchmarks/code"));
+        run_benchmark.addDirectoryArg(b.path("benchmarks/data"));
 
         render_benchmark.step.dependOn(&run_benchmark.step);
     }
@@ -138,7 +136,7 @@ pub fn build(b: *Build) !void {
     var main_tests = b.addTest(.{
         .root_source_file = b.path("src/library/test.zig"),
         .optimize = optimize,
-        .target = b.host,
+        .target = b.graph.host,
     });
     // main_tests.root_module.addImport("interface", mod_interface);
     main_tests.root_module.addImport("any-pointer", mod_any_pointer);
@@ -155,13 +153,13 @@ pub fn build(b: *Build) !void {
         const behaviour_tests = b.addRunArtifact(exe);
         behaviour_tests.addArg("run");
         behaviour_tests.addArg("--no-stdlib"); // we don't want the behaviour tests to be run with any stdlib functions
-        behaviour_tests.addArg(prefix ++ "behaviour.lola");
+        behaviour_tests.addFileArg(b.path(prefix ++ "behaviour.lola"));
         behaviour_tests.expectStdOutEqual("Behaviour test suite passed.\n");
         test_step.dependOn(&behaviour_tests.step);
 
         const stdib_test = b.addRunArtifact(exe);
         stdib_test.addArg("run");
-        stdib_test.addArg(prefix ++ "stdlib.lola");
+        stdib_test.addFileArg(b.path(prefix ++ "stdlib.lola"));
         stdib_test.expectStdOutEqual("Standard library test suite passed.\n");
         test_step.dependOn(&stdib_test.step);
 
@@ -201,26 +199,26 @@ pub fn build(b: *Build) !void {
 
         const emptyfile_test = b.addRunArtifact(exe);
         emptyfile_test.addArg("run");
-        emptyfile_test.addArg(prefix ++ "empty.lola");
+        emptyfile_test.addFileArg(b.path(prefix ++ "empty.lola"));
         emptyfile_test.expectStdOutEqual("");
         test_step.dependOn(&emptyfile_test.step);
 
         const globreturn_test = b.addRunArtifact(exe);
         globreturn_test.addArg("run");
-        globreturn_test.addArg(prefix ++ "global-return.lola");
+        globreturn_test.addFileArg(b.path(prefix ++ "global-return.lola"));
         globreturn_test.expectStdOutEqual("");
         test_step.dependOn(&globreturn_test.step);
 
         const extended_behaviour_test = b.addRunArtifact(exe);
         extended_behaviour_test.addArg("run");
-        extended_behaviour_test.addArg(prefix ++ "behaviour-with-stdlib.lola");
+        extended_behaviour_test.addFileArg(b.path(prefix ++ "behaviour-with-stdlib.lola"));
         extended_behaviour_test.expectStdOutEqual("Extended behaviour test suite passed.\n");
         test_step.dependOn(&extended_behaviour_test.step);
 
         const compiler_test = b.addRunArtifact(exe);
         compiler_test.addArg("compile");
         compiler_test.addArg("--verify"); // verify should not emit a compiled module
-        compiler_test.addArg(prefix ++ "compiler.lola");
+        compiler_test.addFileArg(b.path(prefix ++ "compiler.lola"));
         compiler_test.expectStdOutEqual("");
         test_step.dependOn(&compiler_test.step);
     }
