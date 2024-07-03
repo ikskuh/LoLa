@@ -163,39 +163,35 @@ pub fn build(b: *Build) !void {
         stdib_test.expectStdOutEqual("Standard library test suite passed.\n");
         test_step.dependOn(&stdib_test.step);
 
-        // when the host is windows, this won't work :(
-        if (builtin.os.tag != .windows) {
-            std.fs.cwd().makeDir(".zig-cache/tmp") catch |err| switch (err) {
-                error.PathAlreadyExists => {}, // nice
-                else => |e| return e,
-            };
+        b.cache_root.handle.makeDir("tmp") catch |err| switch (err) {
+            error.PathAlreadyExists => {}, // nice
+            else => |e| return e,
+        };
+        const runlib_test = b.addRunArtifact(exe);
 
-            const runlib_test = b.addRunArtifact(exe);
+        // execute in the .zig-cache directory so we have a "safe" playfield
+        // for file I/O
+        runlib_test.setCwd(.{ .cwd_relative = try b.cache_root.join(b.allocator, &.{"tmp"}) });
 
-            // execute in the zig-cache directory so we have a "safe" playfield
-            // for file I/O
-            runlib_test.cwd = b.path(".zig-cache/tmp");
+        // `Exit(123)` is the last call in the runtime suite
+        runlib_test.expectExitCode(123);
 
-            // `Exit(123)` is the last call in the runtime suite
-            runlib_test.expectExitCode(123);
+        runlib_test.expectStdOutEqual(
+            \\
+            \\1
+            \\1.2
+            \\[ ]
+            \\[ 1, 2 ]
+            \\truefalse
+            \\hello
+            \\Runtime library test suite passed.
+            \\
+        );
 
-            runlib_test.expectStdOutEqual(
-                \\
-                \\1
-                \\1.2
-                \\[ ]
-                \\[ 1, 2 ]
-                \\truefalse
-                \\hello
-                \\Runtime library test suite passed.
-                \\
-            );
+        runlib_test.addArg("run");
+        runlib_test.addFileArg(b.path(prefix ++ "runtime.lola"));
 
-            runlib_test.addArg("run");
-            runlib_test.addArg("../../" ++ prefix ++ "runtime.lola");
-
-            test_step.dependOn(&runlib_test.step);
-        }
+        test_step.dependOn(&runlib_test.step);
 
         const emptyfile_test = b.addRunArtifact(exe);
         emptyfile_test.addArg("run");
