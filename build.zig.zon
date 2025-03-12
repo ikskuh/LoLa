@@ -1,15 +1,15 @@
 .{
-    .name = "lola",
+    .name = .lola,
     .version = "0.1.0",
-
+    .fingerprint = 0xe0c26edfbdb0efcc,
     .dependencies = .{
         .args = .{
-            .url = "https://github.com/MasterQ32/zig-args/archive/872272205d95bdba33798c94e72c5387a31bc806.tar.gz",
-            .hash = "1220fe6ae56b668cc4a033282b5f227bfbb46a67ede6d84e9f9493fea9de339b5f37",
+            .url = "git+https://github.com/ikskuh/zig-args.git#9425b94c103a031777fdd272c555ce93a7dea581",
+            .hash = "args-0.0.0-CiLiqv_NAAC97fGpk9hS2K681jkiqPsWP6w3ucb_ctGH",
         },
         .any_pointer = .{
-            .url = "https://github.com/MasterQ32/any-pointer/archive/33851c78c2dd6bd1921dee2aac17a441b285aec7.tar.gz",
-            .hash = "122068e632c479fa771ed988bf36c10db5bd0b2918b92569b2fa440785e4013055a8",
+            .url = "git+https://github.com/ikskuh/any-pointer.git#d068b14cd30577783de018e280428953d098b3d2",
+            .hash = "N-V-__8AAMBAAACvBn7l0deSA92AlXkXtSLA7S82f9gStSNM",
         },
     },
 

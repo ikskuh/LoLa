@@ -89,7 +89,7 @@ pub fn parse(
 
         fn moveToHeap(self: *Self, value: anytype) !*@TypeOf(value) {
             const T = @TypeOf(value);
-            std.debug.assert(@typeInfo(T) != .Pointer);
+            std.debug.assert(@typeInfo(T) != .pointer);
             const ptr = try self.allocator.create(T);
             ptr.* = value;
 

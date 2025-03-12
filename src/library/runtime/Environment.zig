@@ -94,8 +94,8 @@ pub fn deinit(self: *Environment) void {
 
 /// Checks if two function signatures are compatible to each other and if `Queried` can be assigned to a `Destination` type.
 fn isCompatibleFunctionSignature(comptime Destination: type, comptime Queried: type) bool {
-    const ti_a = @typeInfo(std.meta.Child(Destination)).Fn;
-    const ti_b = @typeInfo(std.meta.Child(Queried)).Fn;
+    const ti_a = @typeInfo(std.meta.Child(Destination)).@"fn";
+    const ti_b = @typeInfo(std.meta.Child(Queried)).@"fn";
 
     if (ti_a.params.len != ti_b.params.len)
         return false;
@@ -103,9 +103,9 @@ fn isCompatibleFunctionSignature(comptime Destination: type, comptime Queried: t
     const rettype_a = ti_a.return_type orelse opaque {};
     const rettype_b = ti_b.return_type orelse opaque {};
 
-    if (@typeInfo(rettype_a) == .ErrorUnion) {
-        const rti_a = @typeInfo(rettype_a).ErrorUnion.payload;
-        const rti_b = @typeInfo(rettype_b).ErrorUnion.payload;
+    if (@typeInfo(rettype_a) == .error_union) {
+        const rti_a = @typeInfo(rettype_a).error_union.payload;
+        const rti_b = @typeInfo(rettype_b).error_union.payload;
 
         // @compileLog("Compare", rti_a, rti_b);
 
@@ -120,9 +120,9 @@ fn isCompatibleFunctionSignature(comptime Destination: type, comptime Queried: t
         const type_a = arg_a.type orelse opaque {};
         const type_b = arg_b.type orelse opaque {};
         if (type_a != type_b) {
-            if (@typeInfo(type_a) == .Pointer) {
-                const pti_a: std.builtin.Type.Pointer = @typeInfo(type_a).Pointer;
-                const pti_b: std.builtin.Type.Pointer = @typeInfo(type_b).Pointer;
+            if (@typeInfo(type_a) == .pointer) {
+                const pti_a: std.builtin.Type.Pointer = @typeInfo(type_a).pointer;
+                const pti_b: std.builtin.Type.Pointer = @typeInfo(type_b).pointer;
                 if (pti_a.child != pti_b.child)
                     return false;
                 if (pti_a.size != pti_b.size)
@@ -147,7 +147,7 @@ pub fn installModule(self: *Environment, comptime Module: type, context: AnyPoin
     inline for (comptime std.meta.declarations(Module)) |decl| {
         const data = @field(Module, decl.name);
 
-        if (@typeInfo(@TypeOf(data)) == .Fn) {
+        if (@typeInfo(@TypeOf(data)) == .@"fn") {
             const module_fn = @field(Module, decl.name);
             const FnType = *const @TypeOf(module_fn);
 
@@ -155,7 +155,7 @@ pub fn installModule(self: *Environment, comptime Module: type, context: AnyPoin
 
             if (comptime isCompatibleFunctionSignature(UserFunctionCall, FnType)) {
                 // logger.debug("Install synchronous function {s} to environment", .{decl.name});
-                try self.installFunction(decl.name, Function{
+                try self.installFunction(decl.name, .{
                     .syncUser = UserFunction{
                         .context = context,
                         .destructor = null,
@@ -164,7 +164,7 @@ pub fn installModule(self: *Environment, comptime Module: type, context: AnyPoin
                 });
             } else if (comptime isCompatibleFunctionSignature(AsyncUserFunctionCall, FnType)) {
                 // logger.debug("Install asynchronous function {s} to environment", .{decl.name});
-                try self.installFunction(decl.name, Function{
+                try self.installFunction(decl.name, .{
                     .asyncUser = AsyncUserFunction{
                         .context = context,
                         .destructor = null,
@@ -544,10 +544,10 @@ pub const Function = union(enum) {
     pub fn wrap(comptime function: anytype) Function {
         const F = @TypeOf(function);
         const info = @typeInfo(F);
-        if (info != .Fn)
+        if (info != .@"fn")
             @compileError("Function.wrap expects a function!");
 
-        const function_info = info.Fn;
+        const function_info = info.@"fn";
         if (function_info.is_generic)
             @compileError("Cannot wrap generic functions!");
         if (function_info.is_var_args)
@@ -593,14 +593,14 @@ pub const Function = union(enum) {
         return initSimpleUser(Impl.invoke);
     }
 
-    pub fn wrapWithAnyPointer(comptime function: anytype, context: @typeInfo(@TypeOf(function)).Fn.args[0].type.?) Function {
+    pub fn wrapWithAnyPointer(comptime function: anytype, context: @typeInfo(@TypeOf(function)).@"fn".args[0].type.?) Function {
         const F = @TypeOf(function);
         const FunctionAnyPointer = std.meta.Child(@TypeOf(context));
         const info = @typeInfo(F);
-        if (info != .Fn)
+        if (info != .@"fn")
             @compileError("Function.wrap expects a function!");
 
-        const function_info = info.Fn;
+        const function_info = info.@"fn";
         if (function_info.is_generic)
             @compileError("Cannot wrap generic functions!");
         if (function_info.is_var_args)

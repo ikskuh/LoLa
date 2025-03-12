@@ -160,7 +160,7 @@ pub const VM = struct {
                 return error.StackImbalance;
         }
 
-        return if (self.stack.popOrNull()) |v| v else return error.StackImbalance;
+        return if (self.stack.pop()) |v| v else return error.StackImbalance;
     }
 
     /// Runs the virtual machine for `quota` instructions.
@@ -412,12 +412,12 @@ pub const VM = struct {
             // Control Flow Section:
 
             .ret => {
-                var call = self.calls.pop();
+                var call = self.calls.pop().?;
                 defer self.deinitContext(&call);
 
                 // Restore stack balance
                 while (self.stack.items.len > call.stackBalance) {
-                    var item = self.stack.pop();
+                    var item = self.stack.pop().?;
                     item.deinit();
                 }
 
@@ -432,12 +432,12 @@ pub const VM = struct {
                 var value = try self.pop();
                 errdefer value.deinit();
 
-                var call = self.calls.pop();
+                var call = self.calls.pop().?;
                 defer self.deinitContext(&call);
 
                 // Restore stack balance
                 while (self.stack.items.len > call.stackBalance) {
-                    var item = self.stack.pop();
+                    var item = self.stack.pop().?;
                     item.deinit();
                 }
 
