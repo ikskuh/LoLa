@@ -339,7 +339,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
         /// Inserts a new object into the pool and returns a handle to it.
         /// `object_ptr` must be a mutable pointer to the object itself.
         pub fn createObject(self: *Self, object_ptr: anytype) !ObjectHandle {
-            const ObjectTypeInfo = @typeInfo(@TypeOf(object_ptr)).Pointer;
+            const ObjectTypeInfo = @typeInfo(@TypeOf(object_ptr)).pointer;
             if (ObjectTypeInfo.is_const)
                 @compileError("Passing a const pointer to ObjectPool.createObject is not allowed!");
 

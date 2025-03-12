@@ -59,16 +59,14 @@ pub fn build(b: *Build) !void {
     });
     exe.root_module.addImport("lola", mod_lola);
     exe.root_module.addImport("args", mod_args);
-    exe.root_module.addAnonymousImport("build_options", .{
-        .root_source_file = build_options.getSource(),
-    });
+    exe.root_module.addImport("build_options", build_options.createModule());
     b.installArtifact(exe);
 
     const benchmark_renderer = b.addExecutable(.{
         .name = "benchmark-render",
         .root_source_file = b.path("src/benchmark/render.zig"),
         .optimize = optimize,
-        .target = b.host,
+        .target = b.graph.host,
     });
     b.installArtifact(benchmark_renderer);
 
@@ -97,7 +95,7 @@ pub fn build(b: *Build) !void {
             .name = b.fmt("benchmark-{s}", .{@tagName(benchmark_mode)}),
             .root_source_file = b.path("src/benchmark/perf.zig"),
             .optimize = benchmark_mode,
-            .target = b.host,
+            .target = b.graph.host,
         });
         benchmark.root_module.addImport("lola", mod_lola);
 
@@ -138,7 +136,7 @@ pub fn build(b: *Build) !void {
     var main_tests = b.addTest(.{
         .root_source_file = b.path("src/library/test.zig"),
         .optimize = optimize,
-        .target = b.host,
+        .target = b.graph.host,
     });
     // main_tests.root_module.addImport("interface", mod_interface);
     main_tests.root_module.addImport("any-pointer", mod_any_pointer);

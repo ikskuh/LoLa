@@ -17,7 +17,7 @@ fn MapSelfType(comptime T: type, comptime NewSelf: type) type {
 }
 
 fn GeneralizedFunc(comptime F: type) type {
-    const f_in = @typeInfo(F).Fn;
+    const f_in = @typeInfo(F).@"fn";
 
     var f_out = f_in;
     f_out.params = &.{};
@@ -31,7 +31,7 @@ fn GeneralizedFunc(comptime F: type) type {
         f_out.params = f_out.params ++ [_]std.builtin.Type.Fn.Param{po};
     }
 
-    return @Type(.{ .Fn = f_out });
+    return @Type(.{ .@"fn" = f_out });
 }
 
 pub fn Interfaces(comptime spec: anytype) type {
@@ -56,7 +56,7 @@ pub fn Interfaces(comptime spec: anytype) type {
         var funcs: [spec_fields.len]Function = undefined;
 
         for (&funcs, spec_fields) |*fun, *sf| {
-            const info = @typeInfo(@field(spec, sf.name)).Fn;
+            const info = @typeInfo(@field(spec, sf.name)).@"fn";
 
             fun.* = Function{
                 .name = sf.name,
@@ -68,7 +68,7 @@ pub fn Interfaces(comptime spec: anytype) type {
                 .return_is_mapped = (info.return_type.? != MapSelfType(info.return_type.?, anyopaque)),
             };
 
-            for (@typeInfo(fun.spec_type).Fn.params, @typeInfo(fun.generic_type).Fn.params) |sfn, gfn| {
+            for (@typeInfo(fun.spec_type).@"fn".params, @typeInfo(fun.generic_type).@"fn".params) |sfn, gfn| {
                 const param: Parameter = .{
                     .source_type = sfn.type.?,
                     .generic_type = gfn.type.?,
@@ -96,10 +96,10 @@ pub fn Interfaces(comptime spec: anytype) type {
 
             for (functions) |func| {
                 vti.fields = vti.fields ++ &[_]StructField{
-                    StructField{
+                    .{
                         .name = func.name,
                         .type = *const func.generic_type,
-                        .default_value = null,
+                        .default_value_ptr = null,
                         .is_comptime = false,
                         .alignment = @alignOf(*const func.generic_type),
                     },
@@ -107,7 +107,7 @@ pub fn Interfaces(comptime spec: anytype) type {
             }
 
             break :blk @Type(.{
-                .Struct = vti,
+                .@"struct" = vti,
             });
         };
 
@@ -169,7 +169,7 @@ fn CallTranslator(
     comptime MappedResult: type,
     comptime mapResult: anytype,
 ) type {
-    const fi = @typeInfo(@TypeOf(target_func)).Fn;
+    const fi = @typeInfo(@TypeOf(target_func)).@"fn";
     return switch (fi.params.len) {
         0 => struct {
             pub fn invoke() MappedResult {

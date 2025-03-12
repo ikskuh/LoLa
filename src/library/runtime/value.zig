@@ -33,7 +33,7 @@ pub const Value = union(TypeId) {
     }
 
     pub fn initInteger(comptime T: type, val: T) Self {
-        comptime std.debug.assert(@typeInfo(T) == .Int);
+        comptime std.debug.assert(@typeInfo(T) == .int);
         return Self{ .number = @as(f64, @floatFromInt(val)) };
     }
 

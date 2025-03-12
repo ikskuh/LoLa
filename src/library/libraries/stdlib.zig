@@ -355,7 +355,7 @@ pub fn Split(env: *const lola.runtime.Environment, context: lola.runtime.Context
         items.deinit();
     }
 
-    var iter = std.mem.split(u8, input, separator);
+    var iter = std.mem.splitAny(u8, input, separator);
     while (iter.next()) |slice| {
         if (!removeEmpty or slice.len > 0) {
             var val = try lola.runtime.Value.initString(env.allocator, slice);
@@ -689,7 +689,7 @@ pub fn Random(env: *lola.runtime.Environment, context: lola.runtime.Context, arg
         defer random_mutex.unlock();
 
         if (random == null) {
-            random = std.rand.DefaultPrng.init(@as(u64, @bitCast(@as(f64, @floatFromInt(milliTimestamp())))));
+            random = std.Random.DefaultPrng.init(@as(u64, @bitCast(@as(f64, @floatFromInt(milliTimestamp())))));
         }
 
         result = lower + (upper - lower) * random.?.random().float(f64);
@@ -721,7 +721,7 @@ pub fn RandomInt(env: *lola.runtime.Environment, context: lola.runtime.Context, 
         defer random_mutex.unlock();
 
         if (random == null) {
-            random = std.rand.DefaultPrng.init(@as(u64, @bitCast(@as(f64, @floatFromInt(milliTimestamp())))));
+            random = std.Random.DefaultPrng.init(@as(u64, @bitCast(@as(f64, @floatFromInt(milliTimestamp())))));
         }
 
         result = random.?.random().intRangeLessThan(i32, lower, upper);
@@ -731,4 +731,4 @@ pub fn RandomInt(env: *lola.runtime.Environment, context: lola.runtime.Context, 
 }
 
 var random_mutex = std.Thread.Mutex{};
-var random: ?std.rand.DefaultPrng = null;
+var random: ?std.Random.DefaultPrng = null;

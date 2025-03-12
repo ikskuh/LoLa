@@ -179,7 +179,7 @@ test "Decoder.NotEnoughData (string)" {
 
 test "Decoder.read(Instruction)" {
     const Pattern = struct {
-        const ResultType = @typeInfo(@TypeOf(Decoder.readInstruction)).Fn.return_type orelse unreachable;
+        const ResultType = @typeInfo(@TypeOf(Decoder.readInstruction)).@"fn".return_type orelse unreachable;
 
         text: []const u8,
         instr: ResultType,
