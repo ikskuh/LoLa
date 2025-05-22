@@ -206,12 +206,12 @@ Right now, it's not published in the gallery, so to install the extension, you h
 
 ```sh
 zig build
-./zig-cache/bin/lola
+./zig-out/bin/lola
 ```
 
 ### Examples
 
-To compile the host examples, you can use `zig build examples` to build all provided examples. These will be available in `./zig-cache/bin` then.
+To compile the host examples, you can use `zig build examples` to build all provided examples. These will be available in `./zig-out/bin` then.
 
 ### Running the test suite
 
