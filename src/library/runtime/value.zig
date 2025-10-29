@@ -415,7 +415,7 @@ pub const String = struct {
 
     /// Creates a new, uninitialized string
     pub fn initUninitialized(allocator: std.mem.Allocator, length: usize) !Self {
-        const alignment = @alignOf(usize);
+        const alignment = std.mem.Alignment.of(usize);
 
         const ptr_offset = std.mem.alignForward(usize, length, alignment);
         const buffer = try allocator.alignedAlloc(

@@ -64,16 +64,16 @@ pub const VM = struct {
     pub fn init(allocator: std.mem.Allocator, environment: *Environment) !Self {
         var vm = Self{
             .allocator = allocator,
-            .stack = std.ArrayList(Value).init(allocator),
-            .calls = std.ArrayList(Context).init(allocator),
+            .stack = std.ArrayList(Value).empty,
+            .calls = std.ArrayList(Context).empty,
             .currentAsynCall = null,
             .objectPool = environment.objectPool,
         };
         errdefer vm.stack.deinit();
         errdefer vm.calls.deinit();
 
-        try vm.stack.ensureTotalCapacity(128);
-        try vm.calls.ensureTotalCapacity(32);
+        try vm.stack.ensureTotalCapacity(allocator, 128);
+        try vm.calls.ensureTotalCapacity(allocator, 32);
 
         // Initialize with special "init context" that runs the script itself
         // and hosts the global variables.
@@ -84,7 +84,7 @@ pub const VM = struct {
         });
         errdefer vm.deinitContext(&initFun);
 
-        try vm.calls.append(initFun);
+        try vm.calls.append(allocator, initFun);
 
         return vm;
     }
@@ -99,8 +99,8 @@ pub const VM = struct {
         for (self.calls.items) |*c| {
             self.deinitContext(c);
         }
-        self.stack.deinit();
-        self.calls.deinit();
+        self.stack.deinit(self.allocator);
+        self.calls.deinit(self.allocator);
         self.* = undefined;
     }
 
@@ -135,7 +135,7 @@ pub const VM = struct {
 
     /// Pushes the value. Will take ownership of the pushed value.
     fn push(self: *Self, value: Value) !void {
-        try self.stack.append(value);
+        try self.stack.append(self.allocator, value);
     }
 
     /// Peeks at the top of the stack. The returned value is still owned
@@ -870,16 +870,16 @@ pub const VM = struct {
 
         var vm = Self{
             .allocator = allocator,
-            .stack = std.ArrayList(Value).init(allocator),
-            .calls = std.ArrayList(Context).init(allocator),
+            .stack = std.ArrayList(Value).empty,
+            .calls = std.ArrayList(Context).empty,
             .currentAsynCall = null,
             .objectPool = undefined,
         };
         errdefer vm.stack.deinit();
         errdefer vm.calls.deinit();
 
-        try vm.stack.ensureTotalCapacity(@min(stack_size, 128));
-        try vm.calls.ensureTotalCapacity(@min(call_size, 32));
+        try vm.stack.ensureTotalCapacity(allocator, @min(stack_size, 128));
+        try vm.calls.ensureTotalCapacity(allocator, @min(call_size, 32));
 
         try vm.stack.resize(stack_size);
         for (vm.stack.items) |*item| {
@@ -920,7 +920,7 @@ pub const VM = struct {
                     local.* = try Value.deserialize(stream, allocator);
                 }
 
-                try vm.calls.append(ctx);
+                try vm.calls.append(allocator, ctx);
             }
         }
 

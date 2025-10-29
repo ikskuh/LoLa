@@ -372,18 +372,18 @@ pub const Tokenizer = struct {
 };
 
 pub fn tokenize(allocator: std.mem.Allocator, diagnostics: *Diagnostics, chunk_name: []const u8, source: []const u8) ![]Token {
-    var result = std.ArrayList(Token).init(allocator);
+    var result = std.ArrayList(Token).empty;
     var tokenizer = Tokenizer.init(chunk_name, source);
 
     while (true) {
         switch (tokenizer.next()) {
-            .end_of_file => return result.toOwnedSlice(),
+            .end_of_file => return result.toOwnedSlice(allocator),
             .invalid_sequence => |seq| {
-                try diagnostics.emit(.@"error", tokenizer.current_location, "invalid byte sequence: {}", .{
-                    std.fmt.fmtSliceHexUpper(seq),
+                try diagnostics.emit(.@"error", tokenizer.current_location, "invalid byte sequence: {X}", .{
+                    seq,
                 });
             },
-            .token => |token| try result.append(token),
+            .token => |token| try result.append(allocator, token),
         }
     }
 }
@@ -420,7 +420,7 @@ test "Tokenizer invalid bytes" {
 }
 
 test "Tokenizer (tokenize compiler test suite)" {
-    var tokenizer = Tokenizer.init("src/test/compiler.lola", @embedFile("../../test/compiler.lola"));
+    var tokenizer = Tokenizer.init("src/test/compiler.lola", @embedFile("test/compiler.lola"));
 
     while (true) {
         switch (tokenizer.next()) {

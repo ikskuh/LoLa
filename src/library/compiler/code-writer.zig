@@ -34,19 +34,22 @@ pub const CodeWriter = struct {
 
     next_label: u32 = 0,
 
+    allocator: std.mem.Allocator,
+
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
-            .code = std.ArrayList(u8).init(allocator),
-            .loops = std.ArrayList(Loop).init(allocator),
-            .patches = std.ArrayList(Patch).init(allocator),
+            .allocator = allocator,
+            .code = std.ArrayList(u8).empty,
+            .loops = std.ArrayList(Loop).empty,
+            .patches = std.ArrayList(Patch).empty,
             .labels = std.AutoHashMap(Label, u32).init(allocator),
         };
     }
 
     pub fn deinit(self: *Self) void {
-        self.code.deinit();
-        self.loops.deinit();
-        self.patches.deinit();
+        self.code.deinit(self.allocator);
+        self.loops.deinit(self.allocator);
+        self.patches.deinit(self.allocator);
         self.labels.deinit();
 
         self.* = undefined;
@@ -60,10 +63,10 @@ pub const CodeWriter = struct {
         if (self.patches.items.len != 0)
             return error.InvalidCode;
 
-        self.loops.shrinkAndFree(0);
-        self.patches.shrinkAndFree(0);
+        self.loops.shrinkAndFree(self.allocator, 0);
+        self.patches.shrinkAndFree(self.allocator, 0);
         self.labels.clearAndFree();
-        return self.code.toOwnedSlice();
+        return self.code.toOwnedSlice(self.allocator);
     }
 
     /// Creates a new label identifier. This only returns a new handle, it does
@@ -112,7 +115,7 @@ pub const CodeWriter = struct {
     /// `breakLabel` is a label that is jumped to when a `break` instruction is emitted. This is usually the end of the loop.
     /// `continueLabel` is a label that is jumped to when a `continue` instruction is emitted. This is usually the start of the loop.
     pub fn pushLoop(self: *Self, breakLabel: Label, continueLabel: Label) !void {
-        try self.loops.append(Loop{
+        try self.loops.append(self.allocator, Loop{
             .breakLabel = breakLabel,
             .continueLabel = continueLabel,
         });
@@ -129,7 +132,7 @@ pub const CodeWriter = struct {
         if (self.code.items.len + data.len > std.math.maxInt(u32))
             return error.OutOfMemory;
 
-        try self.code.writer().writeAll(data);
+        try self.code.writer(self.allocator).writeAll(data);
     }
 
     /// Emits a label and marks a patch position if necessary
@@ -137,7 +140,7 @@ pub const CodeWriter = struct {
         if (self.labels.get(label)) |offset| {
             try self.emitU32(offset);
         } else {
-            try self.patches.append(Patch{
+            try self.patches.append(self.allocator, Patch{
                 .label = label,
                 .offset = @as(u32, @intCast(self.code.items.len)),
             });

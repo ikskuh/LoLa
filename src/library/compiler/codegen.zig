@@ -27,9 +27,10 @@ const DebugSyms = struct {
 
     writer: *CodeWriter,
     symbols: std.ArrayList(CompileUnit.DebugSymbol),
+    allocator: std.mem.Allocator,
 
     fn push(self: *Self, location: Location) !void {
-        try self.symbols.append(CompileUnit.DebugSymbol{
+        try self.symbols.append(self.allocator, CompileUnit.DebugSymbol{
             .offset = @as(u32, @intCast(self.writer.code.items.len)),
             .sourceLine = location.line,
             .sourceColumn = @as(u16, @intCast(location.column)),
@@ -360,14 +361,15 @@ pub fn generateIR(
     var writer = CodeWriter.init(allocator);
     defer writer.deinit();
 
-    var functions = std.ArrayList(CompileUnit.Function).init(allocator);
-    defer functions.deinit();
+    var functions = std.ArrayList(CompileUnit.Function).empty;
+    defer functions.deinit(allocator);
 
     var debug_symbols = DebugSyms{
+        .allocator = allocator,
         .writer = &writer,
-        .symbols = std.ArrayList(CompileUnit.DebugSymbol).init(allocator),
+        .symbols = std.ArrayList(CompileUnit.DebugSymbol).empty,
     };
-    defer debug_symbols.symbols.deinit();
+    defer debug_symbols.symbols.deinit(allocator);
 
     var global_scope = Scope.init(allocator, null, true);
     defer global_scope.deinit();
@@ -400,7 +402,7 @@ pub fn generateIR(
             .ret = .{},
         });
 
-        try functions.append(CompileUnit.Function{
+        try functions.append(allocator, CompileUnit.Function{
             .name = try arena.allocator().dupe(u8, function.name),
             .entryPoint = entry_point,
             .localCount = @as(u16, @intCast(local_scope.max_locals)),

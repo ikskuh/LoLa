@@ -112,9 +112,7 @@ pub const TypeSet = struct {
         return !intersection(a, b).isEmpty();
     }
 
-    pub fn format(value: Self, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
-        _ = fmt;
-        _ = options;
+    pub fn format(value: Self, writer: *std.Io.Writer) !void {
         if (value.isEmpty()) {
             try writer.writeAll("none");
         } else if (value.isAny()) {

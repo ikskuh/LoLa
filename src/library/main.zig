@@ -2,25 +2,21 @@ const zig_std = @import("std");
 const builtin = @import("builtin");
 
 // Import all runtime namespaces
-const common = struct {
-    pub usingnamespace @import("common/ir.zig");
-    pub usingnamespace @import("common/disassembler.zig");
-};
-
-pub usingnamespace common;
+const ir = @import("common/ir.zig");
+const dis = @import("common/disassembler.zig");
 
 pub const Decoder = @import("common/Decoder.zig");
 pub const CompileUnit = @import("common/CompileUnit.zig");
 
 /// Contains functions and structures for executing LoLa code.
 pub const runtime = struct {
-    pub usingnamespace @import("runtime/value.zig");
+    pub const value = @import("runtime/value.zig");
 
     pub const Environment = @import("runtime/Environment.zig");
     pub const Context = @import("any-pointer").AnyPointer;
 
-    pub usingnamespace @import("runtime/vm.zig");
-    pub usingnamespace @import("runtime/objects.zig");
+    pub const vm = @import("runtime/vm.zig");
+    pub const objects = @import("runtime/objects.zig");
 
     pub const EnvironmentMap = @import("runtime/environmentmap.zig").EnvironmentMap;
 

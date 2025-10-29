@@ -51,22 +51,30 @@ pub fn build(b: *Build) !void {
     const build_options = b.addOptions();
     build_options.addOption([]const u8, "version", version_tag orelse "development");
 
-    const exe = b.addExecutable(.{
-        .name = "lola",
+    const exe_mod = b.createModule(.{
         .root_source_file = b.path("src/frontend/main.zig"),
         .optimize = optimize,
         .target = target,
     });
-    exe.root_module.addImport("lola", mod_lola);
-    exe.root_module.addImport("args", mod_args);
-    exe.root_module.addImport("build_options", build_options.createModule());
+    exe_mod.addImport("lola", mod_lola);
+    exe_mod.addImport("args", mod_args);
+    exe_mod.addImport("build_options", build_options.createModule());
+
+    const exe = b.addExecutable(.{
+        .name = "lola",
+        .root_module = exe_mod,
+    });
     b.installArtifact(exe);
 
-    const benchmark_renderer = b.addExecutable(.{
-        .name = "benchmark-render",
+    const benchmark_renderer_mod = b.createModule(.{
         .root_source_file = b.path("src/benchmark/render.zig"),
         .optimize = optimize,
         .target = b.graph.host,
+    });
+
+    const benchmark_renderer = b.addExecutable(.{
+        .name = "benchmark-render",
+        .root_module = benchmark_renderer_mod,
     });
     b.installArtifact(benchmark_renderer);
 
@@ -80,7 +88,7 @@ pub fn build(b: *Build) !void {
         render_benchmark_step.dependOn(&only_render_benchmark.step);
     }
 
-    const benchmark_modes = [_]std.builtin.Mode{
+    const benchmark_modes = [_]std.builtin.OptimizeMode{
         .ReleaseSafe, .ReleaseFast, .ReleaseSmall,
     };
     const benchmark_step = b.step("benchmark", "Runs the benchmark suite.");
@@ -91,13 +99,16 @@ pub fn build(b: *Build) !void {
     benchmark_step.dependOn(&render_benchmark.step);
 
     for (benchmark_modes) |benchmark_mode| {
-        const benchmark = b.addExecutable(.{
-            .name = b.fmt("benchmark-{s}", .{@tagName(benchmark_mode)}),
+        const benchmark_mod = b.createModule(.{
             .root_source_file = b.path("src/benchmark/perf.zig"),
             .optimize = benchmark_mode,
             .target = b.graph.host,
         });
-        benchmark.root_module.addImport("lola", mod_lola);
+        benchmark_mod.addImport("lola", mod_lola);
+        const benchmark = b.addExecutable(.{
+            .name = b.fmt("benchmark-{s}", .{@tagName(benchmark_mode)}),
+            .root_module = benchmark_mod,
+        });
 
         const run_benchmark = b.addRunArtifact(benchmark);
         run_benchmark.addDirectoryArg(b.path("benchmarks/code"));
@@ -106,11 +117,14 @@ pub fn build(b: *Build) !void {
         render_benchmark.step.dependOn(&run_benchmark.step);
     }
 
-    const wasm_runtime = b.addExecutable(.{
-        .name = "lola",
+    const wasm_runtime_mod = b.createModule(.{
         .root_source_file = b.path("src/wasm-compiler/main.zig"),
         .target = b.resolveTargetQuery(.{ .cpu_arch = .wasm32, .os_tag = .freestanding }),
         .optimize = .ReleaseSafe,
+    });
+    const wasm_runtime = b.addExecutable(.{
+        .name = "lola",
+        .root_module = wasm_runtime_mod,
     });
     wasm_runtime.entry = .disabled;
     wasm_runtime.root_module.addImport("lola", mod_lola);
@@ -118,29 +132,37 @@ pub fn build(b: *Build) !void {
 
     const examples_step = b.step("examples", "Compiles all examples");
     inline for (examples) |example| {
-        const example_exe = b.addExecutable(.{
-            .name = "example-" ++ example.name,
+        const example_exe_mod = b.createModule(.{
             .root_source_file = b.path(example.path),
             .optimize = optimize,
             .target = target,
         });
-        example_exe.root_module.addImport("lola", mod_lola);
+        example_exe_mod.addImport("lola", mod_lola);
+
+        const example_exe = b.addExecutable(.{
+            .name = "example-" ++ example.name,
+            .root_module = example_exe_mod,
+        });
 
         examples_step.dependOn(&b.addInstallArtifact(example_exe, .{}).step);
     }
 
     const compiler_lola_mod = b.createModule(.{
-        .root_source_file = b.path("src/test/compiler.lola"),
+        .root_source_file = b.path("src/library/compiler/test/compiler.lola"),
     });
 
-    var main_tests = b.addTest(.{
+    const main_tests_mod = b.createModule(.{
         .root_source_file = b.path("src/library/test.zig"),
         .optimize = optimize,
         .target = b.graph.host,
     });
+    main_tests_mod.addImport("any-pointer", mod_any_pointer);
+    main_tests_mod.addImport("compiler.lola", compiler_lola_mod);
+
+    const main_tests = b.addTest(.{
+        .root_module = main_tests_mod,
+    });
     // main_tests.root_module.addImport("interface", mod_interface);
-    main_tests.root_module.addImport("any-pointer", mod_any_pointer);
-    main_tests.root_module.addImport("compiler.lola", compiler_lola_mod);
     // main_tests.main_pkg_path = b.path(".");
 
     const test_step = b.step("test", "Run test suite");

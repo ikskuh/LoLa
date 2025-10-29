@@ -43,7 +43,7 @@ fn emitTooManyVariables(diagnostics: *Diagnostics, location: Location) !void {
 
 fn performTypeCheck(diagnostics: *Diagnostics, location: Location, expected: TypeSet, actual: TypeSet) !void {
     if (expected.intersection(actual).isEmpty()) {
-        try diagnostics.emit(.warning, location, "Possible type mismatch detected: Expected {}, found {}", .{
+        try diagnostics.emit(.warning, location, "Possible type mismatch detected: Expected {f}, found {f}", .{
             expected,
             actual,
         });
@@ -165,7 +165,7 @@ fn validateExpression(state: *AnalysisState, diagnostics: *Diagnostics, scope: *
             try performTypeCheck(diagnostics, expr.rhs.location, accepted_set, rhs);
 
             if (!TypeSet.areCompatible(lhs, rhs)) {
-                try diagnostics.emit(.warning, expression.location, "Possible type mismatch detected. {} and {} are not compatible.\n", .{
+                try diagnostics.emit(.warning, expression.location, "Possible type mismatch detected. {f} and {f} are not compatible.\n", .{
                     lhs,
                     rhs,
                 });

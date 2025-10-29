@@ -21,9 +21,7 @@ pub const Location = struct {
         return self.offset_end - self.offset_start;
     }
 
-    pub fn format(self: @This(), comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
-        _ = fmt;
-        _ = options;
+    pub fn format(self: @This(), writer: *std.Io.Writer) !void {
         try writer.print("{s}:{d}:{d}", .{ self.chunk, self.line, self.column });
     }
 

@@ -2,9 +2,10 @@ const std = @import("std");
 
 pub fn main() !u8 {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const alloc = gpa.allocator();
 
-    const argv = try std.process.argsAlloc(gpa.allocator());
-    defer std.process.argsFree(gpa.allocator(), argv);
+    const argv = try std.process.argsAlloc(alloc);
+    defer std.process.argsFree(alloc, argv);
 
     if (argv.len != 3) {
         return 1;
@@ -16,7 +17,7 @@ pub fn main() !u8 {
     var dst_dir = try std.fs.cwd().openDir(argv[2], .{});
     defer dst_dir.close();
 
-    var data = std.ArrayList(Series).init(gpa.allocator());
+    var data = std.ArrayList(Series).empty;
 
     {
         var iter = src_dir.iterate();
@@ -28,7 +29,7 @@ pub fn main() !u8 {
             const idx = std.mem.lastIndexOfScalar(u8, name_no_ext, '-') orelse continue;
 
             var series = Series{
-                .benchmark = try gpa.allocator().dupe(u8, name_no_ext[0..idx]),
+                .benchmark = try alloc.dupe(alloc, u8, name_no_ext[0..idx]),
                 .mode = std.meta.stringToEnum(std.builtin.Mode, name_no_ext[idx + 1 ..]) orelse @panic("unexpected name"),
                 .data = undefined,
             };
@@ -36,7 +37,7 @@ pub fn main() !u8 {
             var file = try src_dir.openFile(entry.name, .{ .mode = .read_only });
             defer file.close();
 
-            series.data = try loadSeries(gpa.allocator(), file);
+            series.data = try loadSeries(alloc, file);
 
             std.sort.block(DataPoint, series.data, {}, orderDataPoint);
 
@@ -193,7 +194,7 @@ pub const DataPoint = struct {
 
 pub const Series = struct {
     benchmark: []const u8,
-    mode: std.builtin.Mode,
+    mode: std.builtin.OptimizeMode,
     data: []DataPoint,
 };
 

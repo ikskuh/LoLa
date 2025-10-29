@@ -3,7 +3,7 @@ const lola = @import("lola");
 
 // This is our global object pool that is back-referenced
 // by the runtime library.
-pub const ObjectPool = lola.runtime.ObjectPool([_]type{
+pub const ObjectPool = lola.runtime.Environment.ObjectPool([_]type{
     lola.libs.runtime.LoLaList,
     lola.libs.runtime.LoLaDictionary,
 });
@@ -13,7 +13,7 @@ var allocator: std.mem.Allocator = gpa.allocator();
 var compile_unit: lola.CompileUnit = undefined;
 var pool: ObjectPool = undefined;
 var environment: lola.runtime.Environment = undefined;
-var vm: lola.runtime.VM = undefined;
+var vm: lola.runtime.vm.VM = undefined;
 var is_done: bool = true;
 
 pub fn milliTimestamp() usize {
@@ -27,16 +27,9 @@ const JS = struct {
 
     extern fn millis() usize;
 };
-
-const API = struct {
-    fn writeLog(_: void, str: []const u8) !usize {
-        JS.writeString(str.ptr, @as(u32, @intCast(str.len)));
-        return str.len;
-    }
-
-    var debug_writer = std.io.Writer(void, error{}, writeLog){ .context = {} };
-
-    fn writeLogNL(_: void, str: []const u8) !usize {
+//TODO
+fn BufferWriter(buffer: []u8) std.Io.Writer {
+    fn writeLogNL(w: *Writer, data: []const []const u8, splat: usize) !usize {
         var rest = str;
 
         while (std.mem.indexOf(u8, rest, "\n")) |off| {
@@ -49,9 +42,20 @@ const API = struct {
         JS.writeString(rest.ptr, @as(u32, @intCast(rest.len)));
         return str.len;
     }
+    return std.
+}
+const API = struct {
+    fn writeLog(_: void, str: []const u8) !usize {
+        JS.writeString(str.ptr, @as(u32, @intCast(str.len)));
+        return str.len;
+    }
+
+    var debug_writer = std.io.Writer(void, error{}, writeLog){ .context = {} };
+
+    
 
     /// debug writer that patches LF into CRLF
-    var debug_writer_lf = std.io.Writer(void, error{}, writeLogNL){ .context = {} };
+    var debug_writer_lf = std.Io.Writer{ .buffer = &.{}, .vtable = &.{ .drain = writeLogNL } };
 
     fn validate(source: []const u8) !void {
         var diagnostics = lola.compiler.Diagnostics.init(allocator);

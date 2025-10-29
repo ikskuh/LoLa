@@ -34,24 +34,27 @@ pub const Scope = struct {
     /// The highest number of local variables that were declared at a point in this scope.
     max_locals: usize = 0,
 
+    allocator: std.mem.Allocator,
+
     /// Creates a new scope.
     /// `global_scope` is a reference towards a scope that will provide references to a encasing scope.
     /// This scope must only provide `global` variables.
     pub fn init(allocator: std.mem.Allocator, global_scope: ?*Self, is_global: bool) Self {
         return Self{
+            .allocator = allocator,
             .arena = std.heap.ArenaAllocator.init(allocator),
-            .local_variables = std.ArrayList(Variable).init(allocator),
-            .global_variables = std.ArrayList(Variable).init(allocator),
-            .return_point = std.ArrayList(usize).init(allocator),
+            .local_variables = std.ArrayList(Variable).empty,
+            .global_variables = std.ArrayList(Variable).empty,
+            .return_point = std.ArrayList(usize).empty,
             .is_global = is_global,
             .global_scope = global_scope,
         };
     }
 
     pub fn deinit(self: *Self) void {
-        self.local_variables.deinit();
-        self.global_variables.deinit();
-        self.return_point.deinit();
+        self.local_variables.deinit(self.allocator);
+        self.global_variables.deinit(self.allocator);
+        self.return_point.deinit(self.allocator);
         self.arena.deinit();
         self.* = undefined;
     }
@@ -62,7 +65,7 @@ pub const Scope = struct {
     /// This will push a return point to which later must be returned by
     /// calling `leave`.
     pub fn enter(self: *Self) !void {
-        try self.return_point.append(self.local_variables.items.len);
+        try self.return_point.append(self.allocator, self.local_variables.items.len);
     }
 
     /// Leaves a sub-scope. This is usually called at the end of a block.
@@ -84,7 +87,7 @@ pub const Scope = struct {
 
             if (self.global_variables.items.len == std.math.maxInt(u16))
                 return error.TooManyVariables;
-            try self.global_variables.append(Variable{
+            try self.global_variables.append(self.allocator, Variable{
                 .storage_slot = @as(u16, @intCast(self.global_variables.items.len)),
                 .name = try self.arena.allocator().dupe(u8, name),
                 .type = .global,
@@ -93,7 +96,7 @@ pub const Scope = struct {
         } else {
             if (self.local_variables.items.len == std.math.maxInt(u16))
                 return error.TooManyVariables;
-            try self.local_variables.append(Variable{
+            try self.local_variables.append(self.allocator, Variable{
                 .storage_slot = @as(u16, @intCast(self.local_variables.items.len)),
                 .name = try self.arena.allocator().dupe(u8, name),
                 .type = .local,

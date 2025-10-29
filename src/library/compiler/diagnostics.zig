@@ -12,10 +12,8 @@ pub const Diagnostics = struct {
         location: Location,
         message: []const u8,
 
-        pub fn format(value: @This(), comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
-            _ = fmt;
-            _ = options;
-            try writer.print("{}: {s}: {s}", .{
+        pub fn format(value: @This(), writer: *std.Io.Writer) !void {
+            try writer.print("{f}: {s}: {s}", .{
                 value.location,
                 @tagName(value.kind),
                 value.message,
@@ -25,16 +23,18 @@ pub const Diagnostics = struct {
 
     arena: std.heap.ArenaAllocator,
     messages: std.ArrayList(Message),
+    allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .arena = std.heap.ArenaAllocator.init(allocator),
-            .messages = std.ArrayList(Message).init(allocator),
+            .messages = std.ArrayList(Message).empty,
+            .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *Self) void {
-        self.messages.deinit();
+        self.messages.deinit(self.allocator);
         self.arena.deinit();
     }
 
@@ -46,7 +46,7 @@ pub const Diagnostics = struct {
         const arena_pos = try self.arena.allocator().dupe(u8, location.chunk);
         errdefer self.arena.allocator().free(arena_pos);
 
-        try self.messages.append(Message{
+        try self.messages.append(self.allocator, Message{
             .kind = kind,
             .location = Location{
                 .chunk = arena_pos,

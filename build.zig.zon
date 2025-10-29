@@ -4,13 +4,19 @@
     .fingerprint = 0xe0c26edfbdb0efcc,
     .dependencies = .{
         .args = .{
-            .url = "git+https://github.com/ikskuh/zig-args.git#9425b94c103a031777fdd272c555ce93a7dea581",
-            .hash = "args-0.0.0-CiLiqv_NAAC97fGpk9hS2K681jkiqPsWP6w3ucb_ctGH",
+            .path = "zig-args",
         },
+        // .args = .{
+        //     .url = "git+https://github.com/ikskuh/zig-args.git#9425b94c103a031777fdd272c555ce93a7dea581",
+        //     .hash = "args-0.0.0-CiLiqv_NAAC97fGpk9hS2K681jkiqPsWP6w3ucb_ctGH",
+        // },
         .any_pointer = .{
-            .url = "git+https://github.com/ikskuh/any-pointer.git#d068b14cd30577783de018e280428953d098b3d2",
-            .hash = "N-V-__8AAMBAAACvBn7l0deSA92AlXkXtSLA7S82f9gStSNM",
+            .path = "any-pointer",
         },
+        // .any_pointer = .{
+        //     .url = "git+https://github.com/ikskuh/any-pointer.git#d068b14cd30577783de018e280428953d098b3d2",
+        //     .hash = "N-V-__8AAMBAAACvBn7l0deSA92AlXkXtSLA7S82f9gStSNM",
+        // },
     },
 
     .paths = .{"."},

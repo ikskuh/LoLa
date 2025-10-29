@@ -17,12 +17,13 @@ pub fn parse(
 ) !ast.Program {
     var arena = std.heap.ArenaAllocator.init(allocator);
     errdefer arena.deinit();
+    const alloc = arena.allocator();
 
-    var root_script = std.ArrayList(ast.Statement).init(arena.allocator());
-    defer root_script.deinit();
+    var root_script = std.ArrayList(ast.Statement).empty;
+    defer root_script.deinit(alloc);
 
-    var functions = std.ArrayList(ast.Function).init(arena.allocator());
-    defer functions.deinit();
+    var functions = std.ArrayList(ast.Function).empty;
+    defer functions.deinit(alloc);
 
     const Parser = struct {
         const Self = @This();
@@ -151,15 +152,14 @@ pub fn parse(
 
             _ = try self.accept(is(.@"("));
 
-            var args = std.ArrayList([]const u8).init(self.allocator);
-            defer args.deinit();
+            var args = std.ArrayList([]const u8).empty;
 
             while (true) {
                 const arg_or_end = try self.accept(oneOf(.{ .identifier, .@")" }));
                 switch (arg_or_end.type) {
                     .@")" => break,
                     .identifier => {
-                        try args.append(arg_or_end.text);
+                        try args.append(self.allocator, arg_or_end.text);
                         const delimit = try self.accept(oneOf(.{ .@",", .@")" }));
                         if (delimit.type == .@")")
                             break;
@@ -173,7 +173,7 @@ pub fn parse(
             return ast.Function{
                 .location = initial_pos.location,
                 .name = name.text,
-                .parameters = try args.toOwnedSlice(),
+                .parameters = try args.toOwnedSlice(self.allocator),
                 .body = block,
             };
         }
@@ -184,19 +184,18 @@ pub fn parse(
 
             const begin = try self.accept(is(.@"{"));
 
-            var body = std.ArrayList(ast.Statement).init(self.allocator);
-            defer body.deinit();
+            var body = std.ArrayList(ast.Statement).empty;
 
             while (true) {
                 const stmt = self.acceptStatement() catch break;
-                try body.append(stmt);
+                try body.append(self.allocator, stmt);
             }
             _ = try self.accept(is(.@"}"));
 
             return ast.Statement{
                 .location = begin.location,
                 .type = .{
-                    .block = try body.toOwnedSlice(),
+                    .block = try body.toOwnedSlice(self.allocator),
                 },
             };
         }
@@ -629,8 +628,8 @@ pub fn parse(
                 const new_value = switch (sym.type) {
                     // call
                     .@"(" => blk: {
-                        var args = std.ArrayList(ast.Expression).init(self.allocator);
-                        defer args.deinit();
+                        var args = std.ArrayList(ast.Expression).empty;
+                        defer args.deinit(self.allocator);
 
                         var loc = value.location;
 
@@ -639,7 +638,7 @@ pub fn parse(
                         } else |_| {
                             while (true) {
                                 const arg = try self.acceptExpression();
-                                try args.append(arg);
+                                try args.append(self.allocator, arg);
                                 const terminator = try self.accept(oneOf(.{ .@")", .@"," }));
                                 loc = terminator.location.merge(loc);
                                 if (terminator.type == .@")")
@@ -652,7 +651,7 @@ pub fn parse(
                             .type = .{
                                 .function_call = .{
                                     .function = try self.moveToHeap(value),
-                                    .arguments = try args.toOwnedSlice(),
+                                    .arguments = try args.toOwnedSlice(self.allocator),
                                 },
                             },
                         };
@@ -664,8 +663,8 @@ pub fn parse(
 
                         _ = try self.accept(is(.@"("));
 
-                        var args = std.ArrayList(ast.Expression).init(self.allocator);
-                        defer args.deinit();
+                        var args = std.ArrayList(ast.Expression).empty;
+                        defer args.deinit(self.allocator);
 
                         var loc = value.location;
 
@@ -674,7 +673,7 @@ pub fn parse(
                         } else |_| {
                             while (true) {
                                 const arg = try self.acceptExpression();
-                                try args.append(arg);
+                                try args.append(self.allocator, arg);
                                 const terminator = try self.accept(oneOf(.{ .@")", .@"," }));
                                 loc = terminator.location.merge(loc);
                                 if (terminator.type == .@")")
@@ -688,7 +687,7 @@ pub fn parse(
                                 .method_call = .{
                                     .object = try self.moveToHeap(value),
                                     .name = method_name.text,
-                                    .arguments = try args.toOwnedSlice(),
+                                    .arguments = try args.toOwnedSlice(self.allocator),
                                 },
                             },
                         };
@@ -721,8 +720,8 @@ pub fn parse(
                     return value;
                 },
                 .@"[" => {
-                    var array = std.ArrayList(ast.Expression).init(self.allocator);
-                    defer array.deinit();
+                    var array = std.ArrayList(ast.Expression).empty;
+                    defer array.deinit(self.allocator);
 
                     while (true) {
                         if (self.accept(is(.@"]"))) |_| {
@@ -730,7 +729,7 @@ pub fn parse(
                         } else |_| {
                             const item = try self.acceptExpression();
 
-                            try array.append(item);
+                            try array.append(self.allocator, item);
 
                             const delimit = try self.accept(oneOf(.{ .@",", .@"]" }));
                             if (delimit.type == .@"]")
@@ -740,7 +739,7 @@ pub fn parse(
                     return ast.Expression{
                         .location = token.location,
                         .type = .{
-                            .array_literal = try array.toOwnedSlice(),
+                            .array_literal = try array.toOwnedSlice(self.allocator),
                         },
                     };
                 },
@@ -820,7 +819,7 @@ pub fn parse(
             parser.restoreState(state);
 
             const fun = try parser.acceptFunction();
-            try functions.append(fun);
+            try functions.append(alloc, fun);
         } else |_| {
             // no need to unaccept here as we didn't accept in the first place
             const stmt = parser.acceptStatement() catch |err| switch (err) {
@@ -847,26 +846,26 @@ pub fn parse(
 
                 else => |e| return e,
             };
-            try root_script.append(stmt);
+            try root_script.append(alloc, stmt);
         }
     }
 
     return ast.Program{
         .arena = arena,
-        .root_script = try root_script.toOwnedSlice(),
-        .functions = try functions.toOwnedSlice(),
+        .root_script = try root_script.toOwnedSlice(alloc),
+        .functions = try functions.toOwnedSlice(alloc),
     };
 }
 
 fn testTokenize(str: []const u8) ![]lexer.Token {
-    var result = std.ArrayList(lexer.Token).init(std.testing.allocator);
+    var result = std.ArrayList(lexer.Token).empty;
     var tokenizer = lexer.Tokenizer.init("testsrc", str);
 
     while (true) {
         switch (tokenizer.next()) {
-            .end_of_file => return result.toOwnedSlice(),
+            .end_of_file => return result.toOwnedSlice(std.testing.allocator),
             .invalid_sequence => unreachable, // we don't do that here
-            .token => |token| try result.append(token),
+            .token => |token| try result.append(std.testing.allocator, token),
         }
     }
 }
@@ -1684,7 +1683,7 @@ test "4 parameter method call expression" {
 }
 
 test "full suite parsing" {
-    const seq = try testTokenize(@embedFile("../../test/compiler.lola"));
+    const seq = try testTokenize(@embedFile("test/compiler.lola"));
     defer std.testing.allocator.free(seq);
 
     var diagnostics = diag.Diagnostics.init(std.testing.allocator);
@@ -1694,7 +1693,7 @@ test "full suite parsing" {
     defer pgm.deinit();
 
     for (diagnostics.messages.items) |msg| {
-        std.log.err("{}", .{msg});
+        std.log.err("{f}", .{msg});
     }
 
     // assert that we don't have an empty AST
