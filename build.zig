@@ -33,7 +33,7 @@ const examples = [_]Example{
 pub fn build(b: *Build) !void {
     const version_tag = b.option([]const u8, "version", "Sets the version displayed in the docs and for `lola version`");
 
-    const optimize = b.standardOptimizeOption(.{});
+    const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseSafe });
     const target = b.standardTargetOptions(.{});
 
     const mod_args = b.dependency("args", .{}).module("args");
@@ -55,6 +55,8 @@ pub fn build(b: *Build) !void {
         .root_source_file = b.path("src/frontend/main.zig"),
         .optimize = optimize,
         .target = target,
+        .sanitize_thread = true,
+        .stack_check = true,
     });
     exe_mod.addImport("lola", mod_lola);
     exe_mod.addImport("args", mod_args);

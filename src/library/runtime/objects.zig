@@ -55,9 +55,11 @@ pub const ObjectHandle = enum(u64) {
 pub const InputStream = struct {
     const Self = @This();
     pub const ErasedSelf = opaque {};
+    pub const Reader = *std.Io.Reader;
 
     self: *const ErasedSelf,
     read: *const fn (self: *const ErasedSelf, buf: []u8) anyerror!usize,
+    interface: std.Io.Reader,
 
     fn from(reader_ptr: anytype) Self {
         const T = std.meta.Child(@TypeOf(reader_ptr));
@@ -68,6 +70,12 @@ pub const InputStream = struct {
                     return @as(*const T, @ptrCast(@alignCast(self))).read(buf);
                 }
             }.read,
+            .interface = std.Io.Reader{
+                .buffer = .{},
+                .vtable = &std.Io.Reader.VTable{
+                    .stream = stream_interface,
+                },
+            },
         };
     }
 
@@ -75,21 +83,26 @@ pub const InputStream = struct {
         return self.read(self.self, buffer);
     }
 
-    fn reader(self: @This()) Reader {
-        return Reader{
-            .context = self,
-        };
+    fn reader(self: *@This()) Reader {
+        return &self.interface;
     }
-
-    pub const Reader = std.io.Reader(Self, anyerror, readSome);
+    fn stream_interface(r: *std.Io.Reader, w: *std.Io.Writer, limit: std.Io.Limit) std.Io.Reader.StreamError!usize {
+        const buffer = limit.slice(w.writableSliceGreedy(1));
+        const self: *Self = @alignCast(@fieldParentPtr("interface", r));
+        const len = try self.readSome(buffer);
+        w.advance(len);
+    }
+    // pub const Reader = std.io.Reader(Self, anyerror, readSome);
 };
 
 pub const OutputStream = struct {
     const Self = @This();
     pub const ErasedSelf = opaque {};
+    pub const Writer = *std.Io.Writer;
 
     self: *const ErasedSelf,
     write: *const fn (self: *const ErasedSelf, buf: []const u8) anyerror!usize,
+    interface: std.Io.Writer,
 
     fn from(writer_ptr: anytype) Self {
         const T = std.meta.Child(@TypeOf(writer_ptr));
@@ -107,13 +120,28 @@ pub const OutputStream = struct {
         return self.write(self.self, buffer);
     }
 
-    fn writer(self: @This()) Writer {
-        return Writer{
-            .context = self,
-        };
+    fn writer(self: *@This()) Writer {
+        return &self.interface;
     }
 
-    pub const Writer = std.io.Writer(Self, anyerror, writeSome);
+    fn stream_interface(w: *std.Io.Writer, data: []const []const u8, splat: usize) std.Io.Writer.Error!usize {
+        const self: *Self = @alignCast(@fieldParentPtr("interface", w));
+
+        const buffered = w.buffered();
+        if (buffered.len != 0) {
+            const read = try writeSome(self, buffered);
+            return w.consume(read);
+        }
+
+        for (data[0 .. data.len - 1]) |buf| {
+            const read = try writeSome(self, buf);
+            return w.consume(read);
+        }
+        const last = data[data.len - 1];
+        if (last.len == 0 or splat == 0) return 0;
+        const read = try writeSome(self, last);
+        return w.consume(read);
+    }
 };
 
 const ObjectGetError = error{InvalidObject};
@@ -184,7 +212,7 @@ fn computeTypeListHash(comptime classes: []const type) TypeListInfo {
 /// betewen `clearUsageCounters` and `collectGarbage`.
 pub fn ObjectPool(comptime classes_list: anytype) type {
     // enforce type safety here
-    const classes: [classes_list.len]type = classes_list;
+    const classes: [@typeInfo(@TypeOf(classes_list)).array.len]type = classes_list;
 
     const list_info = comptime computeTypeListHash(&classes);
 
@@ -214,11 +242,14 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
 
             const Interface = struct {
                 fn serialize(stream: OutputStream, obj: Object) anyerror!void {
-                    try Class.serializeObject(stream.writer(), @as(*Class, @ptrCast(@alignCast(obj.ptr))));
+                    //parameters are immutable so save to mutable var
+                    var s = stream;
+                    try Class.serializeObject(&s.interface, @as(*Class, @ptrCast(@alignCast(obj.ptr))));
                 }
 
                 fn deserialize(allocator: std.mem.Allocator, stream: InputStream) anyerror!Object {
-                    const ptr = try Class.deserializeObject(allocator, stream.reader());
+                    var s = stream;
+                    const ptr = try Class.deserializeObject(allocator, &s.interface);
                     return Object.init(ptr);
                 }
             };

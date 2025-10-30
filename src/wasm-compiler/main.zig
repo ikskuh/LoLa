@@ -3,7 +3,7 @@ const lola = @import("lola");
 
 // This is our global object pool that is back-referenced
 // by the runtime library.
-pub const ObjectPool = lola.runtime.Environment.ObjectPool([_]type{
+pub const ObjectPool = lola.runtime.objects.ObjectPool([_]type{
     lola.libs.runtime.LoLaList,
     lola.libs.runtime.LoLaDictionary,
 });
@@ -27,9 +27,51 @@ const JS = struct {
 
     extern fn millis() usize;
 };
-//TODO
-fn BufferWriter(buffer: []u8) std.Io.Writer {
-    fn writeLogNL(w: *Writer, data: []const []const u8, splat: usize) !usize {
+
+fn WriterFromFn(buffer: []u8, drain_fn: *const fn (w: *std.Io.Writer, data: []const []const u8, splat: usize) std.Io.Writer.Error!usize) std.Io.Writer {
+    return std.Io.Writer{
+        .buffer = buffer,
+        .vtable = &.{
+            .drain = drain_fn,
+        },
+    };
+}
+const LoLaError = error{
+    OutOfMemory,
+    FailedToCompile,
+    SyntaxError,
+    InvalidCode,
+    AlreadyDeclared,
+    TooManyVariables,
+    TooManyLabels,
+    LabelAlreadyDefined,
+    Overflow,
+    NotInLoop,
+    VariableNotFound,
+    InvalidStoreTarget,
+
+    LoLaPanic,
+
+    AlreadyExists,
+    InvalidObject,
+
+    InvalidInterpreterState,
+};
+const API = struct {
+    fn writeLog(w: *std.Io.Writer, data: []const []const u8, splat: usize) !usize {
+        _ = splat;
+        _ = w;
+        const str = data[0];
+        JS.writeString(str.ptr, @as(u32, @intCast(str.len)));
+        return str.len;
+    }
+
+    var debug_writer = WriterFromFn(&.{}, writeLog);
+
+    fn writeLogNL(w: *std.Io.Writer, data: []const []const u8, splat: usize) !usize {
+        _ = splat;
+        _ = w;
+        const str = data[0];
         var rest = str;
 
         while (std.mem.indexOf(u8, rest, "\n")) |off| {
@@ -42,20 +84,9 @@ fn BufferWriter(buffer: []u8) std.Io.Writer {
         JS.writeString(rest.ptr, @as(u32, @intCast(rest.len)));
         return str.len;
     }
-    return std.
-}
-const API = struct {
-    fn writeLog(_: void, str: []const u8) !usize {
-        JS.writeString(str.ptr, @as(u32, @intCast(str.len)));
-        return str.len;
-    }
-
-    var debug_writer = std.io.Writer(void, error{}, writeLog){ .context = {} };
-
-    
 
     /// debug writer that patches LF into CRLF
-    var debug_writer_lf = std.Io.Writer{ .buffer = &.{}, .vtable = &.{ .drain = writeLogNL } };
+    var debug_writer_lf = WriterFromFn(&.{}, writeLogNL);
 
     fn validate(source: []const u8) !void {
         var diagnostics = lola.compiler.Diagnostics.init(allocator);
@@ -68,7 +99,7 @@ const API = struct {
         var temp_compile_unit = try lola.compiler.compile(allocator, &diagnostics, "code", source);
 
         for (diagnostics.messages.items) |msg| {
-            std.fmt.format(debug_writer_lf, "{}\n", .{msg}) catch unreachable;
+            debug_writer_lf.print("{f}\n", .{msg}) catch unreachable;
         }
 
         if (temp_compile_unit) |*unit|
@@ -82,7 +113,7 @@ const API = struct {
         const compile_unit_or_none = try lola.compiler.compile(allocator, &diagnostics, "code", source);
 
         for (diagnostics.messages.items) |msg| {
-            std.fmt.format(debug_writer_lf, "{}\n", .{msg}) catch unreachable;
+            debug_writer_lf.print("{f}\n", .{msg}) catch unreachable;
         }
 
         compile_unit = compile_unit_or_none orelse return error.FailedToCompile;
@@ -98,14 +129,14 @@ const API = struct {
         // try lola.libs.runtime.install(&environment, allocator);
 
         try environment.installFunction("Print", lola.runtime.Function.initSimpleUser(struct {
-            fn Print(_environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+            fn Print(_environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) anyerror!lola.runtime.value.Value {
                 _ = _environment;
                 _ = context;
                 // const allocator = context.get(std.mem.Allocator);
                 for (args) |value| {
                     switch (value) {
                         .string => |str| try debug_writer.writeAll(str.contents),
-                        else => try debug_writer.print("{}", .{value}),
+                        else => try debug_writer.print("{f}", .{value}),
                     }
                 }
                 try debug_writer.writeAll("\r\n");
@@ -114,14 +145,14 @@ const API = struct {
         }.Print));
 
         try environment.installFunction("Write", lola.runtime.Function.initSimpleUser(struct {
-            fn Write(_environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+            fn Write(_environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) anyerror!lola.runtime.value.Value {
                 _ = _environment;
                 _ = context;
                 // const allocator = context.get(std.mem.Allocator);
                 for (args) |value| {
                     switch (value) {
                         .string => |str| try debug_writer.writeAll(str.contents),
-                        else => try debug_writer.print("{}", .{value}),
+                        else => try debug_writer.print("{f}", .{value}),
                     }
                 }
                 return .void;
@@ -129,31 +160,31 @@ const API = struct {
         }.Write));
 
         try environment.installFunction("Read", lola.runtime.Function.initSimpleUser(struct {
-            fn Read(_environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+            fn Read(_environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) anyerror!lola.runtime.value.Value {
                 _ = _environment;
                 _ = context;
                 if (args.len != 0)
                     return error.InvalidArgs;
 
-                var buffer = std.ArrayList(u8).init(allocator);
-                defer buffer.deinit();
+                var buffer = std.ArrayList(u8).empty;
+                defer buffer.deinit(allocator);
 
                 while (true) {
                     var temp: [256]u8 = undefined;
                     const len = JS.readString(&temp, temp.len);
                     if (len == 0)
                         break;
-                    try buffer.appendSlice(temp[0..len]);
+                    try buffer.appendSlice(allocator, temp[0..len]);
                 }
 
-                return lola.runtime.Value.fromString(lola.runtime.String.initFromOwned(
+                return lola.runtime.value.Value.fromString(lola.runtime.value.String.initFromOwned(
                     allocator,
-                    try buffer.toOwnedSlice(),
+                    try buffer.toOwnedSlice(allocator),
                 ));
             }
         }.Read));
 
-        vm = try lola.runtime.VM.init(allocator, &environment);
+        vm = try lola.runtime.vm.VM.init(allocator, &environment);
         errdefer vm.deinit();
 
         is_done = false;
@@ -169,16 +200,16 @@ const API = struct {
         is_done = true;
     }
 
-    fn stepInterpreter(steps: u32) !void {
+    fn stepInterpreter(steps: u32) LoLaError!void {
         if (is_done)
             return error.InvalidInterpreterState;
 
         // Run the virtual machine for up to 150 instructions
         const result = vm.execute(steps) catch |err| {
             // When the virtua machine panics, we receive a Zig error
-            try std.fmt.format(debug_writer_lf, "\x1B[91mLoLa Panic: {s}\x1B[m\n", .{@errorName(err)});
+            debug_writer_lf.print("\x1B[91mLoLa Panic: {s}\x1B[m\n", .{@errorName(err)}) catch unreachable;
 
-            try vm.printStackTrace(debug_writer_lf);
+            vm.printStackTrace(&debug_writer_lf) catch return LoLaError.LoLaPanic;
 
             return error.LoLaPanic;
         };
@@ -214,9 +245,9 @@ const API = struct {
     }
 };
 
-comptime {
-    _ = exports;
-}
+// comptime {
+//     _ = exports;
+// }
 
 const exports = struct {
     export fn initialize() void {
@@ -232,27 +263,6 @@ const exports = struct {
         allocator.free(mem[0..len]);
     }
 
-    const LoLaError = error{
-        OutOfMemory,
-        FailedToCompile,
-        SyntaxError,
-        InvalidCode,
-        AlreadyDeclared,
-        TooManyVariables,
-        TooManyLabels,
-        LabelAlreadyDefined,
-        Overflow,
-        NotInLoop,
-        VariableNotFound,
-        InvalidStoreTarget,
-
-        LoLaPanic,
-
-        AlreadyExists,
-        InvalidObject,
-
-        InvalidInterpreterState,
-    };
     fn mapError(err: LoLaError) u8 {
         return switch (err) {
             error.OutOfMemory => 1,

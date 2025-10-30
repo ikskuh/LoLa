@@ -52,22 +52,22 @@ functions: []const Function,
 debugSymbols: []const DebugSymbol,
 
 /// Loads a compile unit from a data stream.
-pub fn loadFromStream(allocator: std.mem.Allocator, stream: anytype) !CompileUnit {
+pub fn loadFromStream(allocator: std.mem.Allocator, stream: *std.Io.Reader) !CompileUnit {
     // var inStream = file.getInStream();
     // var stream = &inStream.stream;
     var header: [8]u8 = undefined;
-    stream.readNoEof(&header) catch |err| switch (err) {
+    stream.readSliceAll(&header) catch |err| switch (err) {
         error.EndOfStream => return error.InvalidFormat, // file is too short!
         else => return err,
     };
     if (!std.mem.eql(u8, &header, "LoLa\xB9\x40\x80\x5A"))
         return error.InvalidFormat;
-    const version = try stream.readInt(u32, .little);
+    const version = try stream.takeInt(u32, .little);
     if (version != 1)
         return error.UnsupportedVersion;
 
     var comment: [256]u8 = undefined;
-    try stream.readNoEof(&comment);
+    try stream.readSliceAll(&comment);
 
     var unit = CompileUnit{
         .arena = std.heap.ArenaAllocator.init(allocator),
@@ -82,12 +82,12 @@ pub fn loadFromStream(allocator: std.mem.Allocator, stream: anytype) !CompileUni
 
     unit.comment = try unit.arena.allocator().dupe(u8, utility.clampFixedString(&comment));
 
-    unit.globalCount = try stream.readInt(u16, .little);
-    unit.temporaryCount = try stream.readInt(u16, .little);
+    unit.globalCount = try stream.takeInt(u16, .little);
+    unit.temporaryCount = try stream.takeInt(u16, .little);
 
-    const functionCount = try stream.readInt(u16, .little);
-    const codeSize = try stream.readInt(u32, .little);
-    const numSymbols = try stream.readInt(u32, .little);
+    const functionCount = try stream.takeInt(u16, .little);
+    const codeSize = try stream.takeInt(u32, .little);
+    const numSymbols = try stream.takeInt(u32, .little);
 
     if (functionCount > codeSize or numSymbols > codeSize) {
         // It is not reasonable to have multiple functions per
@@ -102,10 +102,10 @@ pub fn loadFromStream(allocator: std.mem.Allocator, stream: anytype) !CompileUni
 
     for (functions) |*fun| {
         var name: [128]u8 = undefined;
-        try stream.readNoEof(&name);
+        try stream.readSliceAll(&name);
 
-        const entryPoint = try stream.readInt(u32, .little);
-        const localCount = try stream.readInt(u16, .little);
+        const entryPoint = try stream.takeInt(u32, .little);
+        const localCount = try stream.takeInt(u16, .little);
 
         fun.* = Function{
             .name = try unit.arena.allocator().dupe(u8, utility.clampFixedString(&name)),
@@ -115,13 +115,13 @@ pub fn loadFromStream(allocator: std.mem.Allocator, stream: anytype) !CompileUni
     }
     unit.functions = functions;
 
-    try stream.readNoEof(code);
+    try stream.readSliceAll(code);
     unit.code = code;
 
     for (debugSymbols) |*sym| {
-        const offset = try stream.readInt(u32, .little);
-        const sourceLine = try stream.readInt(u32, .little);
-        const sourceColumn = try stream.readInt(u16, .little);
+        const offset = try stream.takeInt(u32, .little);
+        const sourceLine = try stream.takeInt(u32, .little);
+        const sourceColumn = try stream.takeInt(u16, .little);
         sym.* = DebugSymbol{
             .offset = offset,
             .sourceLine = sourceLine,
@@ -140,11 +140,11 @@ pub fn loadFromStream(allocator: std.mem.Allocator, stream: anytype) !CompileUni
 }
 
 /// Saves a compile unit to a data stream.
-pub fn saveToStream(self: CompileUnit, stream: anytype) !void {
+pub fn saveToStream(self: CompileUnit, stream: *std.Io.Writer) !void {
     try stream.writeAll("LoLa\xB9\x40\x80\x5A");
     try stream.writeInt(u32, 1, .little);
     try stream.writeAll(self.comment);
-    try stream.writeByteNTimes(0, 256 - self.comment.len);
+    _ = try stream.splatByte(0, 256 - self.comment.len);
     try stream.writeInt(u16, self.globalCount, .little);
     try stream.writeInt(u16, self.temporaryCount, .little);
     try stream.writeInt(u16, @as(u16, @intCast(self.functions.len)), .little);
@@ -152,7 +152,7 @@ pub fn saveToStream(self: CompileUnit, stream: anytype) !void {
     try stream.writeInt(u32, @as(u32, @intCast(self.debugSymbols.len)), .little);
     for (self.functions) |fun| {
         try stream.writeAll(fun.name);
-        try stream.writeByteNTimes(0, 128 - fun.name.len);
+        _ = try stream.splatByte(0, 128 - fun.name.len);
         try stream.writeInt(u32, fun.entryPoint, .little);
         try stream.writeInt(u16, fun.localCount, .little);
     }
@@ -184,24 +184,24 @@ pub fn deinit(self: CompileUnit) void {
 }
 
 const serializedCompileUnit = "" // SoT
-++ "LoLa\xB9\x40\x80\x5A" // Header
-++ "\x01\x00\x00\x00" // Version
-++ "Made with NativeLola.zig!" ++ ("\x00" ** (256 - 25)) // Comment
-++ "\x03\x00" // globalCount
-++ "\x55\x11" // temporaryCount
-++ "\x02\x00" // functionCount
-++ "\x05\x00\x00\x00" // codeSize
-++ "\x03\x00\x00\x00" // numSymbols
-++ "Function1" ++ ("\x00" ** (128 - 9)) // Name
-++ "\x00\x00\x00\x00" // entryPoint
-++ "\x01\x00" // localCount
-++ "Function2" ++ ("\x00" ** (128 - 9)) // Name
-++ "\x10\x10\x00\x00" // entryPoint
-++ "\x02\x00" // localCount
-++ "Hello" // code
-++ "\x01\x00\x00\x00" ++ "\x01\x00\x00\x00" ++ "\x01\x00" // dbgSym1
-++ "\x02\x00\x00\x00" ++ "\x02\x00\x00\x00" ++ "\x04\x00" // dbgSym2
-++ "\x04\x00\x00\x00" ++ "\x03\x00\x00\x00" ++ "\x08\x00" // dbgSym3
+    ++ "LoLa\xB9\x40\x80\x5A" // Header
+    ++ "\x01\x00\x00\x00" // Version
+    ++ "Made with NativeLola.zig!" ++ ("\x00" ** (256 - 25)) // Comment
+    ++ "\x03\x00" // globalCount
+    ++ "\x55\x11" // temporaryCount
+    ++ "\x02\x00" // functionCount
+    ++ "\x05\x00\x00\x00" // codeSize
+    ++ "\x03\x00\x00\x00" // numSymbols
+    ++ "Function1" ++ ("\x00" ** (128 - 9)) // Name
+    ++ "\x00\x00\x00\x00" // entryPoint
+    ++ "\x01\x00" // localCount
+    ++ "Function2" ++ ("\x00" ** (128 - 9)) // Name
+    ++ "\x10\x10\x00\x00" // entryPoint
+    ++ "\x02\x00" // localCount
+    ++ "Hello" // code
+    ++ "\x01\x00\x00\x00" ++ "\x01\x00\x00\x00" ++ "\x01\x00" // dbgSym1
+    ++ "\x02\x00\x00\x00" ++ "\x02\x00\x00\x00" ++ "\x04\x00" // dbgSym2
+    ++ "\x04\x00\x00\x00" ++ "\x03\x00\x00\x00" ++ "\x08\x00" // dbgSym3
 ;
 
 test "CompileUnit I/O" {

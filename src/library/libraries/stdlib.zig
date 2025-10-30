@@ -35,7 +35,7 @@ const empty_compile_unit = lola.CompileUnit{
 };
 
 test "stdlib.install" {
-    var pool = lola.runtime.ObjectPool([_]type{}).init(std.testing.allocator);
+    var pool = lola.runtime.objects.ObjectPool([_]type{}).init(std.testing.allocator);
     defer pool.deinit();
 
     var env = try lola.runtime.Environment.init(std.testing.allocator, &empty_compile_unit, pool.interface());
@@ -45,7 +45,7 @@ test "stdlib.install" {
     try env.installModule(@This(), lola.runtime.Context.null_pointer);
 }
 
-pub fn Sleep(env: *lola.runtime.Environment, call_context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.AsyncFunctionCall {
+pub fn Sleep(env: *lola.runtime.Environment, call_context: lola.runtime.Context, args: []const lola.runtime.value.Value) anyerror!lola.runtime.AsyncFunctionCall {
     _ = call_context;
 
     if (args.len != 1)
@@ -72,7 +72,7 @@ pub fn Sleep(env: *lola.runtime.Environment, call_context: lola.runtime.Context,
             }
         }.dtor,
         .execute = struct {
-            fn execute(exec_context: lola.runtime.Context) anyerror!?lola.runtime.Value {
+            fn execute(exec_context: lola.runtime.Context) anyerror!?lola.runtime.value.Value {
                 const ctx = exec_context.cast(*Context);
 
                 if (ctx.end_time < @as(f64, @floatFromInt(milliTimestamp()))) {
@@ -85,7 +85,7 @@ pub fn Sleep(env: *lola.runtime.Environment, call_context: lola.runtime.Context,
     };
 }
 
-pub fn Yield(env: *lola.runtime.Environment, call_context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.AsyncFunctionCall {
+pub fn Yield(env: *lola.runtime.Environment, call_context: lola.runtime.Context, args: []const lola.runtime.value.Value) anyerror!lola.runtime.AsyncFunctionCall {
     _ = call_context;
 
     if (args.len != 0)
@@ -111,7 +111,7 @@ pub fn Yield(env: *lola.runtime.Environment, call_context: lola.runtime.Context,
             }
         }.dtor,
         .execute = struct {
-            fn execute(exec_context: lola.runtime.Context) anyerror!?lola.runtime.Value {
+            fn execute(exec_context: lola.runtime.Context) anyerror!?lola.runtime.value.Value {
                 const ctx = exec_context.cast(*Context);
 
                 if (ctx.end) {
@@ -125,19 +125,19 @@ pub fn Yield(env: *lola.runtime.Environment, call_context: lola.runtime.Context,
     };
 }
 
-pub fn Length(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Length(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = env;
     _ = context;
     if (args.len != 1)
         return error.InvalidArgs;
     return switch (args[0]) {
-        .string => |str| lola.runtime.Value.initNumber(@as(f64, @floatFromInt(str.contents.len))),
-        .array => |arr| lola.runtime.Value.initNumber(@as(f64, @floatFromInt(arr.contents.len))),
+        .string => |str| lola.runtime.value.Value.initNumber(@as(f64, @floatFromInt(str.contents.len))),
+        .array => |arr| lola.runtime.value.Value.initNumber(@as(f64, @floatFromInt(arr.contents.len))),
         else => error.TypeMismatch,
     };
 }
 
-pub fn SubString(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn SubString(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = context;
     if (args.len < 2 or args.len > 3)
         return error.InvalidArgs;
@@ -151,16 +151,16 @@ pub fn SubString(env: *const lola.runtime.Environment, context: lola.runtime.Con
     const str = args[0].string;
     const start = try args[1].toInteger(usize);
     if (start >= str.contents.len)
-        return lola.runtime.Value.initString(env.allocator, "");
+        return lola.runtime.value.Value.initString(env.allocator, "");
 
     const sliced = if (args.len == 3)
         str.contents[start..][0..@min(str.contents.len - start, try args[2].toInteger(usize))]
     else
         str.contents[start..];
 
-    return try lola.runtime.Value.initString(env.allocator, sliced);
+    return try lola.runtime.value.Value.initString(env.allocator, sliced);
 }
-pub fn Trim(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Trim(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = context;
     if (args.len != 1)
         return error.InvalidArgs;
@@ -168,13 +168,13 @@ pub fn Trim(env: *const lola.runtime.Environment, context: lola.runtime.Context,
         return error.TypeMismatch;
     const str = args[0].string;
 
-    return try lola.runtime.Value.initString(
+    return try lola.runtime.value.Value.initString(
         env.allocator,
         std.mem.trim(u8, str.contents, &whitespace),
     );
 }
 
-pub fn TrimLeft(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn TrimLeft(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = context;
     if (args.len != 1)
         return error.InvalidArgs;
@@ -182,13 +182,13 @@ pub fn TrimLeft(env: *const lola.runtime.Environment, context: lola.runtime.Cont
         return error.TypeMismatch;
     const str = args[0].string;
 
-    return try lola.runtime.Value.initString(
+    return try lola.runtime.value.Value.initString(
         env.allocator,
         std.mem.trimLeft(u8, str.contents, &whitespace),
     );
 }
 
-pub fn TrimRight(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn TrimRight(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = context;
     if (args.len != 1)
         return error.InvalidArgs;
@@ -196,13 +196,13 @@ pub fn TrimRight(env: *const lola.runtime.Environment, context: lola.runtime.Con
         return error.TypeMismatch;
     const str = args[0].string;
 
-    return try lola.runtime.Value.initString(
+    return try lola.runtime.value.Value.initString(
         env.allocator,
         std.mem.trimRight(u8, str.contents, &whitespace),
     );
 }
 
-pub fn IndexOf(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn IndexOf(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = env;
     _ = context;
     if (args.len != 2)
@@ -214,14 +214,14 @@ pub fn IndexOf(env: *const lola.runtime.Environment, context: lola.runtime.Conte
         const needle = args[1].string.contents;
 
         return if (std.mem.indexOf(u8, haystack, needle)) |index|
-            lola.runtime.Value.initNumber(@as(f64, @floatFromInt(index)))
+            lola.runtime.value.Value.initNumber(@as(f64, @floatFromInt(index)))
         else
             .void;
     } else if (args[0] == .array) {
         const haystack = args[0].array.contents;
         for (haystack, 0..) |val, i| {
             if (val.eql(args[1]))
-                return lola.runtime.Value.initNumber(@as(f64, @floatFromInt(i)));
+                return lola.runtime.value.Value.initNumber(@as(f64, @floatFromInt(i)));
         }
         return .void;
     } else {
@@ -229,7 +229,7 @@ pub fn IndexOf(env: *const lola.runtime.Environment, context: lola.runtime.Conte
     }
 }
 
-pub fn LastIndexOf(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn LastIndexOf(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = env;
     _ = context;
     if (args.len != 2)
@@ -241,7 +241,7 @@ pub fn LastIndexOf(env: *const lola.runtime.Environment, context: lola.runtime.C
         const needle = args[1].string.contents;
 
         return if (std.mem.lastIndexOf(u8, haystack, needle)) |index|
-            lola.runtime.Value.initNumber(@as(f64, @floatFromInt(index)))
+            lola.runtime.value.Value.initNumber(@as(f64, @floatFromInt(index)))
         else
             .void;
     } else if (args[0] == .array) {
@@ -251,7 +251,7 @@ pub fn LastIndexOf(env: *const lola.runtime.Environment, context: lola.runtime.C
         while (i > 0) {
             i -= 1;
             if (haystack[i].eql(args[1]))
-                return lola.runtime.Value.initNumber(@as(f64, @floatFromInt(i)));
+                return lola.runtime.value.Value.initNumber(@as(f64, @floatFromInt(i)));
         }
         return .void;
     } else {
@@ -259,7 +259,7 @@ pub fn LastIndexOf(env: *const lola.runtime.Environment, context: lola.runtime.C
     }
 }
 
-pub fn Byte(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Byte(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = env;
     _ = context;
     if (args.len != 1)
@@ -268,49 +268,83 @@ pub fn Byte(env: *const lola.runtime.Environment, context: lola.runtime.Context,
         return error.TypeMismatch;
     const value = args[0].string.contents;
     if (value.len > 0)
-        return lola.runtime.Value.initNumber(@as(f64, @floatFromInt(value[0])))
+        return lola.runtime.value.Value.initNumber(@as(f64, @floatFromInt(value[0])))
     else
         return .void;
 }
 
-pub fn Chr(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Chr(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = context;
     if (args.len != 1)
         return error.InvalidArgs;
     const val = try args[0].toInteger(u8);
 
-    return try lola.runtime.Value.initString(
+    return try lola.runtime.value.Value.initString(
         env.allocator,
         &[_]u8{val},
     );
 }
 
-pub fn NumToString(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+/// std.Io.Writer wrapper to count how many bytes were written
+const WriterCounter = struct {
+    const Self = @This();
+    /// number of bytes written to stream
+    count: usize = 0,
+    interface: std.Io.Writer,
+    old_vtable: *const std.Io.Writer.VTable,
+    fn drain_wrapper(w: *std.Io.Writer, data: []const []const u8, splat: usize) std.Io.Writer.Error!usize {
+        const counter: *Self = @alignCast(@fieldParentPtr("interface", w));
+        const old_fn = counter.old_vtable.drain;
+        counter.count += try old_fn(w, data, splat);
+        return counter.count;
+    }
+    pub fn init(old_writer: std.Io.Writer) Self {
+        var interface = old_writer;
+        const old_vtable = interface.vtable;
+        interface.vtable = &std.Io.Writer.VTable{
+            .drain = drain_wrapper,
+            .flush = old_vtable.flush,
+            .rebase = old_vtable.rebase,
+            .sendFile = old_vtable.sendFile,
+        };
+        return Self{
+            .interface = interface,
+            .old_vtable = old_vtable,
+        };
+    }
+    pub fn getWritten(self: *const Self) usize {
+        return self.count;
+    }
+};
+
+pub fn NumToString(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = context;
     if (args.len < 1 or args.len > 2)
         return error.InvalidArgs;
     var buffer: [256]u8 = undefined;
+    var counter = WriterCounter.init(std.Io.Writer.fixed(&buffer));
+    const stream = &counter.interface;
 
     const slice = if (args.len == 2) blk: {
         const base = try args[1].toInteger(u8);
 
         const val = try args[0].toInteger(isize);
-        const len = std.fmt.formatIntBuf(&buffer, val, base, .upper, std.fmt.FormatOptions{});
+        try stream.printInt(val, base, .upper, .{});
+        const len = counter.getWritten();
 
         break :blk buffer[0..len];
     } else blk: {
-        var stream = std.io.fixedBufferStream(&buffer);
-
         const val = try args[0].toNumber();
 
-        try stream.writer().print("{d}", .{val});
+        try stream.print("{d}", .{val});
+        const len = counter.getWritten();
 
-        break :blk stream.getWritten();
+        break :blk buffer[0..len];
     };
-    return try lola.runtime.Value.initString(env.allocator, slice);
+    return try lola.runtime.value.Value.initString(env.allocator, slice);
 }
 
-pub fn StringToNum(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn StringToNum(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = env;
     _ = context;
     if (args.len < 1 or args.len > 2)
@@ -331,14 +365,14 @@ pub fn StringToNum(env: *const lola.runtime.Environment, context: lola.runtime.C
 
         const val = try std.fmt.parseInt(isize, text, base); // return .void;
 
-        return lola.runtime.Value.initNumber(@as(f64, @floatFromInt(val)));
+        return lola.runtime.value.Value.initNumber(@as(f64, @floatFromInt(val)));
     } else {
         const val = std.fmt.parseFloat(f64, str) catch return .void;
-        return lola.runtime.Value.initNumber(val);
+        return lola.runtime.value.Value.initNumber(val);
     }
 }
 
-pub fn Split(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Split(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = context;
     if (args.len < 2 or args.len > 3)
         return error.InvalidArgs;
@@ -347,60 +381,60 @@ pub fn Split(env: *const lola.runtime.Environment, context: lola.runtime.Context
     const separator = try args[1].toString();
     const removeEmpty = if (args.len == 3) try args[2].toBoolean() else false;
 
-    var items = std.ArrayList(lola.runtime.Value).init(env.allocator);
+    var items = std.ArrayList(lola.runtime.value.Value).empty;
     defer {
         for (items.items) |*i| {
             i.deinit();
         }
-        items.deinit();
+        items.deinit(env.allocator);
     }
 
     var iter = std.mem.splitAny(u8, input, separator);
     while (iter.next()) |slice| {
         if (!removeEmpty or slice.len > 0) {
-            var val = try lola.runtime.Value.initString(env.allocator, slice);
+            var val = try lola.runtime.value.Value.initString(env.allocator, slice);
             errdefer val.deinit();
 
-            try items.append(val);
+            try items.append(env.allocator, val);
         }
     }
 
-    return lola.runtime.Value.fromArray(lola.runtime.Array{
+    return lola.runtime.value.Value.fromArray(lola.runtime.value.Array{
         .allocator = env.allocator,
-        .contents = try items.toOwnedSlice(),
+        .contents = try items.toOwnedSlice(env.allocator),
     });
 }
 
-pub fn Join(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Join(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = context;
     if (args.len < 1 or args.len > 2)
         return error.InvalidArgs;
 
     const array = try args[0].toArray();
-    const separator = if (args.len == 2) try args[1].toString() else "";
+    const separator: []const u8 = if (args.len == 2) try args[1].toString() else "";
 
     for (array.contents) |item| {
         if (item != .string)
             return error.TypeMismatch;
     }
 
-    var result = std.ArrayList(u8).init(env.allocator);
-    defer result.deinit();
+    var result = std.ArrayList(u8).empty;
+    defer result.deinit(env.allocator);
 
     for (array.contents, 0..) |item, i| {
         if (i > 0) {
-            try result.appendSlice(separator);
+            try result.appendSlice(env.allocator, separator);
         }
-        try result.appendSlice(try item.toString());
+        try result.appendSlice(env.allocator, try item.toString());
     }
 
-    return lola.runtime.Value.fromString(lola.runtime.String.initFromOwned(
+    return lola.runtime.value.Value.fromString(lola.runtime.value.String.initFromOwned(
         env.allocator,
-        try result.toOwnedSlice(),
+        try result.toOwnedSlice(env.allocator),
     ));
 }
 
-pub fn Array(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Array(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = context;
     if (args.len < 1 or args.len > 2)
         return error.InvalidArgs;
@@ -408,14 +442,14 @@ pub fn Array(env: *const lola.runtime.Environment, context: lola.runtime.Context
     const length = try args[0].toInteger(usize);
     const init_val = if (args.len > 1) args[1] else .void;
 
-    const arr = try lola.runtime.Array.init(env.allocator, length);
+    const arr = try lola.runtime.value.Array.init(env.allocator, length);
     for (arr.contents) |*item| {
         item.* = try init_val.clone();
     }
-    return lola.runtime.Value.fromArray(arr);
+    return lola.runtime.value.Value.fromArray(arr);
 }
 
-pub fn Range(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Range(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = context;
     if (args.len < 1 or args.len > 2)
         return error.InvalidArgs;
@@ -424,22 +458,22 @@ pub fn Range(env: *const lola.runtime.Environment, context: lola.runtime.Context
         const start = try args[0].toInteger(usize);
         const length = try args[1].toInteger(usize);
 
-        const arr = try lola.runtime.Array.init(env.allocator, length);
+        const arr = try lola.runtime.value.Array.init(env.allocator, length);
         for (arr.contents, 0..) |*item, i| {
-            item.* = lola.runtime.Value.initNumber(@as(f64, @floatFromInt(start + i)));
+            item.* = lola.runtime.value.Value.initNumber(@as(f64, @floatFromInt(start + i)));
         }
-        return lola.runtime.Value.fromArray(arr);
+        return lola.runtime.value.Value.fromArray(arr);
     } else {
         const length = try args[0].toInteger(usize);
-        const arr = try lola.runtime.Array.init(env.allocator, length);
+        const arr = try lola.runtime.value.Array.init(env.allocator, length);
         for (arr.contents, 0..) |*item, i| {
-            item.* = lola.runtime.Value.initNumber(@as(f64, @floatFromInt(i)));
+            item.* = lola.runtime.value.Value.initNumber(@as(f64, @floatFromInt(i)));
         }
-        return lola.runtime.Value.fromArray(arr);
+        return lola.runtime.value.Value.fromArray(arr);
     }
 }
 
-pub fn Slice(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Slice(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = context;
     if (args.len != 3)
         return error.InvalidArgs;
@@ -450,21 +484,21 @@ pub fn Slice(env: *const lola.runtime.Environment, context: lola.runtime.Context
 
     // Out of bounds
     if (start >= array.contents.len)
-        return lola.runtime.Value.fromArray(try lola.runtime.Array.init(env.allocator, 0));
+        return lola.runtime.value.Value.fromArray(try lola.runtime.value.Array.init(env.allocator, 0));
 
     const actual_length = @min(length, array.contents.len - start);
 
-    var arr = try lola.runtime.Array.init(env.allocator, actual_length);
+    var arr = try lola.runtime.value.Array.init(env.allocator, actual_length);
     errdefer arr.deinit();
 
     for (arr.contents, 0..) |*item, i| {
         item.* = try array.contents[start + i].clone();
     }
 
-    return lola.runtime.Value.fromArray(arr);
+    return lola.runtime.value.Value.fromArray(arr);
 }
 
-pub fn DeltaEqual(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn DeltaEqual(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = env;
     _ = context;
     if (args.len != 3)
@@ -472,66 +506,66 @@ pub fn DeltaEqual(env: *const lola.runtime.Environment, context: lola.runtime.Co
     const a = try args[0].toNumber();
     const b = try args[1].toNumber();
     const delta = try args[2].toNumber();
-    return lola.runtime.Value.initBoolean(@abs(a - b) < delta);
+    return lola.runtime.value.Value.initBoolean(@abs(a - b) < delta);
 }
 
-pub fn Floor(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Floor(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = env;
     _ = context;
     if (args.len != 1)
         return error.InvalidArgs;
-    return lola.runtime.Value.initNumber(@floor(try args[0].toNumber()));
+    return lola.runtime.value.Value.initNumber(@floor(try args[0].toNumber()));
 }
 
-pub fn Ceiling(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Ceiling(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = env;
     _ = context;
     if (args.len != 1)
         return error.InvalidArgs;
-    return lola.runtime.Value.initNumber(@ceil(try args[0].toNumber()));
+    return lola.runtime.value.Value.initNumber(@ceil(try args[0].toNumber()));
 }
 
-pub fn Round(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Round(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = env;
     _ = context;
     if (args.len != 1)
         return error.InvalidArgs;
-    return lola.runtime.Value.initNumber(@round(try args[0].toNumber()));
+    return lola.runtime.value.Value.initNumber(@round(try args[0].toNumber()));
 }
 
-pub fn Sin(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Sin(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = env;
     _ = context;
     if (args.len != 1)
         return error.InvalidArgs;
-    return lola.runtime.Value.initNumber(@sin(try args[0].toNumber()));
+    return lola.runtime.value.Value.initNumber(@sin(try args[0].toNumber()));
 }
 
-pub fn Cos(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Cos(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = env;
     _ = context;
     if (args.len != 1)
         return error.InvalidArgs;
-    return lola.runtime.Value.initNumber(@cos(try args[0].toNumber()));
+    return lola.runtime.value.Value.initNumber(@cos(try args[0].toNumber()));
 }
 
-pub fn Tan(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Tan(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = env;
     _ = context;
     if (args.len != 1)
         return error.InvalidArgs;
-    return lola.runtime.Value.initNumber(@tan(try args[0].toNumber()));
+    return lola.runtime.value.Value.initNumber(@tan(try args[0].toNumber()));
 }
 
-pub fn Atan(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Atan(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = env;
     _ = context;
     if (args.len == 1) {
-        return lola.runtime.Value.initNumber(
+        return lola.runtime.value.Value.initNumber(
             std.math.atan(try args[0].toNumber()),
         );
     } else if (args.len == 2) {
-        return lola.runtime.Value.initNumber(std.math.atan2(
+        return lola.runtime.value.Value.initNumber(std.math.atan2(
             try args[0].toNumber(),
             try args[1].toNumber(),
         ));
@@ -540,35 +574,35 @@ pub fn Atan(env: *const lola.runtime.Environment, context: lola.runtime.Context,
     }
 }
 
-pub fn Sqrt(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Sqrt(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = env;
     _ = context;
     if (args.len != 1)
         return error.InvalidArgs;
-    return lola.runtime.Value.initNumber(std.math.sqrt(try args[0].toNumber()));
+    return lola.runtime.value.Value.initNumber(std.math.sqrt(try args[0].toNumber()));
 }
 
-pub fn Pow(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Pow(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = env;
     _ = context;
     if (args.len != 2)
         return error.InvalidArgs;
-    return lola.runtime.Value.initNumber(std.math.pow(
+    return lola.runtime.value.Value.initNumber(std.math.pow(
         f64,
         try args[0].toNumber(),
         try args[1].toNumber(),
     ));
 }
 
-pub fn Log(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Log(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = env;
     _ = context;
     if (args.len == 1) {
-        return lola.runtime.Value.initNumber(
+        return lola.runtime.value.Value.initNumber(
             std.math.log10(try args[0].toNumber()),
         );
     } else if (args.len == 2) {
-        return lola.runtime.Value.initNumber(std.math.log(
+        return lola.runtime.value.Value.initNumber(std.math.log(
             f64,
             try args[1].toNumber(),
             try args[0].toNumber(),
@@ -578,27 +612,27 @@ pub fn Log(env: *const lola.runtime.Environment, context: lola.runtime.Context, 
     }
 }
 
-pub fn Exp(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Exp(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = env;
     _ = context;
     if (args.len != 1)
         return error.InvalidArgs;
-    return lola.runtime.Value.initNumber(@exp(try args[0].toNumber()));
+    return lola.runtime.value.Value.initNumber(@exp(try args[0].toNumber()));
 }
 
-pub fn Timestamp(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Timestamp(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = env;
     _ = context;
     if (args.len != 0)
         return error.InvalidArgs;
-    return lola.runtime.Value.initNumber(@as(f64, @floatFromInt(milliTimestamp())) / 1000.0);
+    return lola.runtime.value.Value.initNumber(@as(f64, @floatFromInt(milliTimestamp())) / 1000.0);
 }
 
-pub fn TypeOf(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn TypeOf(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = context;
     if (args.len != 1)
         return error.InvalidArgs;
-    return lola.runtime.Value.initString(env.allocator, switch (args[0]) {
+    return lola.runtime.value.Value.initString(env.allocator, switch (args[0]) {
         .void => "void",
         .boolean => "boolean",
         .string => "string",
@@ -609,23 +643,23 @@ pub fn TypeOf(env: *const lola.runtime.Environment, context: lola.runtime.Contex
     });
 }
 
-pub fn ToString(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn ToString(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = context;
 
     if (args.len != 1)
         return error.InvalidArgs;
 
-    const str = try std.fmt.allocPrint(env.allocator, "{}", .{args[0]});
+    const str = try std.fmt.allocPrint(env.allocator, "{f}", .{args[0]});
 
-    return lola.runtime.Value.fromString(lola.runtime.String.initFromOwned(env.allocator, str));
+    return lola.runtime.value.Value.fromString(lola.runtime.value.String.initFromOwned(env.allocator, str));
 }
 
-pub fn HasFunction(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn HasFunction(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = context;
     switch (args.len) {
         1 => {
             const name = try args[0].toString();
-            return lola.runtime.Value.initBoolean(env.functions.get(name) != null);
+            return lola.runtime.value.Value.initBoolean(env.functions.get(name) != null);
         },
         2 => {
             const obj = try args[0].toObject();
@@ -633,40 +667,40 @@ pub fn HasFunction(env: *const lola.runtime.Environment, context: lola.runtime.C
 
             const maybe_method = try env.objectPool.getMethod(obj, name);
 
-            return lola.runtime.Value.initBoolean(maybe_method != null);
+            return lola.runtime.value.Value.initBoolean(maybe_method != null);
         },
         else => return error.InvalidArgs,
     }
 }
 
-pub fn Serialize(env: *lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Serialize(env: *lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = context;
     if (args.len != 1)
         return error.InvalidArgs;
 
     const value = args[0];
 
-    var string_buffer = std.ArrayList(u8).init(env.allocator);
+    var string_buffer = std.Io.Writer.Allocating.init(env.allocator);
     defer string_buffer.deinit();
 
-    try value.serialize(string_buffer.writer());
+    try value.serialize(&string_buffer.writer);
 
-    return lola.runtime.Value.fromString(lola.runtime.String.initFromOwned(env.allocator, try string_buffer.toOwnedSlice()));
+    return lola.runtime.value.Value.fromString(lola.runtime.value.String.initFromOwned(env.allocator, try string_buffer.toOwnedSlice()));
 }
 
-pub fn Deserialize(env: *lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Deserialize(env: *lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = context;
     if (args.len != 1)
         return error.InvalidArgs;
 
     const serialized_string = try args[0].toString();
 
-    var stream = std.io.fixedBufferStream(serialized_string);
+    var stream = std.io.Reader.fixed(serialized_string);
 
-    return try lola.runtime.Value.deserialize(stream.reader(), env.allocator);
+    return try lola.runtime.value.Value.deserialize(&stream, env.allocator);
 }
 
-pub fn Random(env: *lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn Random(env: *lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = context;
     _ = env;
 
@@ -695,10 +729,10 @@ pub fn Random(env: *lola.runtime.Environment, context: lola.runtime.Context, arg
         result = lower + (upper - lower) * random.?.random().float(f64);
     }
 
-    return lola.runtime.Value.initNumber(result);
+    return lola.runtime.value.Value.initNumber(result);
 }
 
-pub fn RandomInt(env: *lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) !lola.runtime.Value {
+pub fn RandomInt(env: *lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = context;
     _ = env;
 
@@ -727,7 +761,7 @@ pub fn RandomInt(env: *lola.runtime.Environment, context: lola.runtime.Context, 
         result = random.?.random().intRangeLessThan(i32, lower, upper);
     }
 
-    return lola.runtime.Value.initInteger(i32, result);
+    return lola.runtime.value.Value.initInteger(i32, result);
 }
 
 var random_mutex = std.Thread.Mutex{};

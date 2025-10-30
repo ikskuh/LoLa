@@ -3,20 +3,20 @@
     .version = "0.1.0",
     .fingerprint = 0xe0c26edfbdb0efcc,
     .dependencies = .{
-        .args = .{
-            .path = "zig-args",
-        },
         // .args = .{
-        //     .url = "git+https://github.com/ikskuh/zig-args.git#9425b94c103a031777fdd272c555ce93a7dea581",
-        //     .hash = "args-0.0.0-CiLiqv_NAAC97fGpk9hS2K681jkiqPsWP6w3ucb_ctGH",
+        //     .path = "zig-args",
         // },
-        .any_pointer = .{
-            .path = "any-pointer",
+        .args = .{
+            .url = "git+https://github.com/ikskuh/zig-args.git#8ae26b44a884ff20dca98ee84c098e8f8e94902f",
+            .hash = "args-0.0.0-CiLiqojRAACGzDRO7A9dw7kWSchNk29caJZkXuMCb0Cn",
         },
         // .any_pointer = .{
-        //     .url = "git+https://github.com/ikskuh/any-pointer.git#d068b14cd30577783de018e280428953d098b3d2",
-        //     .hash = "N-V-__8AAMBAAACvBn7l0deSA92AlXkXtSLA7S82f9gStSNM",
+        //     .path = "any-pointer",
         // },
+        .any_pointer = .{
+            .url = "git+https://github.com/ikskuh/any-pointer.git#0f9725a324d48239d1d7e07b7f270b0a87be576a",
+            .hash = "N-V-__8AABtBAABwSNNZpjUoWFLYSZZXjKgv9hKsDuZq64Zk",
+        },
     },
 
     .paths = .{"."},

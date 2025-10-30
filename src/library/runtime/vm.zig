@@ -69,8 +69,8 @@ pub const VM = struct {
             .currentAsynCall = null,
             .objectPool = environment.objectPool,
         };
-        errdefer vm.stack.deinit();
-        errdefer vm.calls.deinit();
+        errdefer vm.stack.deinit(allocator);
+        errdefer vm.calls.deinit(allocator);
 
         try vm.stack.ensureTotalCapacity(allocator, 128);
         try vm.calls.ensureTotalCapacity(allocator, 32);
@@ -676,7 +676,7 @@ pub const VM = struct {
                 // Fixup stack balance after popping all locals
                 context.stackBalance = self.stack.items.len;
 
-                try self.calls.append(context);
+                try self.calls.append(self.allocator, context);
 
                 break :blk false;
             },
@@ -810,7 +810,7 @@ pub const VM = struct {
     }
 
     /// Prints a stack trace for the current code position into `stream`.
-    pub fn printStackTrace(self: Self, stream: anytype) !void {
+    pub fn printStackTrace(self: Self, stream: *std.Io.Writer) !void {
         var i: usize = self.calls.items.len;
         while (i > 0) {
             i -= 1;

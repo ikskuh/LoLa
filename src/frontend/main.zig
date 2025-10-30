@@ -9,7 +9,7 @@ const gpa = gpa_state.allocator();
 
 // This is our global object pool that is back-referenced
 // by the runtime library.
-pub const ObjectPool = lola.runtime.ObjectPool([_]type{
+pub const ObjectPool = lola.runtime.objects.ObjectPool([_]type{
     lola.libs.runtime.LoLaList,
     lola.libs.runtime.LoLaDictionary,
 });
@@ -34,7 +34,8 @@ pub fn main() !u8 {
             return 0;
         },
         .version => {
-            try std.io.getStdOut().writeAll(build_options.version ++ "\n");
+            var stdout = std.fs.File.stdout().writer(&.{}).interface;
+            try stdout.writeAll(build_options.version ++ "\n");
             return 0;
         },
     }
@@ -75,7 +76,8 @@ pub fn print_usage() !void {
         \\
     ;
     // \\  -S                      Intermixes the disassembly with the original source code if possible.
-    try std.io.getStdErr().writer().writeAll(usage_msg);
+    var writer = std.fs.File.stderr().writer(&.{}).interface;
+    try writer.writeAll(usage_msg);
 }
 
 const CliVerb = union(enum) {
@@ -103,7 +105,7 @@ const DisassemblerCLI = struct {
 };
 
 fn disassemble(options: DisassemblerCLI, files: []const []const u8) !u8 {
-    var stream = std.io.getStdOut().writer();
+    var stream = std.fs.File.stdout().writer(&.{}).interface;
 
     if (files.len == 0) {
         try print_usage();
@@ -120,7 +122,7 @@ fn disassemble(options: DisassemblerCLI, files: []const []const u8) !u8 {
             .truncate = true,
             .exclusive = false,
         });
-        stream = logfile.?.writer();
+        stream = logfile.?.writer(&.{}).interface;
     }
 
     for (files) |arg| {
@@ -137,7 +139,8 @@ fn disassemble(options: DisassemblerCLI, files: []const []const u8) !u8 {
             var file = try std.fs.cwd().openFile(arg, .{ .mode = .read_only });
             defer file.close();
 
-            break :blk try lola.CompileUnit.loadFromStream(allocator, file.reader());
+            var writer = file.reader(&.{}).interface;
+            break :blk try lola.CompileUnit.loadFromStream(allocator, &writer);
         };
         defer cu.deinit();
 
@@ -160,7 +163,7 @@ fn disassemble(options: DisassemblerCLI, files: []const []const u8) !u8 {
             try stream.writeAll("disassembly:\n");
         }
 
-        try lola.disassemble(stream, cu, lola.DisassemblerOptions{
+        try lola.dis.disassemble(&stream, cu, lola.dis.DisassemblerOptions{
             .addressPrefix = options.@"with-offset",
             .hexwidth = if (options.@"with-hexdump") 8 else null,
             .labelOutput = true,
@@ -217,7 +220,8 @@ fn compile(options: CompileCLI, files: []const []const u8) !u8 {
         var file = try std.fs.cwd().createFile(outname, .{ .truncate = true, .read = false, .exclusive = false });
         defer file.close();
 
-        try cu.saveToStream(file.writer());
+        var writer = file.writer(&.{}).interface;
+        try cu.saveToStream(&writer);
     }
 
     return 0;
@@ -251,7 +255,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
     const allocator = gpa;
 
     var cu = autoLoadModule(allocator, options, files[0]) catch |err| {
-        const stderr = std.io.getStdErr().writer();
+        var stderr = std.fs.File.stderr().writer(&.{}).interface;
 
         if (err == error.FileNotFound) {
             try stderr.print("Could not find '{s}'. Are you sure you passed the right file?\n", .{files[0]});
@@ -288,7 +292,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
         // Move these two to a test runner
 
         try env.installFunction("Expect", lola.runtime.Function.initSimpleUser(struct {
-            fn call(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+            fn call(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) anyerror!lola.runtime.value.Value {
                 _ = environment;
                 _ = context;
                 if (args.len != 1)
@@ -303,13 +307,13 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
         }.call));
 
         try env.installFunction("ExpectEqual", lola.runtime.Function.initSimpleUser(struct {
-            fn call(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.Value) anyerror!lola.runtime.Value {
+            fn call(environment: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) anyerror!lola.runtime.value.Value {
                 _ = environment;
                 _ = context;
                 if (args.len != 2)
                     return error.InvalidArgs;
                 if (!args[0].eql(args[1])) {
-                    std.log.err("Expected {}, got {}\n", .{ args[1], args[0] });
+                    std.log.err("Expected {f}, got {f}\n", .{ args[1], args[0] });
                     return error.AssertionFailed;
                 }
 
@@ -319,12 +323,12 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
     }
 
     if (options.benchmark == false) {
-        var vm = try lola.runtime.VM.init(allocator, &env);
+        var vm = try lola.runtime.vm.VM.init(allocator, &env);
         defer vm.deinit();
 
         while (true) {
             const result = vm.execute(options.limit) catch |err| {
-                var stderr = std.io.getStdErr().writer();
+                var stderr = std.fs.File.stderr().writer(&.{}).interface;
 
                 if (builtin.mode == .Debug) {
                     if (@errorReturnTrace()) |err_trace| {
@@ -337,7 +341,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
                 }
                 try stderr.print("Call stack:\n", .{});
 
-                try vm.printStackTrace(stderr);
+                try vm.printStackTrace(&stderr);
 
                 return 1;
             };
@@ -352,38 +356,39 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
             switch (result) {
                 .completed => return 0,
                 .exhausted => {
-                    try std.io.getStdErr().writer().print("Execution exhausted after {?d} instructions!\n", .{
+                    var writer = std.fs.File.stderr().writer(&.{}).interface;
+                    try writer.print("Execution exhausted after {?d} instructions!\n", .{
                         options.limit,
                     });
                     return 1;
                 },
                 .paused => {
                     // continue execution here
-                    std.time.sleep(100); // sleep at least 100 ns and return control to scheduler
+                    std.Thread.sleep(100); // sleep at least 100 ns and return control to scheduler
                 },
             }
         }
     } else {
         var cycle: usize = 0;
-        var stats = lola.runtime.VM.Statistics{};
+        var stats = lola.runtime.vm.VM.Statistics{};
         var total_time: u64 = 0;
 
         var total_timer = try std.time.Timer.start();
 
         // Run at least one second
         while ((cycle < 100) or (total_timer.read() < std.time.ns_per_s)) : (cycle += 1) {
-            var vm = try lola.runtime.VM.init(allocator, &env);
+            var vm = try lola.runtime.vm.VM.init(allocator, &env);
             defer vm.deinit();
 
             var timer = try std.time.Timer.start();
 
             emulation: while (true) {
                 const result = vm.execute(options.limit) catch |err| {
-                    const stderr = std.io.getStdErr().writer();
+                    var stderr = std.fs.File.stderr().writer(&.{}).interface;
                     try stderr.print("Panic during execution: {s}\n", .{@errorName(err)});
                     try stderr.print("Call stack:\n", .{});
 
-                    try vm.printStackTrace(stderr);
+                    try vm.printStackTrace(&stderr);
 
                     return 1;
                 };
@@ -398,7 +403,8 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
                 switch (result) {
                     .completed => break :emulation,
                     .exhausted => {
-                        try std.io.getStdErr().writer().print("Execution exhausted after {?d} instructions!\n", .{
+                        var writer = std.fs.File.stderr().writer(&.{}).interface;
+                        try writer.print("Execution exhausted after {?d} instructions!\n", .{
                             options.limit,
                         });
                         return 1;
@@ -413,7 +419,8 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
             stats.stalls += vm.stats.stalls;
         }
 
-        try std.io.getStdErr().writer().print(
+        var stderr = std.fs.File.stderr().writer(&.{}).interface;
+        try stderr.print(
             \\Benchmark result:
             \\    Number of runs:     {d}
             \\    Mean time:          {d} µs
@@ -434,19 +441,20 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
 }
 
 fn compileFileToUnit(allocator: std.mem.Allocator, fileName: []const u8) !lola.CompileUnit {
-    const maxLength = 1 << 20; // 1 MB
+    // const maxLength = 1 << 20; // 1 MB
     const source = blk: {
         var file = try std.fs.cwd().openFile(fileName, .{ .mode = .read_only });
         defer file.close();
-
-        break :blk try file.reader().readAllAlloc(gpa, maxLength);
+        const len = try file.getEndPos();
+        var reader = file.reader(&.{}).interface;
+        break :blk try reader.readAlloc(gpa, len);
     };
     defer gpa.free(source);
 
     var diag = lola.compiler.Diagnostics.init(allocator);
     defer {
         for (diag.messages.items) |msg| {
-            std.debug.print("{}\n", .{msg});
+            std.debug.print("{f}\n", .{msg});
         }
         diag.deinit();
     }
@@ -472,5 +480,6 @@ fn loadModuleFromFile(allocator: std.mem.Allocator, fileName: []const u8) !lola.
     var file = try std.fs.cwd().openFile(fileName, .{ .mode = .read_only });
     defer file.close();
 
-    return try lola.CompileUnit.loadFromStream(allocator, file.reader());
+    var writer = file.reader(&.{}).interface;
+    return try lola.CompileUnit.loadFromStream(allocator, &writer);
 }

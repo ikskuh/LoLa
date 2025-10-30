@@ -138,7 +138,8 @@ pub const Value = union(TypeId) {
         const num = @floor(try self.toNumber());
         if (num < std.math.minInt(T))
             return error.OutOfRange;
-        if (num > std.math.maxInt(T))
+        //fix for error `'f64' cannot represent integer value '...'`
+        if (std.math.floatMax(f64) >= std.math.maxInt(T) or num > std.math.maxInt(T))
             return error.OutOfRange;
         return @as(T, @intFromFloat(num));
     }
@@ -197,15 +198,13 @@ pub const Value = union(TypeId) {
             // Print only the type name of the array item.
             // const itemType = @as(TypeId, item);
             // try std.fmt.format(context, Errors, output, " {}", .{@tagName(itemType)});
-            try stream.print(" {}", .{item});
+            try stream.print(" {f}", .{item});
         }
         try stream.writeAll(" ]");
     }
 
     /// Prints a LoLa value to the given stream.
-    pub fn format(value: Self, comptime fmt: []const u8, options: std.fmt.FormatOptions, stream: anytype) !void {
-        _ = fmt;
-        _ = options;
+    pub fn format(value: Self, stream: *std.Io.Writer) std.Io.Writer.Error!void {
         return switch (value) {
             .void => stream.writeAll("void"),
             .number => |n| stream.print("{d}", .{n}),
@@ -220,7 +219,7 @@ pub const Value = union(TypeId) {
     /// Serializes the value into the given `writer`.
     /// Note that this does not serialize object values but only references. It is required to serialize the corresponding
     /// object pool as well to gain restorability of objects.
-    pub fn serialize(self: Self, writer: anytype) (@TypeOf(writer).Error || error{ NotSupported, ObjectTooLarge })!void {
+    pub fn serialize(self: Self, writer: *std.Io.Writer) (@TypeOf(writer.*).Error || error{ NotSupported, ObjectTooLarge })!void {
         try writer.writeByte(@intFromEnum(@as(TypeId, self)));
         switch (self) {
             .void => return, // void values are empty \o/
@@ -249,32 +248,32 @@ pub const Value = union(TypeId) {
 
     /// Deserializes a value from the `reader`, using `allocator` to allocate memory.
     /// Note that if objects are deserialized you need to also deserialize the corresponding object pool
-    pub fn deserialize(reader: anytype, allocator: std.mem.Allocator) (@TypeOf(reader).Error || error{ OutOfMemory, InvalidEnumTag, EndOfStream, NotSupported })!Self {
-        const type_id_src = try reader.readByte();
+    pub fn deserialize(reader: *std.Io.Reader, allocator: std.mem.Allocator) (@TypeOf(reader.*).Error || error{ OutOfMemory, InvalidEnumTag, EndOfStream, NotSupported })!Self {
+        const type_id_src = try reader.takeByte();
         const type_id = try std.meta.intToEnum(TypeId, type_id_src);
         return switch (type_id) {
             .void => .void,
             .number => blk: {
                 var buffer: [@sizeOf(f64)]u8 align(@alignOf(f64)) = undefined;
 
-                try reader.readNoEof(&buffer);
+                try reader.readSliceAll(&buffer);
 
                 break :blk initNumber(@as(f64, @bitCast(buffer)));
             },
-            .object => initObject(@as(objects.ObjectHandle, @enumFromInt(try reader.readInt(std.meta.Tag(objects.ObjectHandle), .little)))),
-            .boolean => initBoolean((try reader.readByte()) != 0),
+            .object => initObject(@as(objects.ObjectHandle, @enumFromInt(try reader.takeInt(std.meta.Tag(objects.ObjectHandle), .little)))),
+            .boolean => initBoolean((try reader.takeByte()) != 0),
             .string => blk: {
-                const size = try reader.readInt(u32, .little);
+                const size = try reader.takeInt(u32, .little);
 
                 const buffer = try allocator.alloc(u8, size);
                 errdefer allocator.free(buffer);
 
-                try reader.readNoEof(buffer);
+                try reader.readSliceAll(buffer);
 
                 break :blk fromString(String.initFromOwned(allocator, buffer));
             },
             .array => blk: {
-                const size = try reader.readInt(u32, .little);
+                const size = try reader.takeInt(u32, .little);
                 var array = try Array.init(allocator, size);
                 errdefer array.deinit();
 
@@ -285,8 +284,8 @@ pub const Value = union(TypeId) {
                 break :blk fromArray(array);
             },
             .enumerator => blk: {
-                const size = try reader.readInt(u32, .little);
-                const index = try reader.readInt(u32, .little);
+                const size = try reader.takeInt(u32, .little);
+                const index = try reader.takeInt(u32, .little);
 
                 var array = try Array.init(allocator, size);
                 errdefer array.deinit();
@@ -417,7 +416,7 @@ pub const String = struct {
     pub fn initUninitialized(allocator: std.mem.Allocator, length: usize) !Self {
         const alignment = std.mem.Alignment.of(usize);
 
-        const ptr_offset = std.mem.alignForward(usize, length, alignment);
+        const ptr_offset = alignment.forward(length);
         const buffer = try allocator.alignedAlloc(
             u8,
             alignment,

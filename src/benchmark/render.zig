@@ -29,8 +29,8 @@ pub fn main() !u8 {
             const idx = std.mem.lastIndexOfScalar(u8, name_no_ext, '-') orelse continue;
 
             var series = Series{
-                .benchmark = try alloc.dupe(alloc, u8, name_no_ext[0..idx]),
-                .mode = std.meta.stringToEnum(std.builtin.Mode, name_no_ext[idx + 1 ..]) orelse @panic("unexpected name"),
+                .benchmark = try alloc.dupe(u8, name_no_ext[0..idx]),
+                .mode = std.meta.stringToEnum(std.builtin.OptimizeMode, name_no_ext[idx + 1 ..]) orelse @panic("unexpected name"),
                 .data = undefined,
             };
 
@@ -41,7 +41,7 @@ pub fn main() !u8 {
 
             std.sort.block(DataPoint, series.data, {}, orderDataPoint);
 
-            try data.append(series);
+            try data.append(alloc, series);
         }
     }
 
@@ -64,7 +64,8 @@ pub fn renderSeriesSet(dst_dir: std.fs.Dir, file_name: []const u8, all_series: [
     var file = try dst_dir.createFile(file_name, .{});
     defer file.close();
 
-    const writer = file.writer();
+    var writer_buf: [1024]u8 = undefined;
+    var writer = file.writer(&writer_buf).interface;
 
     var start_time: u128 = std.math.maxInt(u128);
     var end_time: u128 = 0;
@@ -199,19 +200,19 @@ pub const Series = struct {
 };
 
 pub fn loadSeries(allocator: std.mem.Allocator, file: std.fs.File) ![]DataPoint {
-    const reader = file.reader();
     var line_buffer: [4096]u8 = undefined;
+    var reader = file.reader(&line_buffer).interface;
 
-    const first_line = (try reader.readUntilDelimiterOrEof(&line_buffer, '\n')) orelse return error.UnexpectedData;
+    const first_line = try reader.takeDelimiterExclusive('\n');
 
     if (!std.mem.eql(u8, first_line, "time;compile;setup;run"))
         return error.UnexpectedData;
 
-    var data_set = std.ArrayList(DataPoint).init(allocator);
-    defer data_set.deinit();
+    var data_set = std.ArrayList(DataPoint).empty;
+    defer data_set.deinit(allocator);
 
     while (true) {
-        const line_or_eof = try reader.readUntilDelimiterOrEof(&line_buffer, '\n');
+        const line_or_eof: ?[]u8 = reader.takeDelimiterExclusive('\n') catch null;
         if (line_or_eof) |line| {
             if (line.len == 0)
                 continue;
@@ -223,7 +224,7 @@ pub fn loadSeries(allocator: std.mem.Allocator, file: std.fs.File) ![]DataPoint 
 
             if (time_str.len != 19) return error.UnexpectedData;
 
-            try data_set.append(DataPoint{
+            try data_set.append(allocator, DataPoint{
                 .date = Date{
                     // 2022-03-14 14:25:56
                     .year = try std.fmt.parseInt(u32, time_str[0..4], 10),
@@ -242,5 +243,5 @@ pub fn loadSeries(allocator: std.mem.Allocator, file: std.fs.File) ![]DataPoint 
         }
     }
 
-    return data_set.toOwnedSlice();
+    return data_set.toOwnedSlice(allocator);
 }

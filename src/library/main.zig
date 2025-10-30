@@ -1,9 +1,8 @@
 const zig_std = @import("std");
 const builtin = @import("builtin");
 
-// Import all runtime namespaces
-const ir = @import("common/ir.zig");
-const dis = @import("common/disassembler.zig");
+pub const ir = @import("common/ir.zig");
+pub const dis = @import("common/disassembler.zig");
 
 pub const Decoder = @import("common/Decoder.zig");
 pub const CompileUnit = @import("common/CompileUnit.zig");
