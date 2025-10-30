@@ -442,14 +442,32 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
 
 fn compileFileToUnit(allocator: std.mem.Allocator, fileName: []const u8) !lola.CompileUnit {
     // const maxLength = 1 << 20; // 1 MB
+    std.debug.print("reading\n", .{});
     const source = blk: {
         var file = try std.fs.cwd().openFile(fileName, .{ .mode = .read_only });
         defer file.close();
         const len = try file.getEndPos();
-        var reader = file.reader(&.{}).interface;
-        break :blk try reader.readAlloc(gpa, len);
+        std.debug.print("len is {}\n", .{len});
+        // const buf: []u8 = try allocator.alloc(u8, len);
+        var file_reader = file.reader(&.{});
+        // std.debug.print("mode is {s}\n", .{@tagName(file_reader.mode)});
+        var reader = &file_reader.interface;
+        // var writer = std.Io.Writer.fixed(buf);
+        // var bytes_read = try reader.stream(&writer, std.Io.Limit.limited64(len));
+        // std.debug.print("bytes read: {}\n", .{bytes_read});
+        // if (bytes_read == 0) {
+        //     bytes_read = try reader.stream(&writer, std.Io.Limit.limited64(len));
+        //     std.debug.print("bytes read: {}\n", .{bytes_read});
+        // }
+        var array = std.ArrayList(u8).empty;
+        reader.appendRemainingUnlimited(allocator, &array);
+        // try reader.fill(len);
+        //stream_exact
+        //append_remaining
+        break :blk buf;
     };
     defer gpa.free(source);
+    std.debug.print("Compiled!\n", .{});
 
     var diag = lola.compiler.Diagnostics.init(allocator);
     defer {
