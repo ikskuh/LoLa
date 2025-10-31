@@ -54,93 +54,35 @@ pub const ObjectHandle = enum(u64) {
 
 pub const InputStream = struct {
     const Self = @This();
-    pub const ErasedSelf = opaque {};
     pub const Reader = *std.Io.Reader;
 
-    self: *const ErasedSelf,
-    read: *const fn (self: *const ErasedSelf, buf: []u8) anyerror!usize,
-    interface: std.Io.Reader,
+    interface: *std.Io.Reader,
 
-    fn from(reader_ptr: anytype) Self {
-        const T = std.meta.Child(@TypeOf(reader_ptr));
+    fn from(reader_ptr: *std.Io.Reader) Self {
         return Self{
-            .self = @as(*const ErasedSelf, @ptrCast(reader_ptr)),
-            .read = struct {
-                fn read(self: *const ErasedSelf, buf: []u8) anyerror!usize {
-                    return @as(*const T, @ptrCast(@alignCast(self))).read(buf);
-                }
-            }.read,
-            .interface = std.Io.Reader{
-                .buffer = .{},
-                .vtable = &std.Io.Reader.VTable{
-                    .stream = stream_interface,
-                },
-            },
+            .interface = reader_ptr,
         };
     }
 
-    fn readSome(self: Self, buffer: []u8) anyerror!usize {
-        return self.read(self.self, buffer);
-    }
-
     fn reader(self: *@This()) Reader {
-        return &self.interface;
+        return self.interface;
     }
-    fn stream_interface(r: *std.Io.Reader, w: *std.Io.Writer, limit: std.Io.Limit) std.Io.Reader.StreamError!usize {
-        const buffer = limit.slice(w.writableSliceGreedy(1));
-        const self: *Self = @alignCast(@fieldParentPtr("interface", r));
-        const len = try self.readSome(buffer);
-        w.advance(len);
-    }
-    // pub const Reader = std.io.Reader(Self, anyerror, readSome);
 };
 
 pub const OutputStream = struct {
     const Self = @This();
-    pub const ErasedSelf = opaque {};
     pub const Writer = *std.Io.Writer;
 
-    self: *const ErasedSelf,
-    write: *const fn (self: *const ErasedSelf, buf: []const u8) anyerror!usize,
-    interface: std.Io.Writer,
+    interface: *std.Io.Writer,
 
-    fn from(writer_ptr: anytype) Self {
-        const T = std.meta.Child(@TypeOf(writer_ptr));
+    fn from(writer_ptr: *std.Io.Writer) Self {
         return Self{
-            .self = @as(*const ErasedSelf, @ptrCast(writer_ptr)),
-            .write = struct {
-                fn write(self: *const ErasedSelf, buf: []const u8) anyerror!usize {
-                    return @as(*const T, @ptrCast(@alignCast(self))).write(buf);
-                }
-            }.write,
+            .interface = writer_ptr,
         };
     }
 
-    fn writeSome(self: Self, buffer: []const u8) anyerror!usize {
-        return self.write(self.self, buffer);
-    }
-
     fn writer(self: *@This()) Writer {
-        return &self.interface;
-    }
-
-    fn stream_interface(w: *std.Io.Writer, data: []const []const u8, splat: usize) std.Io.Writer.Error!usize {
-        const self: *Self = @alignCast(@fieldParentPtr("interface", w));
-
-        const buffered = w.buffered();
-        if (buffered.len != 0) {
-            const read = try writeSome(self, buffered);
-            return w.consume(read);
-        }
-
-        for (data[0 .. data.len - 1]) |buf| {
-            const read = try writeSome(self, buf);
-            return w.consume(read);
-        }
-        const last = data[data.len - 1];
-        if (last.len == 0 or splat == 0) return 0;
-        const read = try writeSome(self, last);
-        return w.consume(read);
+        return self.interface;
     }
 };
 
@@ -244,12 +186,12 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
                 fn serialize(stream: OutputStream, obj: Object) anyerror!void {
                     //parameters are immutable so save to mutable var
                     var s = stream;
-                    try Class.serializeObject(&s.interface, @as(*Class, @ptrCast(@alignCast(obj.ptr))));
+                    try Class.serializeObject(s.writer(), @as(*Class, @ptrCast(@alignCast(obj.ptr))));
                 }
 
                 fn deserialize(allocator: std.mem.Allocator, stream: InputStream) anyerror!Object {
                     var s = stream;
-                    const ptr = try Class.deserializeObject(allocator, &s.interface);
+                    const ptr = try Class.deserializeObject(allocator, s.reader());
                     return Object.init(ptr);
                 }
             };
@@ -305,7 +247,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
         // Serialization API
 
         /// Serializes the whole object pool into the `stream`.
-        pub fn serialize(self: Self, stream: anytype) !void {
+        pub fn serialize(self: Self, stream: *std.Io.Writer) !void {
             if (all_classes_can_serialize) {
                 try stream.writeInt(u64, pool_signature, .little);
 
@@ -317,7 +259,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
                     try stream.writeInt(TypeIndex, obj.class_id, .little);
                     try stream.writeInt(u64, @intFromEnum(entry.key_ptr.*), .little);
 
-                    try class.serialize(OutputStream.from(&stream), obj.object);
+                    try class.serialize(OutputStream.from(stream), obj.object);
                 }
 
                 try stream.writeInt(TypeIndex, std.math.maxInt(TypeIndex), .little);
@@ -327,29 +269,29 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
         }
 
         /// Deserializes a object pool from `steam` and returns it.
-        pub fn deserialize(allocator: std.mem.Allocator, stream: anytype) !Self {
+        pub fn deserialize(allocator: std.mem.Allocator, stream: *std.Io.Reader) !Self {
             if (all_classes_can_serialize) {
                 var pool = init(allocator);
                 errdefer pool.deinit();
 
-                const signature = try stream.readInt(u64, .little);
+                const signature = try stream.takeInt(u64, .little);
                 if (signature != pool_signature)
                     return error.InvalidStream;
 
                 while (true) {
-                    const type_index = try stream.readInt(TypeIndex, .little);
+                    const type_index = try stream.takeInt(TypeIndex, .little);
                     if (type_index == std.math.maxInt(TypeIndex))
                         break; // end of objects
                     if (type_index >= class_lut.len)
                         return error.InvalidStream;
-                    const object_id = try stream.readInt(u64, .little);
+                    const object_id = try stream.takeInt(u64, .little);
                     pool.objectCounter = @max(object_id + 1, pool.objectCounter);
 
                     const gop = try pool.objects.getOrPut(@as(ObjectHandle, @enumFromInt(object_id)));
                     if (gop.found_existing)
                         return error.InvalidStream;
 
-                    const object = try class_lut[type_index].deserialize(allocator, InputStream.from(&stream));
+                    const object = try class_lut[type_index].deserialize(allocator, InputStream.from(stream));
 
                     gop.value_ptr.* = ManagedObject{
                         .object = object,
@@ -566,7 +508,7 @@ const TestObject = struct {
     pub fn deserializeObject(allocator: std.mem.Allocator, reader: InputStream.Reader) !*Self {
         _ = allocator;
         var buf: [11]u8 = undefined;
-        try reader.readNoEof(&buf);
+        try reader.readSliceAll(&buf);
         try std.testing.expectEqualStrings("test object", &buf);
         deserialize_instance.was_deserialized = true;
         return &deserialize_instance;
@@ -722,8 +664,8 @@ test "ObjectPool serialization" {
 
         try std.testing.expectEqual(false, test_obj.was_serialized);
 
-        var fbs = std.io.fixedBufferStream(&backing_buffer);
-        try pool.serialize(fbs.writer());
+        var fbs = std.Io.Writer.fixed(&backing_buffer);
+        try pool.serialize(&fbs);
 
         try std.testing.expectEqual(true, test_obj.was_serialized);
 
@@ -731,11 +673,11 @@ test "ObjectPool serialization" {
     };
 
     {
-        var fbs = std.io.fixedBufferStream(&backing_buffer);
+        var fbs = std.Io.Reader.fixed(&backing_buffer);
 
         try std.testing.expectEqual(false, TestObject.deserialize_instance.was_deserialized);
 
-        var pool = try TestPool.deserialize(std.testing.allocator, fbs.reader());
+        var pool = try TestPool.deserialize(std.testing.allocator, &fbs);
         defer pool.deinit();
 
         try std.testing.expectEqual(true, TestObject.deserialize_instance.was_deserialized);

@@ -7,7 +7,7 @@ const root = @import("root");
 
 const GlobalObjectPool = if (builtin.is_test)
     // we need to do a workaround here for testing purposes
-    lola.runtime.ObjectPool([_]type{
+    lola.runtime.objects.ObjectPool([_]type{
         LoLaList,
         LoLaDictionary,
     })
@@ -18,7 +18,7 @@ else
 
 comptime {
     if (builtin.is_test) {
-        const T = lola.runtime.ObjectPool([_]type{
+        const T = lola.runtime.objects.ObjectPool([_]type{
             LoLaList,
             LoLaDictionary,
         });
@@ -93,7 +93,8 @@ pub fn Print(environment: *const lola.runtime.Environment, context: lola.runtime
     _ = environment;
     _ = context;
 
-    var stdout = std.fs.File.stdout().writer(&.{}).interface;
+    var stdout_writer = std.fs.File.stdout().writer(&.{});
+    const stdout = &stdout_writer.interface;
     for (args) |value| {
         switch (value) {
             .string => |str| try stdout.writeAll(str.contents),

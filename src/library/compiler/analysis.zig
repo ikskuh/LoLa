@@ -428,7 +428,7 @@ test "validate correct program" {
     try std.testing.expectEqual(true, try validate(std.testing.allocator, &diagnostics, pgm));
 
     for (diagnostics.messages.items) |msg| {
-        std.debug.print("{s}\n", .{msg});
+        std.debug.print("{f}\n", .{msg});
     }
 
     try std.testing.expectEqual(@as(usize, 0), diagnostics.messages.items.len);

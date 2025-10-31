@@ -139,7 +139,8 @@ pub const Value = union(TypeId) {
         if (num < std.math.minInt(T))
             return error.OutOfRange;
         //fix for error `'f64' cannot represent integer value '...'`
-        if (std.math.floatMax(f64) >= std.math.maxInt(T) or num > std.math.maxInt(T))
+        const max: f64 = @floatFromInt(std.math.maxInt(T));
+        if (std.math.floatMax(f64) > max and num > max)
             return error.OutOfRange;
         return @as(T, @intFromFloat(num));
     }

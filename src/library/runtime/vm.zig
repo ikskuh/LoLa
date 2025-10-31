@@ -928,7 +928,7 @@ pub const VM = struct {
     }
 };
 
-const TestPool = objects.ObjectPool(.{});
+const TestPool = objects.ObjectPool([0]type{});
 
 fn runTest(comptime TestRunner: type) !void {
     var code = TestRunner.code;

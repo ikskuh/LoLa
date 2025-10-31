@@ -205,9 +205,9 @@ const serializedCompileUnit = "" // SoT
 ;
 
 test "CompileUnit I/O" {
-    var sliceInStream = std.io.fixedBufferStream(serializedCompileUnit);
+    var sliceInStream = std.Io.Reader.fixed(serializedCompileUnit);
 
-    const cu = try CompileUnit.loadFromStream(std.testing.allocator, sliceInStream.reader());
+    const cu = try CompileUnit.loadFromStream(std.testing.allocator, &sliceInStream);
     defer cu.deinit();
 
     std.debug.assert(std.mem.eql(u8, cu.comment, "Made with NativeLola.zig!"));
@@ -238,19 +238,19 @@ test "CompileUnit I/O" {
     std.debug.assert(cu.debugSymbols[2].sourceColumn == 8);
 
     var storage: [serializedCompileUnit.len]u8 = undefined;
-    var sliceOutStream = std.io.fixedBufferStream(&storage);
+    var sliceOutStream = std.Io.Writer.fixed(&storage);
 
-    try cu.saveToStream(sliceOutStream.writer());
+    try cu.saveToStream(&sliceOutStream);
 
-    std.debug.assert(sliceOutStream.getWritten().len == serializedCompileUnit.len);
+    std.debug.assert(sliceOutStream.buffered().len == serializedCompileUnit.len);
 
-    std.debug.assert(std.mem.eql(u8, sliceOutStream.getWritten(), serializedCompileUnit));
+    std.debug.assert(std.mem.eql(u8, sliceOutStream.buffered(), serializedCompileUnit));
 }
 
 test "CompileUnit.lookUp" {
-    var sliceInStream = std.io.fixedBufferStream(serializedCompileUnit);
+    var sliceInStream = std.Io.Reader.fixed(serializedCompileUnit);
 
-    const cu = try CompileUnit.loadFromStream(std.testing.allocator, sliceInStream.reader());
+    const cu = try CompileUnit.loadFromStream(std.testing.allocator, &sliceInStream);
     defer cu.deinit();
 
     std.debug.assert(cu.lookUp(0) == null); // no debug symbol before 1

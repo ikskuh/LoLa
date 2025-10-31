@@ -285,61 +285,24 @@ pub fn Chr(env: *const lola.runtime.Environment, context: lola.runtime.Context, 
     );
 }
 
-/// std.Io.Writer wrapper to count how many bytes were written
-const WriterCounter = struct {
-    const Self = @This();
-    /// number of bytes written to stream
-    count: usize = 0,
-    interface: std.Io.Writer,
-    old_vtable: *const std.Io.Writer.VTable,
-    fn drain_wrapper(w: *std.Io.Writer, data: []const []const u8, splat: usize) std.Io.Writer.Error!usize {
-        const counter: *Self = @alignCast(@fieldParentPtr("interface", w));
-        const old_fn = counter.old_vtable.drain;
-        counter.count += try old_fn(w, data, splat);
-        return counter.count;
-    }
-    pub fn init(old_writer: std.Io.Writer) Self {
-        var interface = old_writer;
-        const old_vtable = interface.vtable;
-        interface.vtable = &std.Io.Writer.VTable{
-            .drain = drain_wrapper,
-            .flush = old_vtable.flush,
-            .rebase = old_vtable.rebase,
-            .sendFile = old_vtable.sendFile,
-        };
-        return Self{
-            .interface = interface,
-            .old_vtable = old_vtable,
-        };
-    }
-    pub fn getWritten(self: *const Self) usize {
-        return self.count;
-    }
-};
-
 pub fn NumToString(env: *const lola.runtime.Environment, context: lola.runtime.Context, args: []const lola.runtime.value.Value) !lola.runtime.value.Value {
     _ = context;
     if (args.len < 1 or args.len > 2)
         return error.InvalidArgs;
     var buffer: [256]u8 = undefined;
-    var counter = WriterCounter.init(std.Io.Writer.fixed(&buffer));
-    const stream = &counter.interface;
+    var stream = std.Io.Writer.fixed(&buffer);
 
     const slice = if (args.len == 2) blk: {
         const base = try args[1].toInteger(u8);
 
         const val = try args[0].toInteger(isize);
         try stream.printInt(val, base, .upper, .{});
-        const len = counter.getWritten();
-
-        break :blk buffer[0..len];
+        break :blk stream.buffered();
     } else blk: {
         const val = try args[0].toNumber();
 
         try stream.print("{d}", .{val});
-        const len = counter.getWritten();
-
-        break :blk buffer[0..len];
+        break :blk stream.buffered();
     };
     return try lola.runtime.value.Value.initString(env.allocator, slice);
 }

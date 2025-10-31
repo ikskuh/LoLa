@@ -6,4 +6,4 @@ comptime {
     _ = lola;
 }
 
-pub const ObjectPool = lola.runtime.ObjectPool(.{});
+pub const ObjectPool = lola.runtime.objects.ObjectPool([0]type{});

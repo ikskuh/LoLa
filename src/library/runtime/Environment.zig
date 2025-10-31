@@ -684,7 +684,7 @@ test "Environment" {
         .debugSymbols = &[0]CompileUnit.DebugSymbol{},
     };
 
-    var pool = objects.ObjectPool(.{}).init(std.testing.allocator);
+    var pool = objects.ObjectPool([0]type{}).init(std.testing.allocator);
     defer pool.deinit();
 
     var env = try Environment.init(std.testing.allocator, &cu, pool.interface());

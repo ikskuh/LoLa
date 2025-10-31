@@ -64,8 +64,9 @@ pub fn renderSeriesSet(dst_dir: std.fs.Dir, file_name: []const u8, all_series: [
     var file = try dst_dir.createFile(file_name, .{});
     defer file.close();
 
-    var writer_buf: [1024]u8 = undefined;
-    var writer = file.writer(&writer_buf).interface;
+    var writer_buffer: [4096]u8 = undefined;
+    var file_writer = file.writer(&writer_buffer);
+    const writer = &file_writer.interface;
 
     var start_time: u128 = std.math.maxInt(u128);
     var end_time: u128 = 0;
@@ -149,6 +150,7 @@ pub fn renderSeriesSet(dst_dir: std.fs.Dir, file_name: []const u8, all_series: [
         }
     }
     try writer.print("</svg>\n", .{});
+    try writer.flush();
 }
 
 fn filterReleaseSafe(series: Series) bool {
@@ -201,7 +203,8 @@ pub const Series = struct {
 
 pub fn loadSeries(allocator: std.mem.Allocator, file: std.fs.File) ![]DataPoint {
     var line_buffer: [4096]u8 = undefined;
-    var reader = file.reader(&line_buffer).interface;
+    var file_reader = file.reader(&line_buffer);
+    const reader = &file_reader.interface;
 
     const first_line = try reader.takeDelimiterExclusive('\n');
 

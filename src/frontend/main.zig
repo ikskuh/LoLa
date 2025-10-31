@@ -34,7 +34,8 @@ pub fn main() !u8 {
             return 0;
         },
         .version => {
-            var stdout = std.fs.File.stdout().writer(&.{}).interface;
+            var stdout_writer = std.fs.File.stdout().writer(&.{});
+            const stdout = &stdout_writer.interface;
             try stdout.writeAll(build_options.version ++ "\n");
             return 0;
         },
@@ -76,8 +77,9 @@ pub fn print_usage() !void {
         \\
     ;
     // \\  -S                      Intermixes the disassembly with the original source code if possible.
-    var writer = std.fs.File.stderr().writer(&.{}).interface;
-    try writer.writeAll(usage_msg);
+    var stdout_writer = std.fs.File.stderr().writer(&.{});
+    const stdout = &stdout_writer.interface;
+    try stdout.writeAll(usage_msg);
 }
 
 const CliVerb = union(enum) {
@@ -105,7 +107,8 @@ const DisassemblerCLI = struct {
 };
 
 fn disassemble(options: DisassemblerCLI, files: []const []const u8) !u8 {
-    var stream = std.fs.File.stdout().writer(&.{}).interface;
+    var stream_writer = std.fs.File.stdout().writer(&.{});
+    var stream = &stream_writer.interface;
 
     if (files.len == 0) {
         try print_usage();
@@ -122,7 +125,8 @@ fn disassemble(options: DisassemblerCLI, files: []const []const u8) !u8 {
             .truncate = true,
             .exclusive = false,
         });
-        stream = logfile.?.writer(&.{}).interface;
+        stream_writer = logfile.?.writer(&.{});
+        stream = &stream_writer.interface;
     }
 
     for (files) |arg| {
@@ -139,8 +143,9 @@ fn disassemble(options: DisassemblerCLI, files: []const []const u8) !u8 {
             var file = try std.fs.cwd().openFile(arg, .{ .mode = .read_only });
             defer file.close();
 
-            var writer = file.reader(&.{}).interface;
-            break :blk try lola.CompileUnit.loadFromStream(allocator, &writer);
+            var buffer: [4096]u8 = undefined;
+            var reader = file.reader(&buffer);
+            break :blk try lola.CompileUnit.loadFromStream(allocator, &reader.interface);
         };
         defer cu.deinit();
 
@@ -163,7 +168,7 @@ fn disassemble(options: DisassemblerCLI, files: []const []const u8) !u8 {
             try stream.writeAll("disassembly:\n");
         }
 
-        try lola.dis.disassemble(&stream, cu, lola.dis.DisassemblerOptions{
+        try lola.dis.disassemble(stream, cu, lola.dis.DisassemblerOptions{
             .addressPrefix = options.@"with-offset",
             .hexwidth = if (options.@"with-hexdump") 8 else null,
             .labelOutput = true,
@@ -220,8 +225,8 @@ fn compile(options: CompileCLI, files: []const []const u8) !u8 {
         var file = try std.fs.cwd().createFile(outname, .{ .truncate = true, .read = false, .exclusive = false });
         defer file.close();
 
-        var writer = file.writer(&.{}).interface;
-        try cu.saveToStream(&writer);
+        var writer = file.writer(&.{});
+        try cu.saveToStream(&writer.interface);
     }
 
     return 0;
@@ -255,7 +260,8 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
     const allocator = gpa;
 
     var cu = autoLoadModule(allocator, options, files[0]) catch |err| {
-        var stderr = std.fs.File.stderr().writer(&.{}).interface;
+        var stderr_writer = std.fs.File.stderr().writer(&.{});
+        const stderr = &stderr_writer.interface;
 
         if (err == error.FileNotFound) {
             try stderr.print("Could not find '{s}'. Are you sure you passed the right file?\n", .{files[0]});
@@ -322,14 +328,14 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
         }.call));
     }
 
+    var stderr_writer = std.fs.File.stderr().writer(&.{});
+    const stderr = &stderr_writer.interface;
     if (options.benchmark == false) {
         var vm = try lola.runtime.vm.VM.init(allocator, &env);
         defer vm.deinit();
 
         while (true) {
             const result = vm.execute(options.limit) catch |err| {
-                var stderr = std.fs.File.stderr().writer(&.{}).interface;
-
                 if (builtin.mode == .Debug) {
                     if (@errorReturnTrace()) |err_trace| {
                         std.debug.dumpStackTrace(err_trace.*);
@@ -341,7 +347,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
                 }
                 try stderr.print("Call stack:\n", .{});
 
-                try vm.printStackTrace(&stderr);
+                try vm.printStackTrace(stderr);
 
                 return 1;
             };
@@ -356,8 +362,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
             switch (result) {
                 .completed => return 0,
                 .exhausted => {
-                    var writer = std.fs.File.stderr().writer(&.{}).interface;
-                    try writer.print("Execution exhausted after {?d} instructions!\n", .{
+                    try stderr.print("Execution exhausted after {?d} instructions!\n", .{
                         options.limit,
                     });
                     return 1;
@@ -384,11 +389,10 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
 
             emulation: while (true) {
                 const result = vm.execute(options.limit) catch |err| {
-                    var stderr = std.fs.File.stderr().writer(&.{}).interface;
                     try stderr.print("Panic during execution: {s}\n", .{@errorName(err)});
                     try stderr.print("Call stack:\n", .{});
 
-                    try vm.printStackTrace(&stderr);
+                    try vm.printStackTrace(stderr);
 
                     return 1;
                 };
@@ -403,8 +407,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
                 switch (result) {
                     .completed => break :emulation,
                     .exhausted => {
-                        var writer = std.fs.File.stderr().writer(&.{}).interface;
-                        try writer.print("Execution exhausted after {?d} instructions!\n", .{
+                        try stderr.print("Execution exhausted after {?d} instructions!\n", .{
                             options.limit,
                         });
                         return 1;
@@ -419,7 +422,6 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
             stats.stalls += vm.stats.stalls;
         }
 
-        var stderr = std.fs.File.stderr().writer(&.{}).interface;
         try stderr.print(
             \\Benchmark result:
             \\    Number of runs:     {d}
@@ -441,33 +443,17 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
 }
 
 fn compileFileToUnit(allocator: std.mem.Allocator, fileName: []const u8) !lola.CompileUnit {
-    // const maxLength = 1 << 20; // 1 MB
-    std.debug.print("reading\n", .{});
     const source = blk: {
         var file = try std.fs.cwd().openFile(fileName, .{ .mode = .read_only });
         defer file.close();
-        const len = try file.getEndPos();
-        std.debug.print("len is {}\n", .{len});
-        // const buf: []u8 = try allocator.alloc(u8, len);
-        var file_reader = file.reader(&.{});
-        // std.debug.print("mode is {s}\n", .{@tagName(file_reader.mode)});
-        var reader = &file_reader.interface;
-        // var writer = std.Io.Writer.fixed(buf);
-        // var bytes_read = try reader.stream(&writer, std.Io.Limit.limited64(len));
-        // std.debug.print("bytes read: {}\n", .{bytes_read});
-        // if (bytes_read == 0) {
-        //     bytes_read = try reader.stream(&writer, std.Io.Limit.limited64(len));
-        //     std.debug.print("bytes read: {}\n", .{bytes_read});
-        // }
+        var reader_buffer: [4096]u8 = undefined;
+        var file_reader = file.reader(&reader_buffer);
+        const reader = &file_reader.interface;
         var array = std.ArrayList(u8).empty;
-        reader.appendRemainingUnlimited(allocator, &array);
-        // try reader.fill(len);
-        //stream_exact
-        //append_remaining
-        break :blk buf;
+        try reader.appendRemainingUnlimited(allocator, &array);
+        break :blk try array.toOwnedSlice(allocator);
     };
     defer gpa.free(source);
-    std.debug.print("Compiled!\n", .{});
 
     var diag = lola.compiler.Diagnostics.init(allocator);
     defer {
@@ -498,6 +484,7 @@ fn loadModuleFromFile(allocator: std.mem.Allocator, fileName: []const u8) !lola.
     var file = try std.fs.cwd().openFile(fileName, .{ .mode = .read_only });
     defer file.close();
 
-    var writer = file.reader(&.{}).interface;
-    return try lola.CompileUnit.loadFromStream(allocator, &writer);
+    var reader_buffer: [4096]u8 = undefined;
+    var reader = file.reader(&reader_buffer);
+    return try lola.CompileUnit.loadFromStream(allocator, &reader.interface);
 }

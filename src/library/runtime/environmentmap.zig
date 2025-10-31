@@ -12,15 +12,17 @@ pub const EnvironmentMap = struct {
     };
 
     items: std.ArrayList(Entry),
+    allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
-            .items = std.ArrayList(Entry).init(allocator),
+            .items = std.ArrayList(Entry).empty,
+            .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *Self) void {
-        self.items.deinit();
+        self.items.deinit(self.allocator);
         self.* = undefined;
     }
 
@@ -35,7 +37,7 @@ pub const EnvironmentMap = struct {
             if (item.env == env)
                 return error.EnvironmentAlreadyMapped;
         }
-        try self.items.append(Entry{
+        try self.items.append(self.allocator, Entry{
             .id = id,
             .env = env,
         });
