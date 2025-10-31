@@ -1,3 +1,6 @@
 [submodule "libs/ace-builds"]
 	path = libs/ace-builds
 	url = https://github.com/ajaxorg/ace-builds
+[submodule "zig-args"]
+	path = zig-args
+	url = ./zig-args/
