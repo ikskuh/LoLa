@@ -3,16 +3,10 @@
     .version = "0.1.0",
     .fingerprint = 0xe0c26edfbdb0efcc,
     .dependencies = .{
-        // .args = .{
-        //     .path = "zig-args",
-        // },
         .args = .{
-            .url = "git+https://github.com/ikskuh/zig-args.git#8ae26b44a884ff20dca98ee84c098e8f8e94902f",
-            .hash = "args-0.0.0-CiLiqojRAACGzDRO7A9dw7kWSchNk29caJZkXuMCb0Cn",
+            .url = "git+https://github.com/UnusualEgg/zig-args#e05d23e12cff46d442e17cedc82400ec4eeadc52",
+            .hash = "args-0.0.0-CiLiqo_RAADz2TiHUzG5-0Mk7IZHR-h1SZgUrb_k4c7d",
         },
-        // .any_pointer = .{
-        //     .path = "any-pointer",
-        // },
         .any_pointer = .{
             .url = "git+https://github.com/ikskuh/any-pointer.git#0f9725a324d48239d1d7e07b7f270b0a87be576a",
             .hash = "N-V-__8AABtBAABwSNNZpjUoWFLYSZZXjKgv9hKsDuZq64Zk",
