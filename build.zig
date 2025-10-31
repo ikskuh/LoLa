@@ -33,7 +33,7 @@ const examples = [_]Example{
 pub fn build(b: *Build) !void {
     const version_tag = b.option([]const u8, "version", "Sets the version displayed in the docs and for `lola version`");
 
-    const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseSafe });
+    const optimize = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
 
     const mod_args = b.dependency("args", .{}).module("args");
@@ -55,8 +55,8 @@ pub fn build(b: *Build) !void {
         .root_source_file = b.path("src/frontend/main.zig"),
         .optimize = optimize,
         .target = target,
-        .sanitize_thread = true,
-        .stack_check = true,
+        // .sanitize_thread = true,
+        // .stack_check = true,
     });
     exe_mod.addImport("lola", mod_lola);
     exe_mod.addImport("args", mod_args);
@@ -67,6 +67,14 @@ pub fn build(b: *Build) !void {
         .root_module = exe_mod,
     });
     b.installArtifact(exe);
+    const run = b.addRunArtifact(exe);
+    run.addArgs(&.{
+        "lola",
+        "run",
+        "hello.lola",
+        "--mode",
+        "source",
+    });
 
     const benchmark_renderer_mod = b.createModule(.{
         .root_source_file = b.path("src/benchmark/render.zig"),
@@ -172,7 +180,7 @@ pub fn build(b: *Build) !void {
 
     // Run compiler test suites
     {
-        const prefix = "src/test/";
+        const prefix = "src/library/compiler/test/";
 
         const behaviour_tests = b.addRunArtifact(exe);
         behaviour_tests.addArg("run");
