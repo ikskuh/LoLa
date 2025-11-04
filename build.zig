@@ -51,7 +51,7 @@ pub fn build(b: *Build) !void {
     const build_options = b.addOptions();
     build_options.addOption([]const u8, "version", version_tag orelse "development");
 
-    const exe_mod = b.createModule(.{
+    const exe_mod = b.addModule("exe_mod", .{
         .root_source_file = b.path("src/frontend/main.zig"),
         .optimize = optimize,
         .target = target,
