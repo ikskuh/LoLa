@@ -4,7 +4,7 @@ const lola = @import("lola");
 const args_parser = @import("args");
 const build_options = @import("build_options");
 
-var gpa_state = std.heap.GeneralPurposeAllocator(.{}){};
+var gpa_state = std.heap.GeneralPurposeAllocator(.{}).init;
 const gpa = gpa_state.allocator();
 
 // This is our global object pool that is back-referenced
