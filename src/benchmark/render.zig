@@ -206,7 +206,7 @@ pub fn loadSeries(allocator: std.mem.Allocator, file: std.fs.File) ![]DataPoint 
     var file_reader = file.reader(&line_buffer);
     const reader = &file_reader.interface;
 
-    const first_line = try reader.takeDelimiterExclusive('\n');
+    const first_line = reader.takeDelimiterExclusive('\n') catch |e| if (e == error.EndOfFile) return error.UnexpectedData else return e;
 
     if (!std.mem.eql(u8, first_line, "time;compile;setup;run"))
         return error.UnexpectedData;
@@ -215,35 +215,34 @@ pub fn loadSeries(allocator: std.mem.Allocator, file: std.fs.File) ![]DataPoint 
     defer data_set.deinit(allocator);
 
     while (true) {
-        const line_or_eof: ?[]u8 = reader.takeDelimiterExclusive('\n') catch null;
-        if (line_or_eof) |line| {
-            if (line.len == 0)
-                continue;
-            var iter = std.mem.splitScalar(u8, line, ';');
-            const time_str = iter.next() orelse return error.UnexpectedData;
-            const compile_str = try std.fmt.parseInt(u64, iter.next() orelse return error.UnexpectedData, 10);
-            const setup_str = try std.fmt.parseInt(u64, iter.next() orelse return error.UnexpectedData, 10);
-            const run_str = try std.fmt.parseInt(u64, iter.next() orelse return error.UnexpectedData, 10);
+        const line: []u8 = reader.takeDelimiterExclusive('\n') catch |e| {
+            if (e == error.EndOfStream) break;
+            return e;
+        };
+        if (line.len == 0)
+            continue;
+        var iter = std.mem.splitScalar(u8, line, ';');
+        const time_str = iter.next() orelse return error.UnexpectedData;
+        const compile_str = try std.fmt.parseInt(u64, iter.next() orelse return error.UnexpectedData, 10);
+        const setup_str = try std.fmt.parseInt(u64, iter.next() orelse return error.UnexpectedData, 10);
+        const run_str = try std.fmt.parseInt(u64, iter.next() orelse return error.UnexpectedData, 10);
 
-            if (time_str.len != 19) return error.UnexpectedData;
+        if (time_str.len != 19) return error.UnexpectedData;
 
-            try data_set.append(allocator, DataPoint{
-                .date = Date{
-                    // 2022-03-14 14:25:56
-                    .year = try std.fmt.parseInt(u32, time_str[0..4], 10),
-                    .day = try std.fmt.parseInt(u8, time_str[5..7], 10),
-                    .month = try std.fmt.parseInt(u8, time_str[8..10], 10),
-                    .hour = try std.fmt.parseInt(u8, time_str[11..13], 10),
-                    .minute = try std.fmt.parseInt(u8, time_str[14..16], 10),
-                    .second = try std.fmt.parseInt(u8, time_str[17..19], 10),
-                },
-                .compile_time = compile_str,
-                .setup_time = setup_str,
-                .run_time = run_str,
-            });
-        } else {
-            break;
-        }
+        try data_set.append(allocator, DataPoint{
+            .date = Date{
+                // 2022-03-14 14:25:56
+                .year = try std.fmt.parseInt(u32, time_str[0..4], 10),
+                .day = try std.fmt.parseInt(u8, time_str[5..7], 10),
+                .month = try std.fmt.parseInt(u8, time_str[8..10], 10),
+                .hour = try std.fmt.parseInt(u8, time_str[11..13], 10),
+                .minute = try std.fmt.parseInt(u8, time_str[14..16], 10),
+                .second = try std.fmt.parseInt(u8, time_str[17..19], 10),
+            },
+            .compile_time = compile_str,
+            .setup_time = setup_str,
+            .run_time = run_str,
+        });
     }
 
     return data_set.toOwnedSlice(allocator);
