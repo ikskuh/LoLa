@@ -251,14 +251,14 @@ pub const LoLaList = struct {
         self.allocator.destroy(self);
     }
 
-    pub fn serializeObject(writer: lola.runtime.objects.OutputStream.Writer, object: *Self) !void {
+    pub fn serializeObject(writer: *std.Io.Writer, object: *Self) !void {
         try writer.writeInt(u32, @as(u32, @intCast(object.data.items.len)), .little);
         for (object.data.items) |item| {
             try item.serialize(writer);
         }
     }
 
-    pub fn deserializeObject(allocator: std.mem.Allocator, reader: lola.runtime.objects.InputStream.Reader) !*Self {
+    pub fn deserializeObject(allocator: std.mem.Allocator, reader: *std.Io.Reader) !*Self {
         const item_count = try reader.takeInt(u32, .little);
         var list = try allocator.create(Self);
         list.* = Self{
@@ -506,7 +506,7 @@ pub const LoLaDictionary = struct {
         self.allocator.destroy(self);
     }
 
-    pub fn serializeObject(writer: lola.runtime.objects.OutputStream.Writer, object: *Self) !void {
+    pub fn serializeObject(writer: *std.Io.Writer, object: *Self) !void {
         try writer.writeInt(u32, @as(u32, @intCast(object.data.items.len)), .little);
         for (object.data.items) |item| {
             try item.key.serialize(writer);
@@ -514,7 +514,7 @@ pub const LoLaDictionary = struct {
         }
     }
 
-    pub fn deserializeObject(allocator: std.mem.Allocator, reader: lola.runtime.objects.InputStream.Reader) !*Self {
+    pub fn deserializeObject(allocator: std.mem.Allocator, reader: *std.Io.Reader) !*Self {
         const item_count = try reader.takeInt(u32, .little);
         var list = try allocator.create(Self);
         list.* = Self{

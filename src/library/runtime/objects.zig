@@ -17,8 +17,8 @@ pub const Object = struct {
     });
 
     const ClassVTable = interfaces.Interfaces(.{
-        .serializeObject = fn (self: *interfaces.Self, stream: OutputStream) anyerror!void,
-        .deserializeObject = fn (stream: InputStream) anyerror!*interfaces.Self,
+        .serializeObject = fn (self: *interfaces.Self, stream: *std.Io.Writer) anyerror!void,
+        .deserializeObject = fn (stream: *std.Io.Reader) anyerror!*interfaces.Self,
     });
 
     const Self = @This();
@@ -50,40 +50,6 @@ pub const ObjectHandle = enum(u64) {
     const Self = @This();
 
     _, // Just an non-exhaustive handle, no named members
-};
-
-pub const InputStream = struct {
-    const Self = @This();
-    pub const Reader = *std.Io.Reader;
-
-    interface: *std.Io.Reader,
-
-    fn from(reader_ptr: *std.Io.Reader) Self {
-        return Self{
-            .interface = reader_ptr,
-        };
-    }
-
-    fn reader(self: *@This()) Reader {
-        return self.interface;
-    }
-};
-
-pub const OutputStream = struct {
-    const Self = @This();
-    pub const Writer = *std.Io.Writer;
-
-    interface: *std.Io.Writer,
-
-    fn from(writer_ptr: *std.Io.Writer) Self {
-        return Self{
-            .interface = writer_ptr,
-        };
-    }
-
-    fn writer(self: *@This()) Writer {
-        return self.interface;
-    }
 };
 
 const ObjectGetError = error{InvalidObject};
@@ -170,8 +136,8 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
 
     const ClassInfo = struct {
         name: []const u8,
-        serialize: *const fn (stream: OutputStream, obj: Object) anyerror!void,
-        deserialize: *const fn (allocator: std.mem.Allocator, stream: InputStream) anyerror!Object,
+        serialize: *const fn (stream: *std.Io.Writer, obj: Object) anyerror!void,
+        deserialize: *const fn (allocator: std.mem.Allocator, stream: *std.Io.Reader) anyerror!Object,
     };
 
     // Provide a huge-enough branch quota
@@ -183,15 +149,13 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
             const Class = classes[i];
 
             const Interface = struct {
-                fn serialize(stream: OutputStream, obj: Object) anyerror!void {
+                fn serialize(stream: *std.Io.Writer, obj: Object) anyerror!void {
                     //parameters are immutable so save to mutable var
-                    var s = stream;
-                    try Class.serializeObject(s.writer(), @as(*Class, @ptrCast(@alignCast(obj.ptr))));
+                    try Class.serializeObject(stream, @as(*Class, @ptrCast(@alignCast(obj.ptr))));
                 }
 
-                fn deserialize(allocator: std.mem.Allocator, stream: InputStream) anyerror!Object {
-                    var s = stream;
-                    const ptr = try Class.deserializeObject(allocator, s.reader());
+                fn deserialize(allocator: std.mem.Allocator, stream: *std.Io.Reader) anyerror!Object {
+                    const ptr = try Class.deserializeObject(allocator, stream);
                     return Object.init(ptr);
                 }
             };
@@ -259,7 +223,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
                     try stream.writeInt(TypeIndex, obj.class_id, .little);
                     try stream.writeInt(u64, @intFromEnum(entry.key_ptr.*), .little);
 
-                    try class.serialize(OutputStream.from(stream), obj.object);
+                    try class.serialize(stream, obj.object);
                 }
 
                 try stream.writeInt(TypeIndex, std.math.maxInt(TypeIndex), .little);
@@ -291,7 +255,7 @@ pub fn ObjectPool(comptime classes_list: anytype) type {
                     if (gop.found_existing)
                         return error.InvalidStream;
 
-                    const object = try class_lut[type_index].deserialize(allocator, InputStream.from(stream));
+                    const object = try class_lut[type_index].deserialize(allocator, stream);
 
                     gop.value_ptr.* = ManagedObject{
                         .object = object,
@@ -498,14 +462,14 @@ const TestObject = struct {
         self.got_destroy_call = true;
     }
 
-    pub fn serializeObject(writer: OutputStream.Writer, object: *Self) !void {
+    pub fn serializeObject(writer: *std.Io.Writer, object: *Self) !void {
         try writer.writeAll("test object");
         object.was_serialized = true;
     }
 
     var deserialize_instance = Self{};
 
-    pub fn deserializeObject(allocator: std.mem.Allocator, reader: InputStream.Reader) !*Self {
+    pub fn deserializeObject(allocator: std.mem.Allocator, reader: *std.Io.Reader) !*Self {
         _ = allocator;
         var buf: [11]u8 = undefined;
         try reader.readSliceAll(&buf);
