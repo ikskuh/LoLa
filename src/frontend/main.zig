@@ -34,9 +34,8 @@ pub fn main() !u8 {
             return 0;
         },
         .version => {
-            var stdout_writer = std.fs.File.stdout().writer(&.{});
-            const stdout = &stdout_writer.interface;
-            try stdout.writeAll(build_options.version ++ "\n");
+            var stdout = std.fs.File.stdout().writer(&.{});
+            try stdout.interface.writeAll(build_options.version ++ "\n");
             return 0;
         },
     }
@@ -77,9 +76,8 @@ pub fn print_usage() !void {
         \\
     ;
     // \\  -S                      Intermixes the disassembly with the original source code if possible.
-    var stdout_writer = std.fs.File.stderr().writer(&.{});
-    const stdout = &stdout_writer.interface;
-    try stdout.writeAll(usage_msg);
+    var stdout = std.fs.File.stderr().writer(&.{});
+    try stdout.interface.writeAll(usage_msg);
 }
 
 const CliVerb = union(enum) {
@@ -108,7 +106,6 @@ const DisassemblerCLI = struct {
 
 fn disassemble(options: DisassemblerCLI, files: []const []const u8) !u8 {
     var stream_writer = std.fs.File.stdout().writer(&.{});
-    var stream = &stream_writer.interface;
 
     if (files.len == 0) {
         try print_usage();
@@ -126,8 +123,8 @@ fn disassemble(options: DisassemblerCLI, files: []const []const u8) !u8 {
             .exclusive = false,
         });
         stream_writer = logfile.?.writer(&.{});
-        stream = &stream_writer.interface;
     }
+    const stream = &stream_writer.interface;
 
     for (files) |arg| {
         if (files.len != 1) {
@@ -207,9 +204,7 @@ fn compile(options: CompileCLI, files: []const []const u8) !u8 {
     const outname = if (options.output) |name|
         name
     else blk: {
-        var name = try allocator.alloc(u8, inname.len + 3);
-        @memcpy(name[0..inname.len], inname);
-        @memcpy(name[inname.len..], ".lm");
+        const name = try std.mem.concat(allocator, u8, &.{ inname, ".lm" });
         break :blk name;
     };
     defer if (options.output == null)
