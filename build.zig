@@ -157,17 +157,12 @@ pub fn build(b: *Build) !void {
         examples_step.dependOn(&b.addInstallArtifact(example_exe, .{}).step);
     }
 
-    const compiler_lola_mod = b.createModule(.{
-        .root_source_file = b.path("src/library/compiler/test/compiler.lola"),
-    });
-
     const main_tests_mod = b.createModule(.{
         .root_source_file = b.path("src/library/test.zig"),
         .optimize = optimize,
         .target = b.graph.host,
     });
     main_tests_mod.addImport("any-pointer", mod_any_pointer);
-    main_tests_mod.addImport("compiler.lola", compiler_lola_mod);
 
     const main_tests = b.addTest(.{
         .root_module = main_tests_mod,
@@ -180,7 +175,7 @@ pub fn build(b: *Build) !void {
 
     // Run compiler test suites
     {
-        const prefix = "src/library/compiler/test/";
+        const prefix = "src/library/test/";
 
         const behaviour_tests = b.addRunArtifact(exe);
         behaviour_tests.addArg("run");

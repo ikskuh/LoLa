@@ -1683,7 +1683,7 @@ test "4 parameter method call expression" {
 }
 
 test "full suite parsing" {
-    const seq = try testTokenize(@embedFile("test/compiler.lola"));
+    const seq = try testTokenize(@embedFile("../test/compiler.lola"));
     defer std.testing.allocator.free(seq);
 
     var diagnostics = diag.Diagnostics.init(std.testing.allocator);
