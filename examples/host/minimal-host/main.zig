@@ -14,7 +14,7 @@ const example_source =
 
 // This is required for the runtime library to be able to provide
 // object implementations.
-pub const ObjectPool = lola.runtime.ObjectPool([_]type{
+pub const ObjectPool = lola.runtime.objects.ObjectPool([_]type{
     lola.libs.runtime.LoLaDictionary,
     lola.libs.runtime.LoLaList,
 });
@@ -32,7 +32,7 @@ pub fn main() anyerror!u8 {
     var diagnostics = lola.compiler.Diagnostics.init(allocator);
     defer {
         for (diagnostics.messages.items) |msg| {
-            std.debug.print("{}\n", .{msg});
+            std.debug.print("{f}\n", .{msg});
         }
         diagnostics.deinit();
     }
@@ -104,7 +104,7 @@ pub fn main() anyerror!u8 {
             },
 
             // This means the virtual machine was suspended via a async function call.
-            .paused => std.time.sleep(100),
+            .paused => std.Thread.sleep(100),
         }
     }
 

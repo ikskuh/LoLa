@@ -15,7 +15,7 @@ const example_source =
     \\}
 ;
 
-pub const ObjectPool = lola.runtime.ObjectPool([_]type{
+pub const ObjectPool = lola.runtime.objects.ObjectPool([_]type{
     lola.libs.runtime.LoLaDictionary,
     lola.libs.runtime.LoLaList,
 });
@@ -36,10 +36,13 @@ pub fn main() anyerror!void {
     }
 
     {
-        var stdout = std.io.getStdOut().writer();
-        try stdout.writeAll("\n");
-        try stdout.writeAll("-----------------------------------\n");
-        try stdout.writeAll("\n");
+        var stdout = std.fs.File.stdout().writer(&.{});
+
+        try stdout.interface.writeAll("\n");
+        try stdout.interface.writeAll("-----------------------------------\n");
+        try stdout.interface.writeAll("\n");
+
+        try stdout.interface.flush();
     }
 
     {
@@ -57,7 +60,7 @@ fn run_serialization(allocator: std.mem.Allocator, serialization_buffer: []u8) !
     var diagnostics = lola.compiler.Diagnostics.init(allocator);
     defer {
         for (diagnostics.messages.items) |msg| {
-            std.debug.print("{}\n", .{msg});
+            std.debug.print("{f}\n", .{msg});
         }
         diagnostics.deinit();
     }
@@ -74,28 +77,28 @@ fn run_serialization(allocator: std.mem.Allocator, serialization_buffer: []u8) !
     try env.installModule(lola.libs.std, lola.runtime.Context.null_pointer);
     try env.installModule(lola.libs.runtime, lola.runtime.Context.null_pointer);
 
-    var vm = try lola.runtime.VM.init(allocator, &env);
+    var vm = try lola.runtime.vm.VM.init(allocator, &env);
     defer vm.deinit();
 
     const result = try vm.execute(405);
     std.debug.assert(result == .exhausted); // we didn't finish running our nice example
 
-    const stdout = std.io.getStdOut().writer();
-    try stdout.writeAll("Suspend at\n");
-    try vm.printStackTrace(stdout);
+    var stdout = std.fs.File.stdout().writer(&.{});
+    try stdout.interface.writeAll("Suspend at\n");
+    try vm.printStackTrace(&stdout.interface);
+    try stdout.interface.flush();
 
     {
-        var stream = std.io.fixedBufferStream(serialization_buffer);
-        const writer = stream.writer();
+        var stream: std.Io.Writer = .fixed(serialization_buffer);
 
-        try compile_unit.saveToStream(writer);
+        try compile_unit.saveToStream(&stream);
 
         // This saves all objects associated with their handles.
         // This will only work when all object classes are serializable though.
-        try pool.serialize(writer);
+        try pool.serialize(&stream);
 
         // this saves all global variables saved in the environment
-        try env.serialize(writer);
+        try env.serialize(&stream);
 
         var registry = lola.runtime.EnvironmentMap.init(allocator);
         defer registry.deinit();
@@ -103,21 +106,23 @@ fn run_serialization(allocator: std.mem.Allocator, serialization_buffer: []u8) !
         try registry.add(1234, &env);
 
         // This saves the current virtual machine state
-        try vm.serialize(&registry, writer);
+        try vm.serialize(&registry, &stream);
 
-        try stdout.print("saved state to {} bytes!\n", .{
-            stream.getWritten().len,
+        try stream.flush();
+
+        try stdout.interface.print("saved state to {} bytes!\n", .{
+            stream.buffered().len,
         });
+        try stdout.interface.flush();
     }
 }
 
 fn run_deserialization(allocator: std.mem.Allocator, serialization_buffer: []u8) !void {
-    var stream = std.io.fixedBufferStream(serialization_buffer);
-    const reader = stream.reader();
+    var reader: std.Io.Reader = .fixed(serialization_buffer);
 
     // Trivial deserialization:
     // Just load the compile unit from disk again
-    var compile_unit = try lola.CompileUnit.loadFromStream(allocator, reader);
+    var compile_unit = try lola.CompileUnit.loadFromStream(allocator, &reader);
     defer compile_unit.deinit();
 
     // This is the reason we need to specialize lola.runtime.ObjectPool() on
@@ -126,7 +131,7 @@ fn run_deserialization(allocator: std.mem.Allocator, serialization_buffer: []u8)
     // a way to get a runtime type-handle and turn it back into a deserialization function.
     // this is done by storing the type indices per created object which can then be turned back
     // into a real lola.runtime.Object.
-    var object_pool = try ObjectPool.deserialize(allocator, reader);
+    var object_pool = try ObjectPool.deserialize(allocator, &reader);
     defer object_pool.deinit();
 
     // Environments cannot be deserialized directly from a stream:
@@ -143,7 +148,7 @@ fn run_deserialization(allocator: std.mem.Allocator, serialization_buffer: []u8)
 
     // This will restore the whole environment state back to how it was at serialization
     // time. All globals will be restored here.
-    try env.deserialize(reader);
+    try env.deserialize(&reader);
 
     // This is needed for deserialization:
     // We need means to have a unique Environment <-> ID mapping
@@ -156,16 +161,20 @@ fn run_deserialization(allocator: std.mem.Allocator, serialization_buffer: []u8)
     try registry.add(1234, &env);
 
     // Restore the virtual machine with all function calls.
-    var vm = try lola.runtime.VM.deserialize(allocator, &registry, reader);
+    var vm = try lola.runtime.VM.deserialize(allocator, &registry, &reader);
     defer vm.deinit();
 
-    var stdout = std.io.getStdOut().writer();
-    try stdout.print("restored state with {} bytes!\n", .{
-        stream.getWritten().len,
+    var stdout = std.fs.File.stdout().writer(&.{});
+    try stdout.interface.writeAll("Suspend at\n");
+
+    try stdout.interface.print("restored state with {} bytes!\n", .{
+        reader.seek,
     });
 
-    try stdout.writeAll("Resume at\n");
-    try vm.printStackTrace(stdout);
+    try stdout.interface.writeAll("Resume at\n");
+    try vm.printStackTrace(&stdout.interface);
+
+    try stdout.interface.flush();
 
     // let the program finish
     _ = try vm.execute(null);
