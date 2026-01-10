@@ -19,7 +19,7 @@ const lola = @import("lola");
 // communicate with each other.
 //
 
-pub const ObjectPool = lola.runtime.ObjectPool([_]type{
+pub const ObjectPool = lola.runtime.objects.ObjectPool([_]type{
     lola.libs.runtime.LoLaDictionary,
     lola.libs.runtime.LoLaList,
 
@@ -37,7 +37,7 @@ pub fn main() anyerror!u8 {
     var diagnostics = lola.compiler.Diagnostics.init(allocator);
     defer {
         for (diagnostics.messages.items) |msg| {
-            std.debug.print("{}\n", .{msg});
+            std.debug.print("{f}\n", .{msg});
         }
         diagnostics.deinit();
     }

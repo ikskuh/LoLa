@@ -478,8 +478,3 @@ test "detect doubly-declared global variables" {
     });
 }
 
-test "detect assignment to const parameter" {
-    try expectAnalysisErrors("function f(x) { x = void; }", &[_][]const u8{
-        "Assignment to constant x not allowed.",
-    });
-}

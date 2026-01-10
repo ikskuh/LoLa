@@ -865,8 +865,8 @@ pub const VM = struct {
     }
 
     pub fn deserialize(allocator: std.mem.Allocator, envmap: *lola.runtime.EnvironmentMap, stream: anytype) !Self {
-        const stack_size = try stream.readInt(u64, .little);
-        const call_size = try stream.readInt(u64, .little);
+        const stack_size = try stream.takeInt(u64, .little);
+        const call_size = try stream.takeInt(u64, .little);
 
         var vm = Self{
             .allocator = allocator,
@@ -875,13 +875,13 @@ pub const VM = struct {
             .currentAsynCall = null,
             .objectPool = undefined,
         };
-        errdefer vm.stack.deinit();
-        errdefer vm.calls.deinit();
+        errdefer vm.stack.deinit(allocator);
+        errdefer vm.calls.deinit(allocator);
 
         try vm.stack.ensureTotalCapacity(allocator, @min(stack_size, 128));
         try vm.calls.ensureTotalCapacity(allocator, @min(call_size, 32));
 
-        try vm.stack.resize(stack_size);
+        try vm.stack.resize(allocator, stack_size);
         for (vm.stack.items) |*item| {
             item.* = .void;
         }
@@ -895,10 +895,10 @@ pub const VM = struct {
         {
             var i: usize = 0;
             while (i < call_size) : (i += 1) {
-                const local_count = try stream.readInt(u16, .little);
-                const offset = try stream.readInt(u32, .little);
-                const stack_balance = try stream.readInt(u32, .little);
-                const env_id = try stream.readInt(u32, .little);
+                const local_count = try stream.takeInt(u16, .little);
+                const offset = try stream.takeInt(u32, .little);
+                const stack_balance = try stream.takeInt(u32, .little);
+                const env_id = try stream.takeInt(u32, .little);
 
                 const env = envmap.queryById(env_id) orelse return error.UnregisteredEnvironmentPointer;
 
