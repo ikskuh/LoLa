@@ -395,7 +395,7 @@ pub fn validate(allocator: std.mem.Allocator, diagnostics: *Diagnostics, program
         defer local_scope.deinit();
 
         for (function.parameters) |param| {
-            local_scope.declare(param, true) catch |err| switch (err) {
+            local_scope.declare(param, false) catch |err| switch (err) {
                 error.AlreadyDeclared => try diagnostics.emit(.@"error", function.location, "A parameter {s} is already declared!", .{param}),
                 error.TooManyVariables => try emitTooManyVariables(diagnostics, function.location),
                 else => |e| return e,
@@ -478,8 +478,3 @@ test "detect doubly-declared global variables" {
     });
 }
 
-test "detect assignment to const parameter" {
-    try expectAnalysisErrors("function f(x) { x = void; }", &[_][]const u8{
-        "Assignment to constant x not allowed.",
-    });
-}

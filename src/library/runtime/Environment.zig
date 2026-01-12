@@ -249,7 +249,7 @@ pub fn serialize(self: Environment, stream: anytype) !void {
 /// is restored.
 pub fn deserialize(self: *Environment, stream: anytype) !void {
     const sig_env = self.computeSignature();
-    const sig_ser = try stream.readInt(u64, .little);
+    const sig_ser = try stream.takeInt(u64, .little);
     if (sig_env != sig_ser)
         return error.SignatureMismatch;
 

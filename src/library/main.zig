@@ -26,6 +26,16 @@ pub const runtime = struct {
     pub const AsyncFunctionCall = Environment.AsyncFunctionCall;
     pub const AsyncUserFunction = Environment.AsyncUserFunction;
     pub const AsyncUserFunctionCall = Environment.AsyncUserFunctionCall;
+
+    pub const VM = vm.VM;
+    pub const ExecutionResult = vm.ExecutionResult;
+
+    pub const Object = objects.Object;
+    pub const ObjectPool = objects.ObjectPool;
+    pub const ObjectPoolInterface = objects.ObjectPoolInterface;
+    pub const ObjectHandle = objects.ObjectHandle;
+
+    pub const Value = value.Value;
 };
 
 /// LoLa libraries that provide pre-defined functions and variables.
