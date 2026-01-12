@@ -235,7 +235,7 @@ fn computeSignature(self: Environment) u64 {
 
 /// Serializes the environment globals in a way that these
 /// are restorable later.
-pub fn serialize(self: Environment, stream: anytype) !void {
+pub fn serialize(self: Environment, stream: *std.Io.Writer) !void {
     const sig = self.computeSignature();
     try stream.writeInt(u64, sig, .little);
 
@@ -247,7 +247,7 @@ pub fn serialize(self: Environment, stream: anytype) !void {
 /// Deserializes the environment globals. This might fail with
 /// `error.SignatureMismatch` when a environment with a different signature
 /// is restored.
-pub fn deserialize(self: *Environment, stream: anytype) !void {
+pub fn deserialize(self: *Environment, stream: *std.Io.Writer) !void {
     const sig_env = self.computeSignature();
     const sig_ser = try stream.takeInt(u64, .little);
     if (sig_env != sig_ser)
