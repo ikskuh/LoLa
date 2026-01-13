@@ -296,7 +296,7 @@ pub const VM = struct {
                 defer index_val.deinit();
 
                 var @"struct" = try indexed_val.getStruct();
-                const value = if (@"struct".contents.getPtr(try index_val.toString())) |ret| try ret.clone() else Value.void;
+                const value = if (@"struct".contents.getPtr(try index_val.toString())) |ret| try ret.clone() else return error.InvalidField;
                 //clone it to get a new mutable value
                 try self.push(value);
             },
@@ -310,9 +310,10 @@ pub const VM = struct {
                 const value = try self.pop();
 
                 var @"struct" = try indexed_val.getStruct();
-                if (try @"struct".contents.fetchPut(try index_val.toString(), value)) |entry| {
-                    var old_value = entry.value;
-                    old_value.deinit();
+                if (@"struct".contents.getPtr(try index_val.toString())) |entry| {
+                    entry.replaceWith(value);
+                } else {
+                    return error.InvalidField;
                 }
                 try self.push(indexed_val);
             },
@@ -324,11 +325,12 @@ pub const VM = struct {
                     var value = try self.pop();
                     errdefer value.deinit();
                     var name_value = try self.pop();
-                    errdefer name_value.deinit();
+                    defer name_value.deinit();
                     const name = try name_value.toString();
 
-                    try @"struct".contents.put(try @"struct".allocator.dupe(u8, name), value);
-                    name_value.deinit();
+                    const allocated_name = try @"struct".allocator.dupe(u8, name);
+                    errdefer @"struct".allocator.free(allocated_name);
+                    try @"struct".contents.put(allocated_name, value);
                 }
                 try self.push(Value.fromStruct(@"struct"));
             },
