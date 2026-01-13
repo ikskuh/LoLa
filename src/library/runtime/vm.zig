@@ -296,7 +296,8 @@ pub const VM = struct {
                 defer index_val.deinit();
 
                 var @"struct" = try indexed_val.getStruct();
-                const value = @"struct".contents.get(try index_val.toString()) orelse Value.void;
+                const value = if (@"struct".contents.getPtr(try index_val.toString())) |ret| try ret.clone() else Value.void;
+                //clone it to get a new mutable value
                 try self.push(value);
             },
             .struct_store => {
