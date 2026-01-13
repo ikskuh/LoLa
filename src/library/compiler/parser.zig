@@ -722,6 +722,12 @@ pub fn parse(
             var loc: Location = token.location;
 
             var entries: std.ArrayList(struct { []const u8, *ast.Expression }) = .empty;
+            errdefer {
+                for (entries.items) |entry| {
+                    self.allocator.destroy(entry.@"1");
+                }
+                entries.deinit(self.allocator);
+            }
             while (true) {
                 if (self.accept(is(.@"]"))) |_| {
                     break;
@@ -737,6 +743,14 @@ pub fn parse(
                     if (delimit.type == .@"]")
                         break;
                 }
+            }
+            if (entries.items.len == 0) {
+                //this is a list type by default
+                entries.deinit(self.allocator);
+                return ast.Expression{
+                    .location = loc,
+                    .type = .{ .array_literal = try self.allocator.alloc(ast.Expression, 0) },
+                };
             }
 
             return ast.Expression{
