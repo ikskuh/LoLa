@@ -44,6 +44,9 @@ pub const InstructionName = enum(u8) {
     push_true = 41,
     push_false = 42,
     push_void = 43,
+    struct_pack = 44,
+    struct_store = 45,
+    struct_load = 46,
 };
 
 /// This union contains each possible instruction with its (optional) arguments already encoded.
@@ -106,4 +109,7 @@ pub const Instruction = union(InstructionName) {
     push_true: NoArg,
     push_false: NoArg,
     push_void: NoArg,
+    struct_pack: SingleArg(u16),
+    struct_store: NoArg,
+    struct_load: NoArg,
 };

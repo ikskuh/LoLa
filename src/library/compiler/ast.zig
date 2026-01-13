@@ -39,7 +39,7 @@ pub const Expression = struct {
     /// Cs `lvalue`.
     pub fn isAssignable(self: Self) bool {
         return switch (self.type) {
-            .array_indexer, .variable_expr => true,
+            .array_indexer, .variable_expr, .field_access => true,
             else => false,
         };
     }
@@ -51,6 +51,7 @@ pub const Expression = struct {
         },
         variable_expr: []const u8,
         array_literal: []Expression,
+        struct_literal: []struct { []const u8, *Expression },
         function_call: struct {
             // this must be a expression of type `variable_expr`
             function: *Expression,
@@ -71,6 +72,10 @@ pub const Expression = struct {
             operator: BinaryOperator,
             lhs: *Expression,
             rhs: *Expression,
+        },
+        field_access: struct {
+            @"struct": *Expression,
+            name: []const u8,
         },
     };
 };

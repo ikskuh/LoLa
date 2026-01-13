@@ -288,6 +288,49 @@ pub const VM = struct {
 
                 try self.push(value);
             },
+            .struct_load => {
+                var indexed_val = try self.pop();
+                defer indexed_val.deinit();
+
+                var index_val = try self.pop();
+                defer index_val.deinit();
+
+                var @"struct" = try indexed_val.getStruct();
+                const value = @"struct".contents.get(try index_val.toString()) orelse Value.void;
+                try self.push(value);
+            },
+            .struct_store => {
+                var indexed_val = try self.pop();
+                errdefer indexed_val.deinit();
+
+                var index_val = try self.pop();
+                defer index_val.deinit();
+
+                const value = try self.pop();
+
+                var @"struct" = try indexed_val.getStruct();
+                if (try @"struct".contents.fetchPut(try index_val.toString(), value)) |entry| {
+                    var old_value = entry.value;
+                    old_value.deinit();
+                }
+                try self.push(indexed_val);
+            },
+            .struct_pack => |i| {
+                var @"struct" = try value_unit.Struct.init(self.allocator, i.value);
+                errdefer @"struct".deinit();
+
+                for (0..i.value) |_| {
+                    var value = try self.pop();
+                    errdefer value.deinit();
+                    var name_value = try self.pop();
+                    errdefer name_value.deinit();
+                    const name = try name_value.toString();
+
+                    try @"struct".contents.put(try @"struct".allocator.dupe(u8, name), value);
+                    name_value.deinit();
+                }
+                try self.push(Value.fromStruct(@"struct"));
+            },
 
             // Array Operations:
 

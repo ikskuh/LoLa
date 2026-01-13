@@ -49,6 +49,13 @@ fn emitStore(debug_symbols: *DebugSyms, scope: *Scope, writer: *CodeWriter, expr
             try emitStore(debug_symbols, scope, writer, indexer.value.*); // now store back the value on the stack
         },
 
+        .field_access => |field_access| {
+            try writer.emitInstruction(.{ .push_str = .{ .value = field_access.name } });
+            try emitExpression(debug_symbols, scope, writer, field_access.@"struct".*);
+            try writer.emitInstruction(.struct_store);
+            try emitStore(debug_symbols, scope, writer, field_access.@"struct".*);
+        },
+
         .variable_expr => |variable_name| {
             if (std.mem.eql(u8, variable_name, "true")) {
                 return error.InvalidStoreTarget;
@@ -116,6 +123,25 @@ fn emitExpression(debug_symbols: *DebugSyms, scope: *Scope, writer: *CodeWriter,
             }
             try writer.emitInstruction(Instruction{
                 .array_pack = .{ .value = @as(u16, @intCast(array.len)) },
+            });
+        },
+
+        .field_access => |field_access| {
+            // field_access.
+            try writer.emitInstruction(.{ .push_str = .{ .value = field_access.name } });
+            try emitExpression(debug_symbols, scope, writer, field_access.@"struct".*);
+            try writer.emitInstruction(.struct_load);
+        },
+
+        .struct_literal => |s| {
+            var i: usize = s.len;
+            while (i > 0) {
+                i -= 1;
+                try writer.emitInstruction(.{ .push_str = .{ .value = s[i].@"0" } });
+                try emitExpression(debug_symbols, scope, writer, s[i].@"1".*);
+            }
+            try writer.emitInstruction(Instruction{
+                .struct_pack = .{ .value = @as(u16, @intCast(s.len)) },
             });
         },
 

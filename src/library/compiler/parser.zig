@@ -596,7 +596,7 @@ pub fn parse(
             const state = self.saveState();
             errdefer self.restoreState(state);
 
-            var value = try self.acceptCallExpression();
+            var value = try self.acceptFieldAccessExpression();
 
             while (self.accept(is(.@"["))) |_| {
                 const index = try self.acceptExpression();
@@ -616,6 +616,25 @@ pub fn parse(
             } else |_| {}
 
             return value;
+        }
+
+        fn acceptFieldAccessExpression(self: *Self) ParseError!ast.Expression {
+            const state = self.saveState();
+            errdefer self.restoreState(state);
+
+            const value = if (self.acceptCallExpression()) |val| val else |_| try self.acceptValueExpression();
+
+            const state2 = self.saveState();
+            if (self.accept(is(.@"."))) |_| {
+                const field = try self.accept(is(.identifier));
+                return ast.Expression{ .location = value.location, .type = .{ .field_access = .{
+                    .@"struct" = try self.moveToHeap(value),
+                    .name = field.text,
+                } } };
+            } else |_| {
+                self.restoreState(state2);
+                return value;
+            }
         }
 
         fn acceptCallExpression(self: *Self) ParseError!ast.Expression {
@@ -701,6 +720,37 @@ pub fn parse(
             return value;
         }
 
+        fn acceptStructExpression(self: *Self) ParseError!ast.Expression {
+            const state = self.saveState();
+            errdefer self.restoreState(state);
+
+            const token = try self.accept(is(.@"["));
+
+            var entries: std.ArrayList(struct { []const u8, *ast.Expression }) = .empty;
+            while (true) {
+                if (self.accept(is(.@"]"))) |_| {
+                    break;
+                } else |_| {
+                    _ = try self.accept(is(.@"."));
+                    const field = try self.accept(is(.identifier));
+                    _ = try self.accept(is(.@"="));
+                    const item = try self.acceptExpression();
+                    try entries.append(self.allocator, .{ field.text, try self.moveToHeap(item) });
+
+                    const delimit = try self.accept(oneOf(.{ .@",", .@"]" }));
+                    if (delimit.type == .@"]")
+                        break;
+                }
+            }
+
+            return ast.Expression{
+                .location = token.location,
+                .type = .{
+                    .struct_literal = try entries.toOwnedSlice(self.allocator),
+                },
+            };
+        }
+
         fn acceptValueExpression(self: *Self) ParseError!ast.Expression {
             const state = self.saveState();
             errdefer self.restoreState(state);
@@ -722,11 +772,19 @@ pub fn parse(
                 .@"[" => {
                     var array = std.ArrayList(ast.Expression).empty;
                     defer array.deinit(self.allocator);
-
+                    var first: bool = true;
                     while (true) {
                         if (self.accept(is(.@"]"))) |_| {
                             break;
                         } else |_| {
+                            // look for struct syntax .field = value, but only once
+                            if (first) {
+                                if (self.accept(is(.@"."))) |_| {
+                                    self.restoreState(state);
+                                    return try self.acceptStructExpression();
+                                } else |_| {}
+                                first = false;
+                            }
                             const item = try self.acceptExpression();
 
                             try array.append(self.allocator, item);
