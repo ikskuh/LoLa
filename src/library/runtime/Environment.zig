@@ -506,7 +506,7 @@ pub const Function = union(enum) {
         if (info == .error_union) {
             return try convertToLoLaValue(allocator, try value);
         }
-        if (info == .ErrorSet) {
+        if (info == .error_set) {
             return value;
         }
 
