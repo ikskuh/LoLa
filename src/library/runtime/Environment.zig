@@ -459,10 +459,10 @@ pub const Function = union(enum) {
         } else {
             const info = @typeInfo(Target);
             switch (info) {
-                .Int => return try value.toInteger(Target),
-                .Float => return @as(Target, @floatCast(try value.toNumber())),
+                .int => return try value.toInteger(Target),
+                .float => return @as(Target, @floatCast(try value.toNumber())),
 
-                .Optional => {
+                .optional => {
                     if (value == .void)
                         return null;
                     return try convertToZigValue(std.meta.Child(Target), value);
@@ -493,20 +493,20 @@ pub const Function = union(enum) {
     fn convertToLoLaValue(allocator: std.mem.Allocator, value: anytype) !Value {
         const T = @TypeOf(value);
         const info = @typeInfo(T);
-        if (info == .Int)
+        if (info == .int)
             return Value.initInteger(T, value);
-        if (info == .Float)
+        if (info == .float)
             return Value.initNumber(value);
-        if (info == .Optional) {
+        if (info == .optional) {
             if (value) |unwrapped|
                 return try convertToLoLaValue(allocator, unwrapped);
             return .void;
         }
 
-        if (info == .ErrorUnion) {
+        if (info == .error_union) {
             return try convertToLoLaValue(allocator, try value);
         }
-        if (info == .ErrorSet) {
+        if (info == .error_set) {
             return value;
         }
 
@@ -577,7 +577,7 @@ pub const Function = union(enum) {
                 const ReturnType = function_info.return_type.?;
 
                 const ActualReturnType = switch (@typeInfo(ReturnType)) {
-                    .ErrorUnion => |eu| eu.payload,
+                    .error_union => |eu| eu.payload,
                     else => ReturnType,
                 };
 
@@ -593,9 +593,9 @@ pub const Function = union(enum) {
         return initSimpleUser(Impl.invoke);
     }
 
-    pub fn wrapWithAnyPointer(comptime function: anytype, context: @typeInfo(@TypeOf(function)).@"fn".args[0].type.?) Function {
+    pub fn wrapWithAnyPointer(comptime function: anytype, context: @typeInfo(@TypeOf(function)).@"fn".params[0].type.?) Function {
         const F = @TypeOf(function);
-        const FunctionAnyPointer = std.meta.Child(@TypeOf(context));
+        const FunctionAnyPointer = @TypeOf(context);
         const info = @typeInfo(F);
         if (info != .@"fn")
             @compileError("Function.wrap expects a function!");
@@ -610,30 +610,30 @@ pub const Function = union(enum) {
 
         const Impl = struct {
             fn invoke(env: *Environment, wrapped_context: AnyPointer, args: []const Value) anyerror!Value {
-                if (args.len != (function_info.args.len - 1))
+                if (args.len != (function_info.params.len - 1))
                     return error.InvalidArgs;
 
                 var zig_args: ArgsTuple = undefined;
 
-                zig_args[0] = wrapped_context.get(FunctionAnyPointer);
+                zig_args[0] = wrapped_context.cast(FunctionAnyPointer);
 
                 comptime var index = 1;
-                inline while (index < function_info.args.len) : (index += 1) {
-                    const T = function_info.args[index].type.?;
+                inline while (index < function_info.params.len) : (index += 1) {
+                    const T = function_info.params[index].type.?;
                     zig_args[index] = try convertToZigValue(T, args[index - 1]);
                 }
 
                 const ReturnType = function_info.return_type.?;
 
                 const ActualReturnType = switch (@typeInfo(ReturnType)) {
-                    .ErrorUnion => |eu| eu.payload,
+                    .error_union => |eu| eu.payload,
                     else => ReturnType,
                 };
 
                 const result: ActualReturnType = if (ReturnType != ActualReturnType)
-                    try @call(.{}, function, zig_args)
+                    try @call(.auto, function, zig_args)
                 else
-                    @call(.{}, function, zig_args);
+                    @call(.auto, function, zig_args);
 
                 return try convertToLoLaValue(env.allocator, result);
             }
@@ -641,7 +641,7 @@ pub const Function = union(enum) {
 
         return Self{
             .syncUser = UserFunction{
-                .context = AnyPointer.init(FunctionAnyPointer, context),
+                .context = AnyPointer.make(FunctionAnyPointer, context),
                 .destructor = null,
                 .call = Impl.invoke,
             },
@@ -656,6 +656,22 @@ pub const Function = union(enum) {
         }
     }
 };
+
+test "Wrap" {
+    const Impl = struct {
+        fn exampleFn(a: i32, b: f32, c: ?f32, d: []const u8, e: Array, f: Value, g: String, h: ObjectHandle) i32 {
+            _ = .{ a, b, c, d, e, f, g, h };
+            return 0;
+        }
+        fn exampleFnContext(a: *i32, b: f32, c: ?f32, d: []const u8, e: Array, f: Value, g: String, h: ObjectHandle) i32 {
+            _ = .{ a, b, c, d, e, f, g, h };
+            return 0;
+        }
+    };
+    _ = comptime Function.wrap(Impl.exampleFn);
+    var context: i32 = 1;
+    _ = Function.wrapWithAnyPointer(Impl.exampleFnContext, &context);
+}
 
 test "Environment" {
     const cu = CompileUnit{
