@@ -28,6 +28,13 @@ pub const ExecutionResult = enum {
 pub const VM = struct {
     const Self = @This();
 
+    pub const ReturnCallbackFn = *const fn (user_data: ?*anyopaque, return_value: Value) anyerror!void;
+    /// This function is called with the specified function's return value.
+    /// Ownership of the value is given to the function. (ie. it must call `Value.deinit()`)
+    pub const ReturnCallback = struct {
+        callback: ReturnCallbackFn,
+        callback_data: ?*anyopaque,
+    };
     const Context = struct {
         /// Stores the local variables for this call.
         locals: []Value,
@@ -42,6 +49,9 @@ pub const VM = struct {
 
         /// The script function which this context is currently executing
         environment: *Environment,
+
+        /// If not null, call this when this Context returns
+        callback: ?ReturnCallback,
     };
 
     /// Describes a set of statistics for the virtual machine. Can be useful for benchmarking.
@@ -81,7 +91,7 @@ pub const VM = struct {
             .environment = environment,
             .entryPoint = 0, // start at the very first byte
             .localCount = environment.compileUnit.temporaryCount,
-        });
+        }, null);
         errdefer vm.deinitContext(&initFun);
 
         try vm.calls.append(allocator, initFun);
@@ -116,7 +126,7 @@ pub const VM = struct {
     /// The script function must have a resolved environment which
     /// uses the same object pool as the main environment.
     /// It is not possible to mix several object pools.
-    fn createContext(self: *Self, fun: Environment.ScriptFunction) !Context {
+    fn createContext(self: *Self, fun: Environment.ScriptFunction, ret_callback: ?ReturnCallback) !Context {
         std.debug.assert(fun.environment != null);
         std.debug.assert(fun.environment.?.objectPool.self == self.objectPool.self);
         var ctx = Context{
@@ -124,6 +134,7 @@ pub const VM = struct {
             .stackBalance = self.stack.items.len,
             .locals = undefined,
             .environment = fun.environment.?,
+            .callback = ret_callback,
         };
         ctx.decoder.offset = fun.entryPoint;
         ctx.locals = try self.allocator.alloc(Value, fun.localCount);
@@ -421,6 +432,11 @@ pub const VM = struct {
                     item.deinit();
                 }
 
+                if (call.callback) |cb| {
+                    try cb.callback(cb.callback_data, .void);
+                    return if (self.calls.items.len == 0) .completed else null;
+                }
+
                 // No more context to execute: we have completed execution
                 if (self.calls.items.len == 0)
                     return .completed;
@@ -439,6 +455,11 @@ pub const VM = struct {
                 while (self.stack.items.len > call.stackBalance) {
                     var item = self.stack.pop().?;
                     item.deinit();
+                }
+
+                if (call.callback) |cb| {
+                    try cb.callback(cb.callback_data, .void);
+                    return if (self.calls.items.len == 0) .completed else null;
                 }
 
                 // No more context to execute: we have completed execution
@@ -471,7 +492,7 @@ pub const VM = struct {
                 if (method == null)
                     return error.FunctionNotFound;
 
-                if (try self.executeFunctionCall(environment, call, method.?, null))
+                if (try self.executeFunctionCall(environment, call, method.?, null, null))
                     return .yield;
             },
 
@@ -488,7 +509,7 @@ pub const VM = struct {
                 const function_or_null = try self.objectPool.getMethod(obj, call.function);
 
                 if (function_or_null) |function| {
-                    if (try self.executeFunctionCall(environment, call, function, obj))
+                    if (try self.executeFunctionCall(environment, call, function, obj, null))
                         return .yield;
                 } else {
                     return error.FunctionNotFound;
@@ -663,12 +684,19 @@ pub const VM = struct {
         return null;
     }
 
+    pub fn callLolaFunction(self: *Self, environment: *Environment, function_name: []const u8, args: []const Value, ret_callback: ?ReturnCallback) !void {
+        const fun: lola.runtime.Function = environment.getMethod(function_name) orelse return error.FunctionNotFound;
+        if (fun != .script) return error.NotScriptFunction;
+        const call = ir.Instruction.CallArg{ .function = function_name, .argc = args.len };
+        _ = try self.executeFunctionCall(environment, call, fun, null, ret_callback);
+    }
+
     /// Initiates or executes a function call.
     /// Returns `true` when the VM execution should suspend after the call, else `false`.
-    fn executeFunctionCall(self: *Self, environment: *Environment, call: anytype, function: Environment.Function, object: ?objects.ObjectHandle) !bool {
+    fn executeFunctionCall(self: *Self, environment: *Environment, call: ir.Instruction.CallArg, function: Environment.Function, object: ?objects.ObjectHandle, ret_callback: ?ReturnCallback) !bool {
         return switch (function) {
             .script => |fun| blk: {
-                var context = try self.createContext(fun);
+                var context = try self.createContext(fun, ret_callback);
                 errdefer self.deinitContext(&context);
 
                 try self.readLocals(call, context.locals);
@@ -838,6 +866,7 @@ pub const VM = struct {
         }
     }
 
+    /// WARNING: serializing loses `Context.ret_to` pointers
     pub fn serialize(self: Self, envmap: *lola.runtime.EnvironmentMap, stream: anytype) !void {
         if (self.currentAsynCall != null)
             return error.NotSupportedYet; // we cannot serialize async function that are in-flight atm
@@ -912,7 +941,7 @@ pub const VM = struct {
                     .environment = env,
                     .entryPoint = offset,
                     .localCount = local_count,
-                });
+                }, null);
                 ctx.stackBalance = stack_balance;
                 errdefer vm.deinitContext(&ctx);
 
