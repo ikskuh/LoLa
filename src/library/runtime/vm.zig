@@ -50,8 +50,8 @@ pub const VM = struct {
         /// The script function which this context is currently executing
         environment: *Environment,
 
-        /// If not null, call this when this Context returns
-        callback: ?ReturnCallback,
+        /// If true, executeSingle will return the return Value from this Context
+        hostCall: bool,
     };
 
     /// Describes a set of statistics for the virtual machine. Can be useful for benchmarking.
@@ -91,7 +91,7 @@ pub const VM = struct {
             .environment = environment,
             .entryPoint = 0, // start at the very first byte
             .localCount = environment.compileUnit.temporaryCount,
-        }, null);
+        }, false);
         errdefer vm.deinitContext(&initFun);
 
         try vm.calls.append(allocator, initFun);
@@ -126,7 +126,7 @@ pub const VM = struct {
     /// The script function must have a resolved environment which
     /// uses the same object pool as the main environment.
     /// It is not possible to mix several object pools.
-    fn createContext(self: *Self, fun: Environment.ScriptFunction, ret_callback: ?ReturnCallback) !Context {
+    fn createContext(self: *Self, fun: Environment.ScriptFunction, host_call: bool) !Context {
         std.debug.assert(fun.environment != null);
         std.debug.assert(fun.environment.?.objectPool.self == self.objectPool.self);
         var ctx = Context{
@@ -134,7 +134,7 @@ pub const VM = struct {
             .stackBalance = self.stack.items.len,
             .locals = undefined,
             .environment = fun.environment.?,
-            .callback = ret_callback,
+            .hostCall = host_call,
         };
         ctx.decoder.offset = fun.entryPoint;
         ctx.locals = try self.allocator.alloc(Value, fun.localCount);
@@ -174,8 +174,9 @@ pub const VM = struct {
         return if (self.stack.pop()) |v| v else return error.StackImbalance;
     }
 
-    /// Runs the virtual machine for `quota` instructions.
-    pub fn execute(self: *Self, _quota: ?u32) !ExecutionResult {
+    /// if this is a host call, put the returned scope value into `returned_value`,
+    /// else `returned_value` is set to null. if returned_value is null, the return value is deinitialized.
+    fn executePrivate(self: *Self, _quota: ?u32, returned_value: ?*?Value) !ExecutionResult {
         std.debug.assert(self.calls.items.len > 0);
 
         var quota = _quota;
@@ -186,7 +187,17 @@ pub const VM = struct {
                 q.* -= 1;
             }
 
-            if (try self.executeSingle()) |result| {
+            const ret = try self.executeSingle();
+            if (ret.execution) |result| {
+                if (ret.returned_value) |in_value| {
+                    if (returned_value) |out_value| {
+                        out_value.* = in_value;
+                    } else {
+                        //discard because it's not being received
+                        var owned = in_value;
+                        owned.deinit();
+                    }
+                } else if (returned_value) |out_value| out_value.* = null;
                 switch (result) {
                     .completed => {
                         // A execution may only be completed if no calls
@@ -201,9 +212,13 @@ pub const VM = struct {
             }
         }
     }
+    /// Runs the virtual machine for `quota` instructions.
+    pub fn execute(self: *Self, _quota: ?u32) !ExecutionResult {
+        return self.executePrivate(_quota, null);
+    }
 
     /// Executes a single instruction and returns the state of the machine.
-    fn executeSingle(self: *Self) !?SingleResult {
+    fn executeSingle(self: *Self) !SingleResult {
         if (self.currentAsynCall) |*asyncCall| {
             if (asyncCall.object) |obj| {
                 if (!self.objectPool.isObjectValid(obj))
@@ -220,7 +235,7 @@ pub const VM = struct {
             } else {
                 // We are not finished, continue later...
                 self.stats.stalls += 1;
-                return .yield;
+                return .{ .execution = .yield };
             }
         }
 
@@ -432,14 +447,16 @@ pub const VM = struct {
                     item.deinit();
                 }
 
-                if (call.callback) |cb| {
-                    try cb.callback(cb.callback_data, .void);
-                    return if (self.calls.items.len == 0) .completed else null;
+                if (call.hostCall) {
+                    return SingleResult{
+                        .execution = if (self.calls.items.len == 0) .completed else null,
+                        .returned_value = .void,
+                    };
                 }
 
                 // No more context to execute: we have completed execution
                 if (self.calls.items.len == 0)
-                    return .completed;
+                    return .{ .execution = .completed };
 
                 try self.push(.void);
             },
@@ -457,16 +474,18 @@ pub const VM = struct {
                     item.deinit();
                 }
 
-                if (call.callback) |cb| {
-                    try cb.callback(cb.callback_data, .void);
-                    return if (self.calls.items.len == 0) .completed else null;
+                if (call.hostCall) {
+                    return SingleResult{
+                        .execution = if (self.calls.items.len == 0) .completed else null,
+                        .returned_value = value,
+                    };
                 }
 
                 // No more context to execute: we have completed execution
                 if (self.calls.items.len == 0) {
                     // TODO: How to handle returns from the main scrip?
                     value.deinit();
-                    return .completed;
+                    return .{ .execution = .completed };
                 } else {
                     try self.push(value);
                 }
@@ -492,8 +511,8 @@ pub const VM = struct {
                 if (method == null)
                     return error.FunctionNotFound;
 
-                if (try self.executeFunctionCall(environment, call, method.?, null, null))
-                    return .yield;
+                if (try self.executeFunctionCall(environment, call, method.?, null, false))
+                    return .{ .execution = .yield };
             },
 
             .call_obj => |call| {
@@ -509,8 +528,8 @@ pub const VM = struct {
                 const function_or_null = try self.objectPool.getMethod(obj, call.function);
 
                 if (function_or_null) |function| {
-                    if (try self.executeFunctionCall(environment, call, function, obj, null))
-                        return .yield;
+                    if (try self.executeFunctionCall(environment, call, function, obj, false))
+                        return .{ .execution = .yield };
                 } else {
                     return error.FunctionNotFound;
                 }
@@ -681,25 +700,34 @@ pub const VM = struct {
             => return error.DeprectedInstruction,
         }
 
-        return null;
+        return .{ .execution = null };
     }
 
-    pub fn callLolaFunction(self: *Self, environment: *Environment, function_name: []const u8, args: []const Value, ret_callback: ?ReturnCallback) !void {
+    pub fn callLolaFunction(self: *Self, environment: *Environment, function_name: []const u8, args: []const Value) !Value {
         const fun: lola.runtime.Function = environment.getMethod(function_name) orelse return error.FunctionNotFound;
         if (fun != .script) return error.NotScriptFunction;
         const call = ir.Instruction.CallArg{ .function = function_name, .argc = @intCast(args.len) };
         for (args) |arg| {
             try self.push(arg);
         }
-        _ = try self.executeFunctionCall(environment, call, fun, null, ret_callback);
+        // this will never yield because it's a script function
+        _ = try self.executeFunctionCall(environment, call, fun, null, true);
+        var ret: ?Value = null;
+        switch (try self.executePrivate(null, &ret)) {
+            .exhausted => unreachable,
+            .paused => unreachable,
+            .completed => {},
+        }
+        // This should be non-null because host_call is true
+        return ret.?;
     }
 
     /// Initiates or executes a function call.
     /// Returns `true` when the VM execution should suspend after the call, else `false`.
-    fn executeFunctionCall(self: *Self, environment: *Environment, call: ir.Instruction.CallArg, function: Environment.Function, object: ?objects.ObjectHandle, ret_callback: ?ReturnCallback) !bool {
+    fn executeFunctionCall(self: *Self, environment: *Environment, call: ir.Instruction.CallArg, function: Environment.Function, object: ?objects.ObjectHandle, host_call: bool) !bool {
         return switch (function) {
             .script => |fun| blk: {
-                var context = try self.createContext(fun, ret_callback);
+                var context = try self.createContext(fun, host_call);
                 errdefer self.deinitContext(&context);
 
                 try self.readLocals(call, context.locals);
@@ -789,12 +817,16 @@ pub const VM = struct {
         ));
     }
 
-    const SingleResult = enum {
+    const SingleResultExecution = enum {
         /// The program has encountered an asynchronous function
         completed,
 
         /// execution and waits for completion.
         yield,
+    };
+    const SingleResult = struct {
+        execution: ?SingleResultExecution,
+        returned_value: ?Value = null,
     };
 
     fn executeNumberArithmetic(self: *Self, operator: *const fn (f64, f64) error{DivideByZero}!f64) !void {
@@ -869,8 +901,7 @@ pub const VM = struct {
         }
     }
 
-    /// WARNING: serializing loses `Context.ret_to` pointers
-    pub fn serialize(self: Self, envmap: *lola.runtime.EnvironmentMap, stream: anytype) !void {
+    pub fn serialize(self: Self, envmap: *lola.runtime.EnvironmentMap, stream: *std.Io.Writer) !void {
         if (self.currentAsynCall != null)
             return error.NotSupportedYet; // we cannot serialize async function that are in-flight atm
 
@@ -885,6 +916,7 @@ pub const VM = struct {
             try stream.writeInt(u16, @as(u16, @intCast(item.locals.len)), .little);
             try stream.writeInt(u32, item.decoder.offset, .little); // we don't need to store the CompileUnit of the decoder, as it is implicitly referenced by the environment
             try stream.writeInt(u32, @as(u32, @intCast(item.stackBalance)), .little);
+            try stream.writeByte(@intFromBool(item.hostCall));
             if (envmap.queryByPtr(item.environment)) |env_id| {
                 try stream.writeInt(u32, env_id, .little);
             } else {
@@ -896,7 +928,7 @@ pub const VM = struct {
         }
     }
 
-    pub fn deserialize(allocator: std.mem.Allocator, envmap: *lola.runtime.EnvironmentMap, stream: anytype) !Self {
+    pub fn deserialize(allocator: std.mem.Allocator, envmap: *lola.runtime.EnvironmentMap, stream: *std.Io.Reader) !Self {
         const stack_size = try stream.takeInt(u64, .little);
         const call_size = try stream.takeInt(u64, .little);
 
@@ -930,6 +962,8 @@ pub const VM = struct {
                 const local_count = try stream.takeInt(u16, .little);
                 const offset = try stream.takeInt(u32, .little);
                 const stack_balance = try stream.takeInt(u32, .little);
+                const host_call = try stream.takeByte() != 0;
+
                 const env_id = try stream.takeInt(u32, .little);
 
                 const env = envmap.queryById(env_id) orelse return error.UnregisteredEnvironmentPointer;
@@ -944,7 +978,7 @@ pub const VM = struct {
                     .environment = env,
                     .entryPoint = offset,
                     .localCount = local_count,
-                }, null);
+                }, host_call);
                 ctx.stackBalance = stack_balance;
                 errdefer vm.deinitContext(&ctx);
 
