@@ -687,7 +687,7 @@ pub const VM = struct {
     pub fn callLolaFunction(self: *Self, environment: *Environment, function_name: []const u8, args: []const Value, ret_callback: ?ReturnCallback) !void {
         const fun: lola.runtime.Function = environment.getMethod(function_name) orelse return error.FunctionNotFound;
         if (fun != .script) return error.NotScriptFunction;
-        const call = ir.Instruction.CallArg{ .function = function_name, .argc = args.len };
+        const call = ir.Instruction.CallArg{ .function = function_name, .argc = @intCast(args.len) };
         _ = try self.executeFunctionCall(environment, call, fun, null, ret_callback);
     }
 
