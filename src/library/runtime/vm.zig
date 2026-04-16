@@ -688,6 +688,9 @@ pub const VM = struct {
         const fun: lola.runtime.Function = environment.getMethod(function_name) orelse return error.FunctionNotFound;
         if (fun != .script) return error.NotScriptFunction;
         const call = ir.Instruction.CallArg{ .function = function_name, .argc = @intCast(args.len) };
+        for (args) |arg| {
+            self.push(arg);
+        }
         _ = try self.executeFunctionCall(environment, call, fun, null, ret_callback);
     }
 
