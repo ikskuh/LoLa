@@ -708,8 +708,11 @@ pub const VM = struct {
         const fun: lola.runtime.Function = environment.getMethod(function_name) orelse return error.FunctionNotFound;
         if (fun != .script) return error.NotScriptFunction;
         const call = ir.Instruction.CallArg{ .function = function_name, .argc = @intCast(args.len) };
-        for (args) |arg| {
-            try self.push(arg);
+        // Arguments are pushed in reverse order (ie. the first argument is pushed first)
+        var i = args.len;
+        while (i > 0) {
+            i -= 1;
+            try self.push(args[i]);
         }
         // this will never yield because it's a script function
         _ = try self.executeFunctionCall(environment, call, fun, null, true);
