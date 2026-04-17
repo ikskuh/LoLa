@@ -188,16 +188,16 @@ pub const VM = struct {
             }
 
             const ret = try self.executeSingle();
-                if (ret.returned_value) |in_value| {
-                    if (returned_value) |out_value| {
-                        out_value.* = in_value;
+            if (ret.returned_value) |in_value| {
+                if (returned_value) |out_value| {
+                    out_value.* = in_value;
                     return .completed;
-                    } else {
-                        //discard because it's not being received
-                        var owned = in_value;
-                        owned.deinit();
-                    }
-                } else if (returned_value) |out_value| out_value.* = null;
+                } else {
+                    //discard because it's not being received
+                    var owned = in_value;
+                    owned.deinit();
+                }
+            } else if (returned_value) |out_value| out_value.* = null;
             if (ret.execution) |result| {
                 switch (result) {
                     .completed => {
@@ -705,7 +705,7 @@ pub const VM = struct {
     }
 
     pub fn callLolaFunction(self: *Self, environment: *Environment, function_name: []const u8, args: []const Value) !Value {
-        const fun: lola.runtime.Function = environment.getMethod(function_name) orelse return error.FunctionNotFound;
+        const fun: lola.runtime.Function = environment.getMethod(function_name) orelse return error.LolaFunctionNotFound;
         if (fun != .script) return error.NotScriptFunction;
         const call = ir.Instruction.CallArg{ .function = function_name, .argc = @intCast(args.len) };
         // Arguments are pushed in reverse order (ie. the first argument is pushed first)
