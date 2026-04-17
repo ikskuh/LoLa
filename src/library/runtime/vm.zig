@@ -188,16 +188,17 @@ pub const VM = struct {
             }
 
             const ret = try self.executeSingle();
-            if (ret.execution) |result| {
                 if (ret.returned_value) |in_value| {
                     if (returned_value) |out_value| {
                         out_value.* = in_value;
+                    return .completed;
                     } else {
                         //discard because it's not being received
                         var owned = in_value;
                         owned.deinit();
                     }
                 } else if (returned_value) |out_value| out_value.* = null;
+            if (ret.execution) |result| {
                 switch (result) {
                     .completed => {
                         // A execution may only be completed if no calls
