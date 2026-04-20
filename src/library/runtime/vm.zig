@@ -719,7 +719,8 @@ pub const VM = struct {
         var ret: ?Value = null;
         switch (try self.executePrivate(null, &ret)) {
             .exhausted => unreachable,
-            .paused => unreachable,
+            //TODO: what should happen when a callback is paused?
+            .paused => return error.Paused,
             .completed => {},
         }
         // This should be non-null because host_call is true
