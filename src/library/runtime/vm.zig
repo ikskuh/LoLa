@@ -28,13 +28,6 @@ pub const ExecutionResult = enum {
 pub const VM = struct {
     const Self = @This();
 
-    pub const ReturnCallbackFn = *const fn (user_data: ?*anyopaque, return_value: Value) anyerror!void;
-    /// This function is called with the specified function's return value.
-    /// Ownership of the value is given to the function. (ie. it must call `Value.deinit()`)
-    pub const ReturnCallback = struct {
-        callback: ReturnCallbackFn,
-        callback_data: ?*anyopaque,
-    };
     const Context = struct {
         /// Stores the local variables for this call.
         locals: []Value,
@@ -193,7 +186,7 @@ pub const VM = struct {
                     out_value.* = in_value;
                     return .completed;
                 } else {
-                    //discard because it's not being received
+                    // Discard because it's not being received
                     var owned = in_value;
                     owned.deinit();
                 }
