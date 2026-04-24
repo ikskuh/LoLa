@@ -11,7 +11,7 @@ const objects = @import("objects.zig");
 
 const Environment = @import("Environment.zig");
 
-pub const ExecutionResult = enum {
+pub const ExecutionResult = enum(u8) {
     /// The vm instruction quota was exhausted and the execution was terminated.
     exhausted,
 

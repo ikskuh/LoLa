@@ -48,6 +48,19 @@ pub fn build(b: *Build) !void {
         },
     });
 
+    const lib = b.addLibrary(.{
+        .name = "lola_lib",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/c/root.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{.{ .name = "lola", .module = mod_lola }},
+            .link_libc = true,
+        }),
+    });
+    b.installArtifact(lib);
+    b.installFile("src/c/lola.h", "include/lola.h");
+
     const build_options = b.addOptions();
     build_options.addOption([]const u8, "version", version_tag orelse "development");
 
@@ -155,6 +168,22 @@ pub fn build(b: *Build) !void {
         });
 
         examples_step.dependOn(&b.addInstallArtifact(example_exe, .{}).step);
+    }
+    {
+        // c example
+        const c_exmaple_mod = b.createModule(.{
+            .link_libc = true,
+            .optimize = optimize,
+            .target = target,
+        });
+        c_exmaple_mod.addCSourceFile(.{ .file = b.path("examples/host/c/main.c"), .flags = &.{ "-Wall", "-Wpedantic", "-Werror", "-std=c23" } });
+        const c_exe = b.addExecutable(.{
+            .name = "c_example",
+            .root_module = c_exmaple_mod,
+        });
+        c_exmaple_mod.linkLibrary(lib);
+        const install_step = b.addInstallArtifact(c_exe, .{});
+        examples_step.dependOn(&install_step.step);
     }
 
     const main_tests_mod = b.createModule(.{
