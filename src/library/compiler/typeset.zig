@@ -7,6 +7,7 @@ pub const Type = enum {
     boolean,
     array,
     object,
+    @"struct",
 
     pub fn format(value: @This(), comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
         _ = fmt;
@@ -25,6 +26,7 @@ pub const TypeSet = struct {
         .boolean = false,
         .array = false,
         .object = false,
+        .@"struct" = false,
     };
 
     pub const any = Self{
@@ -34,6 +36,7 @@ pub const TypeSet = struct {
         .boolean = true,
         .array = true,
         .object = true,
+        .@"struct" = true,
     };
 
     void: bool,
@@ -42,6 +45,7 @@ pub const TypeSet = struct {
     boolean: bool,
     array: bool,
     object: bool,
+    @"struct": bool,
 
     pub fn from(value_type: Type) Self {
         return Self{
@@ -51,6 +55,7 @@ pub const TypeSet = struct {
             .boolean = (value_type == .boolean),
             .array = (value_type == .array),
             .object = (value_type == .object),
+            .@"struct" = (value_type == .@"struct"),
         };
     }
 
@@ -70,6 +75,7 @@ pub const TypeSet = struct {
             .boolean => self.boolean,
             .array => self.array,
             .object => self.object,
+            .@"struct" => self.@"struct",
         };
     }
 

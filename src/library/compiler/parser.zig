@@ -657,40 +657,53 @@ pub fn parse(
                         };
                     },
 
-                    // method call
+                    //field access or method call
                     .@"." => blk: {
-                        const method_name = try self.accept(is(.identifier));
+                        const field_name = try self.accept(is(.identifier));
 
-                        _ = try self.accept(is(.@"("));
+                        if (self.accept(is(.@"("))) |_| {
+                            // method call
 
-                        var args = std.ArrayList(ast.Expression).empty;
-                        defer args.deinit(self.allocator);
+                            var args = std.ArrayList(ast.Expression).empty;
+                            defer args.deinit(self.allocator);
 
-                        var loc = value.location;
+                            var loc = value.location;
 
-                        if (self.accept(is(.@")"))) |_| {
-                            // this is the end of the argument list
-                        } else |_| {
-                            while (true) {
-                                const arg = try self.acceptExpression();
-                                try args.append(self.allocator, arg);
-                                const terminator = try self.accept(oneOf(.{ .@")", .@"," }));
-                                loc = terminator.location.merge(loc);
-                                if (terminator.type == .@")")
-                                    break;
+                            if (self.accept(is(.@")"))) |_| {
+                                // this is the end of the argument list
+                            } else |_| {
+                                while (true) {
+                                    const arg = try self.acceptExpression();
+                                    try args.append(self.allocator, arg);
+                                    const terminator = try self.accept(oneOf(.{ .@")", .@"," }));
+                                    loc = terminator.location.merge(loc);
+                                    if (terminator.type == .@")")
+                                        break;
+                                }
                             }
-                        }
 
-                        break :blk ast.Expression{
-                            .location = loc,
-                            .type = .{
-                                .method_call = .{
-                                    .object = try self.moveToHeap(value),
-                                    .name = method_name.text,
-                                    .arguments = try args.toOwnedSlice(self.allocator),
+                            break :blk ast.Expression{
+                                .location = loc,
+                                .type = .{
+                                    .method_call = .{
+                                        .object = try self.moveToHeap(value),
+                                        .name = field_name.text,
+                                        .arguments = try args.toOwnedSlice(self.allocator),
+                                    },
                                 },
-                            },
-                        };
+                            };
+                        } else |_| {
+                            //field access
+                            break :blk ast.Expression{
+                                .location = value.location,
+                                .type = .{
+                                    .field_access = .{
+                                        .@"struct" = try self.moveToHeap(value),
+                                        .name = field_name.text,
+                                    },
+                                },
+                            };
+                        }
                     },
 
                     else => unreachable,
@@ -701,9 +714,62 @@ pub fn parse(
             return value;
         }
 
+        fn acceptStructExpression(self: *Self) ParseError!ast.Expression {
+            const state = self.saveState();
+            errdefer self.restoreState(state);
+
+            const token = try self.accept(is(.@"["));
+            var loc: Location = token.location;
+
+            var entries: std.ArrayList(struct { []const u8, *ast.Expression }) = .empty;
+            errdefer {
+                for (entries.items) |entry| {
+                    self.allocator.destroy(entry.@"1");
+                }
+                entries.deinit(self.allocator);
+            }
+            while (true) {
+                if (self.accept(is(.@"]"))) |_| {
+                    break;
+                } else |_| {
+                    _ = try self.accept(is(.@"."));
+                    const field = try self.accept(is(.identifier));
+                    _ = try self.accept(is(.@"="));
+                    const item = try self.acceptExpression();
+                    try entries.append(self.allocator, .{ field.text, try self.moveToHeap(item) });
+
+                    const delimit = try self.accept(oneOf(.{ .@",", .@"]" }));
+                    loc = loc.merge(delimit.location);
+                    if (delimit.type == .@"]")
+                        break;
+                }
+            }
+            if (entries.items.len == 0) {
+                //this is a list type by default
+                entries.deinit(self.allocator);
+                return ast.Expression{
+                    .location = loc,
+                    .type = .{ .array_literal = try self.allocator.alloc(ast.Expression, 0) },
+                };
+            }
+
+            return ast.Expression{
+                .location = loc,
+                .type = .{
+                    .struct_literal = try entries.toOwnedSlice(self.allocator),
+                },
+            };
+        }
+
         fn acceptValueExpression(self: *Self) ParseError!ast.Expression {
             const state = self.saveState();
             errdefer self.restoreState(state);
+
+            if (self.acceptStructExpression()) |t| {
+                return t;
+            } else |_| {
+                self.restoreState(state);
+            }
 
             const token = try self.accept(oneOf(.{
                 .@"(",
@@ -722,7 +788,6 @@ pub fn parse(
                 .@"[" => {
                     var array = std.ArrayList(ast.Expression).empty;
                     defer array.deinit(self.allocator);
-
                     while (true) {
                         if (self.accept(is(.@"]"))) |_| {
                             break;

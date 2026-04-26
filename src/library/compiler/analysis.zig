@@ -34,6 +34,8 @@ fn expressionTypeToString(src: ast.Expression.Type) []const u8 {
         .string_literal => "string literal",
         .unary_operator => "unary operator application",
         .binary_operator => "binary operator application",
+        .field_access => "field access",
+        .struct_literal => "struct literal",
     };
 }
 
@@ -72,6 +74,17 @@ fn validateExpression(state: *AnalysisState, diagnostics: *Diagnostics, scope: *
             } else {
                 return TypeSet.empty;
             }
+        },
+
+        .field_access => |_| {
+            return TypeSet.any;
+        },
+
+        .struct_literal => |lit| {
+            for (lit) |entry| {
+                _ = try validateExpression(state, diagnostics, scope, entry.@"1".*);
+            }
+            return TypeSet.from(.@"struct");
         },
 
         .variable_expr => |variable_name| {
@@ -228,6 +241,12 @@ fn validateStore(state: *AnalysisState, diagnostics: *Diagnostics, scope: *Scope
                     variable.possible_types = type_hint;
                 }
             }
+        },
+
+        .field_access => |field_access| {
+            const struct_val = try validateExpression(state, diagnostics, scope, field_access.@"struct".*);
+            try performTypeCheck(diagnostics, field_access.@"struct".location, .from(.@"struct"), struct_val);
+            try validateStore(state, diagnostics, scope, field_access.@"struct".*, struct_val);
         },
 
         else => unreachable,
@@ -477,4 +496,3 @@ test "detect doubly-declared global variables" {
         "Global variable a is already declared!",
     });
 }
-

@@ -11,6 +11,7 @@ pub const TypeId = enum(u8) {
     string = 4,
     array = 5,
     enumerator = 6,
+    @"struct" = 7,
 };
 
 /// A struct that represents any possible LoLa value.
@@ -27,6 +28,7 @@ pub const Value = union(TypeId) {
     string: String,
     array: Array,
     enumerator: Enumerator,
+    @"struct": Struct,
 
     pub fn initNumber(val: f64) Self {
         return Self{ .number = val };
@@ -62,6 +64,12 @@ pub const Value = union(TypeId) {
         return Self{ .array = array };
     }
 
+    /// Creates a new value that takes ownership of the passed array.
+    /// This array must not be deinited.
+    pub fn fromStruct(@"struct": Struct) Self {
+        return Self{ .@"struct" = @"struct" };
+    }
+
     /// Creates a new value with an enumerator. The array will be cloned
     /// into the enumerator and will not be owned.
     pub fn initEnumerator(array: Array) !Self {
@@ -80,6 +88,7 @@ pub const Value = union(TypeId) {
             .string => |s| Self{ .string = try s.clone() },
             .array => |a| Self{ .array = try a.clone() },
             .enumerator => |e| Self{ .enumerator = try e.clone() },
+            .@"struct" => |s| Self{ .@"struct" = try s.clone() },
             .void, .number, .object, .boolean => self,
         };
     }
@@ -113,6 +122,7 @@ pub const Value = union(TypeId) {
             .string => |s| String.eql(s, rhs.string),
             .array => |a| Array.eql(a, rhs.array),
             .enumerator => |e| Enumerator.eql(e, rhs.enumerator),
+            .@"struct" => |s| Struct.eql(s, rhs.@"struct"),
         };
     }
 
@@ -121,6 +131,7 @@ pub const Value = union(TypeId) {
             .array => |*a| a.deinit(),
             .string => |*s| s.deinit(),
             .enumerator => |*e| e.deinit(),
+            .@"struct" => |*s| s.deinit(),
             else => {},
         }
         self.* = undefined;
@@ -182,6 +193,13 @@ pub const Value = union(TypeId) {
         return &self.array;
     }
 
+    /// Gets the contained array or fails.
+    pub fn getStruct(self: *Self) ConversionError!*Struct {
+        if (self.* != .@"struct")
+            return error.TypeMismatch;
+        return &self.@"struct";
+    }
+
     /// Gets the contained enumerator or fails.
     pub fn getEnumerator(self: *Self) ConversionError!*Enumerator {
         if (self.* != .enumerator)
@@ -203,6 +221,20 @@ pub const Value = union(TypeId) {
         }
         try stream.writeAll(" ]");
     }
+    fn formatStruct(s: Struct, stream: *std.Io.Writer) !void {
+        try stream.writeAll("[");
+
+        var iter = s.contents.iterator();
+        var i: usize = 0;
+        while (iter.next()) |entry| : (i += 1) {
+            if (i > 0)
+                try stream.writeAll(",");
+
+            try stream.print(" .{s} = ", .{entry.key_ptr.*});
+            try stream.print("{f}", .{entry.value_ptr});
+        }
+        try stream.writeAll(" ]");
+    }
 
     /// Prints a LoLa value to the given stream.
     pub fn format(value: Self, stream: *std.Io.Writer) std.Io.Writer.Error!void {
@@ -214,6 +246,7 @@ pub const Value = union(TypeId) {
             .string => |s| stream.print("\"{s}\"", .{s.contents}),
             .array => |a| formatArray(a, stream),
             .enumerator => |e| stream.print("enumerator({}/{})", .{ e.index, e.array.contents.len }),
+            .@"struct" => |s| formatStruct(s, stream),
         };
     }
 
@@ -242,6 +275,15 @@ pub const Value = union(TypeId) {
                 try writer.writeInt(u32, std.math.cast(u32, e.index) orelse return error.ObjectTooLarge, .little);
                 for (e.array.contents) |item| {
                     try item.serialize(writer);
+                }
+            },
+            .@"struct" => |s| {
+                try writer.writeInt(u32, s.contents.count(), .little);
+                var iter = s.contents.iterator();
+                while (iter.next()) |entry| {
+                    try writer.writeInt(u32, std.math.cast(u32, entry.key_ptr.len) orelse return error.ObjectTooLarge, .little);
+                    try writer.writeAll(entry.key_ptr.*);
+                    try entry.value_ptr.serialize(writer);
                 }
             },
         }
@@ -299,6 +341,20 @@ pub const Value = union(TypeId) {
                     .array = array,
                     .index = index,
                 });
+            },
+            .@"struct" => blk: {
+                const size = try reader.takeInt(u32, .little);
+
+                var s = try Struct.init(allocator, size);
+                for (0..size) |_| {
+                    const key_len = try reader.takeInt(u32, .little);
+                    const key = try reader.readAlloc(allocator, key_len);
+                    const value = try deserialize(reader, allocator);
+                    s.contents.putAssumeCapacity(key, value);
+                    allocator.free(key);
+                }
+
+                break :blk fromStruct(s);
             },
         };
     }
@@ -527,6 +583,71 @@ test "String.eql" {
     std.debug.assert(str1.eql(str3) == false);
     std.debug.assert(str2.eql(str3) == false);
 }
+
+pub const Struct = struct {
+    const Self = @This();
+
+    allocator: std.mem.Allocator,
+    contents: std.StringHashMap(Value),
+
+    pub fn init(allocator: std.mem.Allocator, i: u32) !Self {
+        var arr = Self{
+            .allocator = allocator,
+            .contents = .init(allocator),
+        };
+        try arr.contents.ensureTotalCapacity(i);
+        return arr;
+    }
+
+    pub fn clone(self: Self) error{OutOfMemory}!Self {
+        var arr = Self{
+            .allocator = self.allocator,
+            .contents = .init(self.allocator),
+        };
+        errdefer arr.contents.deinit();
+        try arr.contents.ensureTotalCapacity(self.contents.count());
+
+        // Cleanup all successfully cloned items
+        errdefer {
+            var iter = self.contents.iterator();
+            while (iter.next()) |entry| {
+                entry.value_ptr.deinit();
+                self.allocator.free(entry.key_ptr.*);
+            }
+        }
+
+        var iter = self.contents.iterator();
+        while (iter.next()) |entry| {
+            const duped_key = try arr.allocator.dupe(u8, entry.key_ptr.*);
+            errdefer arr.allocator.free(duped_key);
+            arr.contents.putAssumeCapacity(duped_key, try entry.value_ptr.clone());
+        }
+        return arr;
+    }
+
+    pub fn eql(lhs: Self, rhs: Self) bool {
+        if (lhs.contents.count() != rhs.contents.count())
+            return false;
+        var iter = lhs.contents.iterator();
+        while (iter.next()) |entry| {
+            if (rhs.contents.get(entry.key_ptr.*)) |rhs_value| {
+                if (!Value.eql(entry.value_ptr.*, rhs_value))
+                    return false;
+            } else return false;
+        }
+        return true;
+    }
+
+    pub fn deinit(self: *Self) void {
+        var iter = self.contents.iterator();
+        while (iter.next()) |entry| {
+            entry.value_ptr.deinit();
+            self.allocator.free(entry.key_ptr.*);
+        }
+        self.contents.deinit();
+        self.* = undefined;
+    }
+};
 
 pub const Array = struct {
     const Self = @This();
