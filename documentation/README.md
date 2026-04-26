@@ -45,18 +45,20 @@ The language provides a small set of types data can have:
 | `string`  | A [string](https://en.wikipedia.org/wiki/String_(computer_science)) in LoLa is a sequence of bytes, usually encodes text as [ASCII](https://en.wikipedia.org/wiki/ASCII) or [UTF-8](https://en.wikipedia.org/wiki/UTF-8). |
 | `object`  | An object is a thing that has an interface with callable methods. |
 | `array`   | An array is a sequence of arbitrary values.                  |
+| `struct`  | A struct is a collection of named fields, each holding an arbitrary value. |
 
 ## Literals
 
 Literals provide a way to create a primitive value in the language. All of the types except `object` have a literal syntax:
 
-| Type      | Examples                                      |
-| --------- | --------------------------------------------- |
-| `void`    | `void` (no other values are allowed)          |
-| `boolean` | `true`, `false` (no other values are allowed) |
-| `number`  | `0`, `1`, `0.0`, `10.0`, `0.25`, `13.37`, …   |
-| `string`  | `"Hello, World!"`, `""`, `"One\nTwo\nThree"`  |
-| `array`   | `[]`, `[1,2,3,4,5]`, `[true, false, void]`    |
+| Type      | Examples                                                               |
+| --------- | ---------------------------------------------------------------------- |
+| `void`    | `void` (no other values are allowed)                                   |
+| `boolean` | `true`, `false` (no other values are allowed)                          |
+| `number`  | `0`, `1`, `0.0`, `10.0`, `0.25`, `13.37`, …                            |
+| `string`  | `"Hello, World!"`, `""`, `"One\nTwo\nThree"`                           |
+| `array`   | `[]`, `[1,2,3,4,5]`, `[true, false, void]`                             |
+| `struct`  | `[.x=0, .y=0]`, `[.name="LoLa", .version=1]`, `[.flag=true, .val=42]` |
 
 LoLa also supports character literals. Character literals have the type `number` and will be equivalent to their unicode codepoint and might be written literally (`ö`) or with the same rules as string escapes (`\xF3`):
 
@@ -145,6 +147,7 @@ LoLa provides several operators that execute arithmetic, logic or comparison ope
 | `a > b` | `number` |Greater-than test|`(3 > 2) == true`|
 | `a < b` | `number` |Less-than test|`(3 < 2) == false`|
 | `a[i]` | `array`, `string` | Array index, string index | `([1,2,3])[1] == 2` |
+| `a.field` | `struct` | Field access | `([.x=1, .y=2]).x == 1` |
 
 ### Operator Precedence 
 
@@ -161,6 +164,7 @@ Operator precedence in the list low to high. A higher precedence means that thes
 
 - `not`, `-`
 - `a[i]`
+- `a.field`
 
 ## Control Flow Structures
 
@@ -203,6 +207,14 @@ a[i] = c; // indexed assignment: copy the value of c into the i'th index of the 
 ```
 
 This allows mutating the contents of the array. The same rules as for a normal variable assignment apply here.
+
+You can also assign a field of a struct:
+
+```js
+a.field = c; // field assignment: copy the value of c into the field named 'field' of the struct a.
+```
+
+Assigning a field that does not exist in the struct will cause a panic.
 
 ### `if`-Conditional
 
@@ -430,6 +442,33 @@ A panic may be caused by the LoLa virtual machine or any library functions.
 Objects in LoLa are opaque handles except for their methods. Users cannot declare or create objects without the help of the script host. Object handles are usually valid as long as the LoLa script has access to that handle, but the script host might destroy objects actively as well.
 
 Object handles can be considered a reference type as you don't get a copy of the object when you pass a handle around. This type would be the only exception to LoLas design of *value types only*.
+
+## Structs
+
+Structs are value types that hold a fixed set of named fields, each of which can hold an arbitrary value. They are created with a struct literal:
+
+```js
+var point = [.x = 1, .y = 2];
+```
+
+Fields are accessed and assigned using the `.field` notation:
+
+```js
+Print(point.x);   // prints 1
+point.y = 10;
+Print(point.y);   // prints 10
+```
+
+Accessing or assigning a field that does not exist in the struct will cause a panic.
+
+Because structs are value types, assigning a struct variable copies the entire struct:
+
+```js
+var a = [.x = 1];
+var b = a;
+b.x = 99;
+Print(a.x); // still 1 — a was not affected
+```
 
 ## LoLa File Types
 

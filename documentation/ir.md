@@ -141,6 +141,23 @@ The following list contains each instruction and describes it's effects on the v
   - pushes literal boolean `false`
 - `push_void`
   - pushes void value
+- `struct_pack` packs *num* named fields into a struct `[ num:u16 ]`
+  - pops `num` pairs of (name, value) front-to-back from the stack
+  - packs them into a struct where each name (a string) maps to its corresponding value
+  - pushes the resulting struct
+- `struct_store` stores a value into a struct field
+  - pops the *value* to store
+  - pops the *field name* (a string) to assign
+  - pops the *struct* to modify
+  - stores *value* at the named field in *struct*
+  - pushes the modified *struct* to the stack
+  - panics with `InvalidField` if the field does not exist in the struct
+- `struct_load` loads a value from a struct field
+  - pops the *struct* from the stack
+  - pops the *field name* (a string) to read
+  - loads the *value* of the named field from *struct*
+  - pushes *value* to the stack
+  - panics with `InvalidField` if the field does not exist in the struct
 
 ## Encoding
 
@@ -195,6 +212,9 @@ Argument types are noted in `name:type` notation where type is one of the follow
 | push_true | 41 | | pushes a boolean `true` |
 | push_false | 42 | | pushes a boolean `false` |
 | push_void | 43 | | pushes a `void` value. |
+| struct_pack | 44 | `num:u16` | packs *num* named fields into a struct |
+| struct_store | 45 | | stores a value into a struct field |
+| struct_load | 46 | | loads a value from a struct field |
 
 ### Types
 
