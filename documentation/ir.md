@@ -142,13 +142,13 @@ The following list contains each instruction and describes it's effects on the v
 - `push_void`
   - pushes void value
 - `struct_pack` packs *num* named fields into a struct `[ num:u16 ]`
-  - pops `num` pairs of (name, value) front-to-back from the stack
-  - packs them into a struct where each name (a string) maps to its corresponding value
+  - for each of `num` fields, pops the *value* then pops the *name* (a string)
+  - packs them into a struct where each name maps to its corresponding value
   - pushes the resulting struct
 - `struct_store` stores a value into a struct field
-  - pops the *value* to store
+  - pops the *struct* from the stack
   - pops the *field name* (a string) to assign
-  - pops the *struct* to modify
+  - pops the *value* to store
   - stores *value* at the named field in *struct*
   - pushes the modified *struct* to the stack
   - panics with `InvalidField` if the field does not exist in the struct
