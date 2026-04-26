@@ -618,7 +618,9 @@ pub const Struct = struct {
 
         var iter = self.contents.iterator();
         while (iter.next()) |entry| {
-            arr.contents.putAssumeCapacity(try arr.allocator.dupe(u8, entry.key_ptr.*), try entry.value_ptr.clone());
+            const duped_key = try arr.allocator.dupe(u8, entry.key_ptr.*);
+            errdefer arr.allocator.free(duped_key);
+            arr.contents.putAssumeCapacity(duped_key, try entry.value_ptr.clone());
         }
         return arr;
     }
