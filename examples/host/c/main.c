@@ -103,14 +103,14 @@ int main(void) {
     diag=NULL;
 
     printf("disassembling!\n");
-    lola_dis_Alloc dis={0};
+    lola_Str dis={0};
     if (!lola_dis_allocZ(cu, (lola_DisassemblerOptions){.instructionOutput=true,.labelOutput=true,.addressPrefix=true}, &dis)) {
         fprintf(stderr, "Failed to disassemble\n");
         deinit();
         return EXIT_FAILURE;
     }
-    printf("%s\n",dis.data.items);
-    lola_dis_deinit(dis);
+    printf("%s\n",dis.items);
+    lola_Str_deinit(dis);
 
     env = lola_Environment_init(cu, pool);
     if (!env) {

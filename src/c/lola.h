@@ -177,9 +177,9 @@ typedef struct {
 
 lola_Result lola_dis_toBuffer(char* buf, size_t* buf_len, const lola_CompileUnit* cu, lola_DisassemblerOptions options);
 typedef struct {lola_Str data;} lola_dis_Alloc;
-lola_Result lola_dis_alloc(const lola_CompileUnit* cu, lola_DisassemblerOptions options, lola_dis_Alloc* dis);
+lola_Result lola_dis_alloc(const lola_CompileUnit* cu, lola_DisassemblerOptions options, lola_Str* dis);
 //returns null terminated string
-lola_Result lola_dis_allocZ(const lola_CompileUnit* cu, lola_DisassemblerOptions options, lola_dis_Alloc* dis);
+lola_Result lola_dis_allocZ(const lola_CompileUnit* cu, lola_DisassemblerOptions options, lola_Str* dis);
 
 lola_Object* lola_Object_init(void* user_data, lola_Object_VTable vtable);
 
