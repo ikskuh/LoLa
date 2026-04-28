@@ -124,12 +124,20 @@ const Result = enum(u8) {
 const Str = extern struct {
     items: [*]const u8,
     len: usize,
+    allocated: bool = false,
     fn fromSlice(slice: []const u8) Str {
         return Str{ .items = slice.ptr, .len = slice.len };
+    }
+    fn fromAllocSlice(slice: []const u8) Str {
+        return Str{ .items = slice.ptr, .len = slice.len, .allocated = true };
     }
     export fn lola_Str_fromC(str: [*:0]const u8) Str {
         const slice = span(str);
         return fromSlice(slice);
+    }
+    export fn lola_Str_deinit(str: Str) void {
+        if (str.allocated)
+            alloc.free(str.toSlice());
     }
     fn toSlice(self: Str) []const u8 {
         return self.items[0..self.len];
@@ -599,10 +607,7 @@ export fn lola_dis_toBuffer(ptr: ?[*]u8, len: usize, cu: ?*const CompileUnit, op
     };
     return .success;
 }
-const AllocDis = extern struct {
-    data: Str,
-};
-export fn lola_dis_alloc(cu: ?*const CompileUnit, options: CDisassemblerOptions, dis: ?*AllocDis) Result {
+export fn lola_dis_alloc(cu: ?*const CompileUnit, options: CDisassemblerOptions, dis: ?*Str) Result {
     var w = std.Io.Writer.Allocating.init(alloc);
     lola.dis.disassemble(&w.writer, cu.?.*, .{
         .addressPrefix = options.addressPrefix,
@@ -619,10 +624,10 @@ export fn lola_dis_alloc(cu: ?*const CompileUnit, options: CDisassemblerOptions,
         w.deinit();
         return Result.fromError(e);
     };
-    dis.?.* = .{ .data = Str.fromSlice(slice) };
+    dis.?.* = Str.fromAllocSlice(slice);
     return .success;
 }
-export fn lola_dis_allocZ(cu: ?*const CompileUnit, options: CDisassemblerOptions, dis: ?*AllocDis) Result {
+export fn lola_dis_allocZ(cu: ?*const CompileUnit, options: CDisassemblerOptions, dis: ?*Str) Result {
     var w = std.Io.Writer.Allocating.init(alloc);
     lola.dis.disassemble(&w.writer, cu.?.*, .{
         .addressPrefix = options.addressPrefix,
@@ -639,9 +644,6 @@ export fn lola_dis_allocZ(cu: ?*const CompileUnit, options: CDisassemblerOptions
         w.deinit();
         return Result.fromError(e);
     };
-    dis.?.* = .{ .data = Str.fromSlice(slice[0 .. slice.len + 1]) };
+    dis.?.* = Str.fromAllocSlice(slice[0 .. slice.len + 1]);
     return .success;
-}
-export fn lola_dis_deinit(dis: AllocDis) void {
-    alloc.free(dis.data.toSlice());
 }
