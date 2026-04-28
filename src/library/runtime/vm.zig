@@ -23,6 +23,11 @@ pub const ExecutionResult = enum {
     completed,
 };
 
+pub const LolaCallResult = struct {
+    should_yield: bool,
+    returned_value: ?Value,
+};
+
 /// Executor of a compile unit. This virtual machine will
 /// execute LoLa instructions.
 pub const VM = struct {
@@ -60,6 +65,7 @@ pub const VM = struct {
     stack: std.ArrayList(Value),
     calls: std.ArrayList(Context),
     currentAsynCall: ?Environment.AsyncFunctionCall,
+    asyncCallFromHost: bool,
     objectPool: objects.ObjectPoolInterface,
     stats: Statistics = Statistics{},
 
@@ -70,6 +76,7 @@ pub const VM = struct {
             .stack = std.ArrayList(Value).empty,
             .calls = std.ArrayList(Context).empty,
             .currentAsynCall = null,
+            .asyncCallFromHost = false,
             .objectPool = environment.objectPool,
         };
         errdefer vm.stack.deinit(allocator);
@@ -167,9 +174,15 @@ pub const VM = struct {
         return if (self.stack.pop()) |v| v else return error.StackImbalance;
     }
 
+    /// Runs the virtual machine for `quota` instructions.
+    pub fn execute(self: *Self, _quota: ?u32) !ExecutionResult {
+        return self.executeWithReturn(_quota, null);
+    }
+
+    /// Runs the virtual machine for `quota` instructions.
     /// if this is a host call, put the returned scope value into `returned_value`,
     /// else `returned_value` is set to null. if returned_value is null, the return value is deinitialized.
-    fn executePrivate(self: *Self, _quota: ?u32, returned_value: ?*?Value) !ExecutionResult {
+    pub fn executeWithReturn(self: *Self, _quota: ?u32, returned_value: ?*?Value) !ExecutionResult {
         std.debug.assert(self.calls.items.len > 0);
 
         var quota = _quota;
@@ -206,10 +219,6 @@ pub const VM = struct {
             }
         }
     }
-    /// Runs the virtual machine for `quota` instructions.
-    pub fn execute(self: *Self, _quota: ?u32) !ExecutionResult {
-        return self.executePrivate(_quota, null);
-    }
 
     /// Executes a single instruction and returns the state of the machine.
     fn executeSingle(self: *Self) !SingleResult {
@@ -225,11 +234,18 @@ pub const VM = struct {
                 self.currentAsynCall = null;
 
                 errdefer result.deinit();
+                if (self.asyncCallFromHost) {
+                    self.asyncCallFromHost = false;
+                    return .{ .returned_value = res, .execution = if (res != null) .completed else null };
+                }
                 try self.push(result.*);
             } else {
                 // We are not finished, continue later...
                 self.stats.stalls += 1;
-                return .{ .execution = .yield };
+                return .{
+                    .execution = .yield,
+                    .returned_value = if (self.asyncCallFromHost) res else null,
+                };
             }
         }
 
@@ -505,7 +521,7 @@ pub const VM = struct {
                 if (method == null)
                     return error.FunctionNotFound;
 
-                if (try self.executeFunctionCall(environment, call, method.?, null, false))
+                if (try self.executeFunctionCall(environment, call, method.?, null, false, null))
                     return .{ .execution = .yield };
             },
 
@@ -522,7 +538,7 @@ pub const VM = struct {
                 const function_or_null = try self.objectPool.getMethod(obj, call.function);
 
                 if (function_or_null) |function| {
-                    if (try self.executeFunctionCall(environment, call, function, obj, false))
+                    if (try self.executeFunctionCall(environment, call, function, obj, false, null))
                         return .{ .execution = .yield };
                 } else {
                     return error.FunctionNotFound;
@@ -697,9 +713,10 @@ pub const VM = struct {
         return .{ .execution = null };
     }
 
-    pub fn callLolaFunction(self: *Self, environment: *Environment, function_name: []const u8, args: []const Value) !Value {
+    /// If function is a sync user function, the value is returned, else the value can be obtained from execute.
+    pub fn callLolaFunction(self: *Self, environment: *Environment, function_name: []const u8, args: []const Value) !LolaCallResult {
         const fun: lola.runtime.Function = environment.getMethod(function_name) orelse return error.LolaFunctionNotFound;
-        if (fun != .script) return error.NotScriptFunction;
+        if (fun == .asyncUser) return error.AlreadyCallingAsync;
         const call = ir.Instruction.CallArg{ .function = function_name, .argc = @intCast(args.len) };
         // Arguments are pushed in reverse order (ie. the first argument is pushed first)
         var i = args.len;
@@ -707,22 +724,17 @@ pub const VM = struct {
             i -= 1;
             try self.push(args[i]);
         }
-        // this will never yield because it's a script function
-        _ = try self.executeFunctionCall(environment, call, fun, null, true);
-        var ret: ?Value = null;
-        switch (try self.executePrivate(null, &ret)) {
-            .exhausted => unreachable,
-            //TODO: what should happen when a callback is paused?
-            .paused => return error.Paused,
-            .completed => {},
-        }
-        // This should be non-null because host_call is true
-        return ret.?;
+        var returned: ?Value = null;
+        const should_yield = try self.executeFunctionCall(environment, call, fun, null, true, &returned);
+        return .{
+            .should_yield = should_yield,
+            .returned_value = returned,
+        };
     }
 
     /// Initiates or executes a function call.
     /// Returns `true` when the VM execution should suspend after the call, else `false`.
-    fn executeFunctionCall(self: *Self, environment: *Environment, call: ir.Instruction.CallArg, function: Environment.Function, object: ?objects.ObjectHandle, host_call: bool) !bool {
+    fn executeFunctionCall(self: *Self, environment: *Environment, call: ir.Instruction.CallArg, function: Environment.Function, object: ?objects.ObjectHandle, host_call: bool, return_value: ?*?Value) !bool {
         return switch (function) {
             .script => |fun| blk: {
                 var context = try self.createContext(fun, host_call);
@@ -754,6 +766,13 @@ pub const VM = struct {
                 var result = try fun.call(environment, fun.context, locals);
                 errdefer result.deinit();
 
+                if (host_call) {
+                    if (return_value) |ret| {
+                        ret.* = result;
+                        break :blk false;
+                    }
+                }
+
                 try self.push(result);
 
                 break :blk false;
@@ -774,6 +793,7 @@ pub const VM = struct {
 
                 self.currentAsynCall = try fun.call(environment, fun.context, locals);
                 self.currentAsynCall.?.object = object;
+                self.asyncCallFromHost = host_call;
 
                 break :blk true;
             },
@@ -1079,4 +1099,66 @@ test "VM invalid jump panic" {
             try std.testing.expectError(error.InvalidJump, vm.execute(1000));
         }
     });
+}
+
+test "host call" {
+    const src = "function hello() {return \"world\";}";
+    var diag: lola.compiler.Diagnostics = .init(std.testing.allocator);
+    defer diag.deinit();
+    var cu = (try lola.compiler.compile(std.testing.allocator, &diag, "test.lola", src)).?;
+    defer cu.deinit();
+
+    var pool = TestPool.init(std.testing.allocator);
+    defer pool.deinit();
+
+    var env = try Environment.init(std.testing.allocator, &cu, pool.interface());
+    defer env.deinit();
+
+    var vm = try VM.init(std.testing.allocator, &env);
+    defer vm.deinit();
+    const call_result = try vm.callLolaFunction(&env, "hello", &.{});
+    try std.testing.expectEqual(LolaCallResult{ .returned_value = null, .should_yield = false }, call_result);
+
+    var returned: ?Value = null;
+    const result = try vm.executeWithReturn(null, &returned);
+    try std.testing.expectEqual(result, ExecutionResult.completed);
+    if (returned) |*returned_value| {
+        defer returned_value.deinit();
+        const TypeId = lola.runtime.value.TypeId;
+        try std.testing.expectEqual(TypeId.string, @as(TypeId, returned_value.*));
+        try std.testing.expectEqualStrings("world", returned_value.string.contents);
+    } else {
+        return error.ExpectedReturn;
+    }
+}
+test "host call with args" {
+    const src = "function double(input) {return input*2;}";
+    var diag: lola.compiler.Diagnostics = .init(std.testing.allocator);
+    defer diag.deinit();
+    var cu = (try lola.compiler.compile(std.testing.allocator, &diag, "test.lola", src)).?;
+    defer cu.deinit();
+
+    var pool = TestPool.init(std.testing.allocator);
+    defer pool.deinit();
+
+    var env = try Environment.init(std.testing.allocator, &cu, pool.interface());
+    defer env.deinit();
+
+    var vm = try VM.init(std.testing.allocator, &env);
+    defer vm.deinit();
+
+    const call_result = try vm.callLolaFunction(&env, "double", &.{Value.initNumber(5)});
+    try std.testing.expectEqual(LolaCallResult{ .returned_value = null, .should_yield = false }, call_result);
+
+    var returned: ?Value = null;
+    const result = try vm.executeWithReturn(null, &returned);
+    try std.testing.expectEqual(result, ExecutionResult.completed);
+    if (returned) |*returned_value| {
+        defer returned_value.deinit();
+        const TypeId = lola.runtime.value.TypeId;
+        try std.testing.expectEqual(TypeId.number, @as(TypeId, returned_value.*));
+        try std.testing.expectEqual(@as(f64, 10.0), returned_value.number);
+    } else {
+        return error.ExpectedReturn;
+    }
 }
