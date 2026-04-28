@@ -74,9 +74,51 @@ export fn lola_alloc_resize(
 
 const Result = enum(u8) {
     success = 0,
-    generic_eror = 1,
+    generic_error = 1,
     out_of_memory = 2,
     write_failed = 3,
+    invalid_format = 4,
+    unsupported_version = 5,
+    corrupted_data = 6,
+    already_exists = 7,
+    async_call_with_invalid_object = 8,
+    invalid_jump = 9,
+    invalid_bytecode = 10,
+    invalid_global_variable = 11,
+    invalid_local_variable = 12,
+    invalid_field = 13,
+    index_out_of_range = 14,
+    type_mismatch = 15,
+    function_not_found = 16,
+    invalid_object = 17,
+    divide_by_zero = 18,
+    deprecated_instruction = 19,
+    invalid_operator = 20,
+
+    fn fromError(err: anyerror) Result {
+        return switch (err) {
+            error.OutOfMemory => .out_of_memory,
+            error.WriteFailed => .write_failed,
+            error.InvalidFormat => .invalid_format,
+            error.UnsupportedVersion => .unsupported_version,
+            error.CorruptedData => .corrupted_data,
+            error.AlreadyExists => .already_exists,
+            error.AsyncCallWithInvalidObject => .async_call_with_invalid_object,
+            error.InvalidJump => .invalid_jump,
+            error.InvalidBytecode => .invalid_bytecode,
+            error.InvalidGlobalVariable => .invalid_global_variable,
+            error.InvalidLocalVariable => .invalid_local_variable,
+            error.InvalidField => .invalid_field,
+            error.IndexOutOfRange => .index_out_of_range,
+            error.TypeMismatch => .type_mismatch,
+            error.FunctionNotFound => .function_not_found,
+            error.InvalidObject => .invalid_object,
+            error.DivideByZero => .divide_by_zero,
+            error.DeprectedInstruction => .deprecated_instruction,
+            error.InvalidOperator => .invalid_operator,
+            else => .generic_error,
+        };
+    }
 };
 
 const Str = extern struct {
@@ -105,7 +147,7 @@ export fn lola_Diagnostics_display(diag: ?*Diagnostics) Result {
     for (diag.?.messages.items) |message| {
         stdout.interface.print("{f}\n", .{message}) catch |e| {
             static_error = e;
-            return .write_failed;
+            return Result.fromError(e);
         };
     }
     return .success;
@@ -262,7 +304,10 @@ const CValue = extern struct {
     }
 };
 export fn lola_CArray_init(value: ?*CArray, size: usize) Result {
-    const array = lola.runtime.value.Array.init(alloc, size) catch return .out_of_memory;
+    const array = lola.runtime.value.Array.init(alloc, size) catch |e| {
+        static_error = e;
+        return Result.fromError(e);
+    };
     const contents = array.contents;
     value.?.* = .{ .elements = contents.ptr, .len = contents.len };
     return .success;
@@ -278,7 +323,7 @@ export fn lola_Value_initObject(env: ?*Environment, user_object: ?*CObject, valu
     value.?.deinit();
     value.?.* = Value.initObject(env.?.objectPool.castTo(ObjectPool).createObject(user_object.?) catch |e| {
         static_error = e;
-        return .generic_eror;
+        return Result.fromError(e);
     });
     return .success;
 }
@@ -286,7 +331,7 @@ export fn lola_Value_initString(string: Str, value: ?*Value) Result {
     value.?.deinit();
     value.?.* = Value.initString(alloc, string.items[0..string.len]) catch |e| {
         static_error = e;
-        return .generic_eror;
+        return Result.fromError(e);
     };
     return .success;
 }
@@ -440,7 +485,7 @@ const CallbackData = extern struct {
 export fn lola_Environment_install(environment: ?*Environment, name: Str, ud: CallbackData) Result {
     const c_user_data = alloc.create(CallbackData) catch |e| {
         static_error = e;
-        return .out_of_memory;
+        return Result.fromError(e);
     };
     c_user_data.* = ud;
     switch (ud.c_func.func_type) {
@@ -451,7 +496,7 @@ export fn lola_Environment_install(environment: ?*Environment, name: Str, ud: Ca
                 .destructor = CallbackData.destructor,
             } }) catch |e| {
                 static_error = e;
-                return .generic_eror;
+                return Result.fromError(e);
             };
             return .success;
         },
@@ -462,7 +507,7 @@ export fn lola_Environment_install(environment: ?*Environment, name: Str, ud: Ca
                 .destructor = CallbackData.destructor,
             } }) catch |e| {
                 static_error = e;
-                return .generic_eror;
+                return Result.fromError(e);
             };
             return .success;
         },
@@ -472,14 +517,14 @@ export fn lola_Environment_install(environment: ?*Environment, name: Str, ud: Ca
 export fn lola_Environment_installStd(env: ?*Environment) Result {
     env.?.installModule(lola.libs.std, .null_pointer) catch |e| {
         static_error = e;
-        return .generic_eror;
+        return Result.fromError(e);
     };
     return .success;
 }
 export fn lola_Environment_installRuntime(env: ?*Environment) Result {
     env.?.installModule(lola.libs.runtime, .null_pointer) catch |e| {
         static_error = e;
-        return .generic_eror;
+        return Result.fromError(e);
     };
     return .success;
 }
@@ -504,7 +549,7 @@ export fn lola_VM_deinit(cvm: ?*VM) void {
 export fn lola_VM_execute(vm: ?*VM, quota: u32, result_ptr: *lola.runtime.ExecutionResult) Result {
     result_ptr.* = vm.?.execute(if (quota == 0) null else quota) catch |e| {
         static_error = e;
-        return .generic_eror;
+        return Result.fromError(e);
     };
     return .success;
 }
@@ -550,7 +595,7 @@ export fn lola_dis_toBuffer(ptr: ?[*]u8, len: usize, cu: ?*const CompileUnit, op
         .labelOutput = options.labelOutput,
     }) catch |e| {
         static_error = e;
-        return .generic_eror;
+        return Result.fromError(e);
     };
     return .success;
 }
@@ -567,12 +612,12 @@ export fn lola_dis_alloc(cu: ?*const CompileUnit, options: CDisassemblerOptions,
     }) catch |e| {
         static_error = e;
         w.deinit();
-        return .generic_eror;
+        return Result.fromError(e);
     };
     const slice = w.toOwnedSlice() catch |e| {
         static_error = e;
         w.deinit();
-        return .out_of_memory;
+        return Result.fromError(e);
     };
     dis.?.* = .{ .data = Str.fromSlice(slice) };
     return .success;
@@ -587,12 +632,12 @@ export fn lola_dis_allocZ(cu: ?*const CompileUnit, options: CDisassemblerOptions
     }) catch |e| {
         static_error = e;
         w.deinit();
-        return .generic_eror;
+        return Result.fromError(e);
     };
     const slice = w.toOwnedSliceSentinel(0) catch |e| {
         static_error = e;
         w.deinit();
-        return .out_of_memory;
+        return Result.fromError(e);
     };
     dis.?.* = .{ .data = Str.fromSlice(slice[0 .. slice.len + 1]) };
     return .success;

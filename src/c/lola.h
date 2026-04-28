@@ -12,10 +12,35 @@ typedef struct lola_Value lola_Value;
 
 enum {
     lola_Result_success = 0,
-    /// generic error
+    
+    // generic error
     lola_Result_error = 1,
+
     lola_Result_out_of_memory = 2,
     lola_Result_write_failed = 3,
+
+    // lola_loadCUFromMem
+    lola_Result_invalid_format = 4,
+    lola_Result_unsupported_version = 5,
+    lola_Result_corrupted_data = 6,
+    
+    // used when trying to install a function that is already installed to an environment
+    lola_Result_already_exits = 7,
+
+    // lola_VM_execute 
+    lola_Result_async_call_with_invalid_object = 8,
+    lola_Result_invalid_jump = 9,
+    lola_Result_invalid_bytecode = 10,
+    lola_Result_invalid_global_variable = 11,
+    lola_Result_invalid_local_variable = 12,
+    lola_Result_invalid_field = 13,
+    lola_Result_index_out_of_range = 14,
+    lola_Result_type_mismatch = 15,
+    lola_Result_function_not_found = 16,
+    lola_Result_invalid_object = 17,
+    lola_Result_divide_by_zero = 18,
+    lola_Result_deprecated_instruction = 19,
+    lola_Result_invalid_operator = 20,
 };
 typedef uint8_t lola_Result;
 
