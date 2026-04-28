@@ -697,13 +697,13 @@ pub const VM = struct {
             .greater => try self.executeCompareValues(.gt, false),
             .greater_eq => try self.executeCompareValues(.gt, true),
 
-            // Deperecated Section:
+            // Deprecated Section:
             .scope_push,
             .scope_pop,
             .declare,
             .store_global_name,
             .load_global_name,
-            => return error.DeprectedInstruction,
+            => return error.DeprecatedInstruction,
         }
 
         return null;
