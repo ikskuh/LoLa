@@ -67,7 +67,7 @@ pub fn main() anyerror!u8 {
 
     // Create a virtual machine that is used to execute LoLa bytecode.
     // Using `.init` will always run the top-level code.
-    var vm = try lola.runtime.VM.init(allocator, &env, null);
+    var vm = try lola.runtime.VM.init(allocator, &env);
     defer vm.deinit();
 
     // The main interpreter loop:

@@ -98,7 +98,7 @@ pub fn main() anyerror!u8 {
 
     // First, initialize the server and let it initialize `storage`.
     {
-        var vm = try lola.runtime.VM.init(allocator, &server_env, null);
+        var vm = try lola.runtime.VM.init(allocator, &server_env);
         defer vm.deinit();
 
         const result = try vm.execute(null);
@@ -108,7 +108,7 @@ pub fn main() anyerror!u8 {
 
     // Then, let Client A execute
     {
-        var vm = try lola.runtime.VM.init(allocator, &client_a_env, null);
+        var vm = try lola.runtime.VM.init(allocator, &client_a_env);
         defer vm.deinit();
 
         const result = try vm.execute(null);
@@ -118,7 +118,7 @@ pub fn main() anyerror!u8 {
 
     // Then, let Client B execute
     {
-        var vm = try lola.runtime.VM.init(allocator, &client_b_env, null);
+        var vm = try lola.runtime.VM.init(allocator, &client_b_env);
         defer vm.deinit();
 
         const result = try vm.execute(null);
