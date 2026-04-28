@@ -55,22 +55,29 @@ export fn lola_alloc_resize(
     old_size: usize,
     new_size: usize,
     alignment: usize,
-) bool {
+) Result {
     const slice: []u8 = out_ptr.?.*.?[0..old_size];
     if (alloc.rawRemap(slice, std.mem.Alignment.fromByteUnits(alignment), new_size, @returnAddress())) |new_alloc| {
         out_ptr.?.* = new_alloc;
-        return true;
+        return .success;
     } else {
         const new_ptr = if (lola_alloc_alloc(new_size, alignment)) |ptr|
             ptr
         else
-            return false;
+            return .out_of_memory;
         const new_slice = new_ptr[0..new_size];
         @memcpy(new_slice, slice);
         lola_alloc_free(slice.ptr, old_size, alignment);
-        return true;
+        return .success;
     }
 }
+
+const Result = enum(u8) {
+    success = 0,
+    generic_eror = 1,
+    out_of_memory = 2,
+    write_failed = 3,
+};
 
 const Str = extern struct {
     items: [*]const u8,
@@ -93,15 +100,15 @@ export fn lola_Diagnostics_deinit(cdiag: ?*Diagnostics) void {
         alloc.destroy(diag);
     }
 }
-export fn lola_Diagnostics_display(diag: ?*Diagnostics) bool {
+export fn lola_Diagnostics_display(diag: ?*Diagnostics) Result {
     var stdout = std.fs.File.stdout().writer(&.{});
     for (diag.?.messages.items) |message| {
         stdout.interface.print("{f}\n", .{message}) catch |e| {
             static_error = e;
-            return false;
+            return .write_failed;
         };
     }
-    return true;
+    return .success;
 }
 export fn lola_Diagnostics_hasErrors(diag: ?*Diagnostics) bool {
     return diag.?.hasErrors();
@@ -254,11 +261,11 @@ const CValue = extern struct {
         };
     }
 };
-export fn lola_CArray_init(value: ?*CArray, size: usize) bool {
-    const array = lola.runtime.value.Array.init(alloc, size) catch return false;
+export fn lola_CArray_init(value: ?*CArray, size: usize) Result {
+    const array = lola.runtime.value.Array.init(alloc, size) catch return .out_of_memory;
     const contents = array.contents;
     value.?.* = .{ .elements = contents.ptr, .len = contents.len };
-    return true;
+    return .success;
 }
 export fn lola_CValue_toValue(value: CValue, out_value: ?*Value) void {
     out_value.?.* = value.to();
@@ -267,21 +274,21 @@ export fn lola_CValue_fromValue(value: ?*const Value) CValue {
     return CValue.get(value.?.*);
 }
 
-export fn lola_Value_initObject(env: ?*Environment, user_object: ?*CObject, value: ?*Value) bool {
+export fn lola_Value_initObject(env: ?*Environment, user_object: ?*CObject, value: ?*Value) Result {
     value.?.deinit();
     value.?.* = Value.initObject(env.?.objectPool.castTo(ObjectPool).createObject(user_object.?) catch |e| {
         static_error = e;
-        return false;
+        return .generic_eror;
     });
-    return true;
+    return .success;
 }
-export fn lola_Value_initString(string: Str, value: ?*Value) bool {
+export fn lola_Value_initString(string: Str, value: ?*Value) Result {
     value.?.deinit();
     value.?.* = Value.initString(alloc, string.items[0..string.len]) catch |e| {
         static_error = e;
-        return false;
+        return .generic_eror;
     };
-    return true;
+    return .success;
 }
 export fn lola_Value_initBoolean(boolean: bool, value: ?*Value) void {
     value.?.deinit();
@@ -430,10 +437,10 @@ const CallbackData = extern struct {
         alloc.destroy(ud);
     }
 };
-export fn lola_Environment_install(environment: ?*Environment, name: Str, ud: CallbackData) bool {
+export fn lola_Environment_install(environment: ?*Environment, name: Str, ud: CallbackData) Result {
     const c_user_data = alloc.create(CallbackData) catch |e| {
         static_error = e;
-        return false;
+        return .out_of_memory;
     };
     c_user_data.* = ud;
     switch (ud.c_func.func_type) {
@@ -444,9 +451,9 @@ export fn lola_Environment_install(environment: ?*Environment, name: Str, ud: Ca
                 .destructor = CallbackData.destructor,
             } }) catch |e| {
                 static_error = e;
-                return false;
+                return .generic_eror;
             };
-            return true;
+            return .success;
         },
         .async => {
             environment.?.installFunction(name.toSlice(), .{ .asyncUser = .{
@@ -455,26 +462,26 @@ export fn lola_Environment_install(environment: ?*Environment, name: Str, ud: Ca
                 .destructor = CallbackData.destructor,
             } }) catch |e| {
                 static_error = e;
-                return false;
+                return .generic_eror;
             };
-            return true;
+            return .success;
         },
     }
 }
 
-export fn lola_Environment_installStd(env: ?*Environment) bool {
+export fn lola_Environment_installStd(env: ?*Environment) Result {
     env.?.installModule(lola.libs.std, .null_pointer) catch |e| {
         static_error = e;
-        return false;
+        return .generic_eror;
     };
-    return true;
+    return .success;
 }
-export fn lola_Environment_installRuntime(env: ?*Environment) bool {
+export fn lola_Environment_installRuntime(env: ?*Environment) Result {
     env.?.installModule(lola.libs.runtime, .null_pointer) catch |e| {
         static_error = e;
-        return false;
+        return .generic_eror;
     };
-    return true;
+    return .success;
 }
 
 export fn lola_VM_init(environment: ?*Environment) ?*VM {
@@ -494,12 +501,12 @@ export fn lola_VM_deinit(cvm: ?*VM) void {
         alloc.destroy(vm);
     }
 }
-export fn lola_VM_execute(vm: ?*VM, quota: u32, result_ptr: *lola.runtime.ExecutionResult) bool {
+export fn lola_VM_execute(vm: ?*VM, quota: u32, result_ptr: *lola.runtime.ExecutionResult) Result {
     result_ptr.* = vm.?.execute(if (quota == 0) null else quota) catch |e| {
         static_error = e;
-        return false;
+        return .generic_eror;
     };
-    return true;
+    return .success;
 }
 
 export fn lola_loadCUFromMem(mem: ?[*]u8, len: usize) ?*CompileUnit {
@@ -534,7 +541,7 @@ const CDisassemblerOptions = extern struct {
     instructionOutput: bool,
 };
 const DisassemblerOptions = lola.dis.DisassemblerOptions;
-export fn lola_dis_toBuffer(ptr: ?[*]u8, len: usize, cu: ?*const CompileUnit, options: CDisassemblerOptions) bool {
+export fn lola_dis_toBuffer(ptr: ?[*]u8, len: usize, cu: ?*const CompileUnit, options: CDisassemblerOptions) Result {
     var w = std.Io.Writer.fixed(ptr.?[0..len]);
     lola.dis.disassemble(&w, cu.?.*, .{
         .addressPrefix = options.addressPrefix,
@@ -543,14 +550,14 @@ export fn lola_dis_toBuffer(ptr: ?[*]u8, len: usize, cu: ?*const CompileUnit, op
         .labelOutput = options.labelOutput,
     }) catch |e| {
         static_error = e;
-        return false;
+        return .generic_eror;
     };
-    return true;
+    return .success;
 }
 const AllocDis = extern struct {
     data: Str,
 };
-export fn lola_dis_alloc(cu: ?*const CompileUnit, options: CDisassemblerOptions, dis: ?*AllocDis) bool {
+export fn lola_dis_alloc(cu: ?*const CompileUnit, options: CDisassemblerOptions, dis: ?*AllocDis) Result {
     var w = std.Io.Writer.Allocating.init(alloc);
     lola.dis.disassemble(&w.writer, cu.?.*, .{
         .addressPrefix = options.addressPrefix,
@@ -560,17 +567,17 @@ export fn lola_dis_alloc(cu: ?*const CompileUnit, options: CDisassemblerOptions,
     }) catch |e| {
         static_error = e;
         w.deinit();
-        return false;
+        return .generic_eror;
     };
     const slice = w.toOwnedSlice() catch |e| {
         static_error = e;
         w.deinit();
-        return false;
+        return .out_of_memory;
     };
     dis.?.* = .{ .data = Str.fromSlice(slice) };
-    return true;
+    return .success;
 }
-export fn lola_dis_allocZ(cu: ?*const CompileUnit, options: CDisassemblerOptions, dis: ?*AllocDis) bool {
+export fn lola_dis_allocZ(cu: ?*const CompileUnit, options: CDisassemblerOptions, dis: ?*AllocDis) Result {
     var w = std.Io.Writer.Allocating.init(alloc);
     lola.dis.disassemble(&w.writer, cu.?.*, .{
         .addressPrefix = options.addressPrefix,
@@ -580,15 +587,15 @@ export fn lola_dis_allocZ(cu: ?*const CompileUnit, options: CDisassemblerOptions
     }) catch |e| {
         static_error = e;
         w.deinit();
-        return false;
+        return .generic_eror;
     };
     const slice = w.toOwnedSliceSentinel(0) catch |e| {
         static_error = e;
         w.deinit();
-        return false;
+        return .out_of_memory;
     };
     dis.?.* = .{ .data = Str.fromSlice(slice[0 .. slice.len + 1]) };
-    return true;
+    return .success;
 }
 export fn lola_dis_deinit(dis: AllocDis) void {
     alloc.free(dis.data.toSlice());

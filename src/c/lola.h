@@ -10,6 +10,15 @@ typedef struct lola_Environment lola_Environment;
 typedef struct lola_VM lola_VM;
 typedef struct lola_Value lola_Value;
 
+enum {
+    lola_Result_success = 0,
+    /// generic error
+    lola_Result_error = 1,
+    lola_Result_out_of_memory = 2,
+    lola_Result_write_failed = 3,
+};
+typedef uint8_t lola_Result;
+
 enum lola_TypeID {
     lola_type_void = 0,
     lola_type_number = 1,
@@ -139,11 +148,11 @@ typedef struct {
 
 // functions
 
-bool lola_dis_toBuffer(char* buf, size_t buf_len, const lola_CompileUnit* cu, lola_DisassemblerOptions options);
+lola_Result lola_dis_toBuffer(char* buf, size_t buf_len, const lola_CompileUnit* cu, lola_DisassemblerOptions options);
 typedef struct {lola_Str data;} lola_dis_Alloc;
-bool lola_dis_alloc(const lola_CompileUnit* cu, lola_DisassemblerOptions options, lola_dis_Alloc* dis);
+lola_Result lola_dis_alloc(const lola_CompileUnit* cu, lola_DisassemblerOptions options, lola_dis_Alloc* dis);
 //returns null terminated string
-bool lola_dis_allocZ(const lola_CompileUnit* cu, lola_DisassemblerOptions options, lola_dis_Alloc* dis);
+lola_Result lola_dis_allocZ(const lola_CompileUnit* cu, lola_DisassemblerOptions options, lola_dis_Alloc* dis);
 void lola_dis_deinit(lola_dis_Alloc dis);
 
 lola_Object* lola_Object_init(void* user_data, lola_Object_VTable vtable);
@@ -155,16 +164,16 @@ bool lola_hasError(void);
 void lola_alloc_deinit(void);
 void* lola_alloc_alloc(size_t size, size_t alignment);
 void lola_alloc_free(void* ptr, size_t size, size_t alignment);
-bool lola_alloc_reisze(void** ptr, size_t old_size,size_t new_size, size_t alignment);
+lola_Result lola_alloc_resize(void** ptr, size_t old_size,size_t new_size, size_t alignment);
 
-bool lola_CArray_init(lola_value_Array* array, size_t size);
+lola_Result lola_CArray_init(lola_value_Array* array, size_t size);
 void lola_CValue_toValue(lola_CValue cvalue, lola_Value* to_value);
 // performs a shallow copy of value
 lola_CValue lola_CValue_fromValue(const lola_Value* value);
 
 // value is an in param
-bool lola_Value_initObject(lola_Environment* environment, lola_Object* object, lola_Value* value);
-bool lola_Value_initString(lola_Str str, lola_Value* value);
+lola_Result lola_Value_initObject(lola_Environment* environment, lola_Object* object, lola_Value* value);
+lola_Result lola_Value_initString(lola_Str str, lola_Value* value);
 void lola_Value_initBoolean(bool boolean, lola_Value* value);
 void lola_Value_initNumber(double number, lola_Value* value);
 // returns a shallow copy of value
