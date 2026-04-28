@@ -65,7 +65,7 @@ pub const VM = struct {
     stack: std.ArrayList(Value),
     calls: std.ArrayList(Context),
     currentAsynCall: ?Environment.AsyncFunctionCall,
-    asyncCallFromHost: bool,
+    asyncCallFromHost: bool = false,
     objectPool: objects.ObjectPoolInterface,
     stats: Statistics = Statistics{},
 
