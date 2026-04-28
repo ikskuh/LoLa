@@ -13,4 +13,14 @@ ExpectEqual(Byte("\e"), 27); // Escape
 ExpectEqual(Byte("\""), 34); // Double Quotes
 ExpectEqual(Byte("\'"), 39); // Single Quote
 
+// Test Struct
+ExpectEqual(TypeOf([]), "array");
+ExpectEqual(TypeOf([.a=1]), "struct");
+{
+    var foo = [.bar = 1];
+    ExpectEqual(foo.bar, 1);
+    foo.bar = 2;
+    ExpectEqual(foo.bar, 2);
+}
+
 Print("Extended behaviour test suite passed.");

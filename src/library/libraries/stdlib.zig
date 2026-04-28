@@ -603,6 +603,7 @@ pub fn TypeOf(env: *const lola.runtime.Environment, context: lola.runtime.Contex
         .object => "object",
         .array => "array",
         .enumerator => "enumerator",
+        .@"struct" => "struct",
     });
 }
 

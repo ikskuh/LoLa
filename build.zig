@@ -80,14 +80,6 @@ pub fn build(b: *Build) !void {
         .root_module = exe_mod,
     });
     b.installArtifact(exe);
-    const run = b.addRunArtifact(exe);
-    run.addArgs(&.{
-        "lola",
-        "run",
-        "hello.lola",
-        "--mode",
-        "source",
-    });
 
     const benchmark_renderer_mod = b.createModule(.{
         .root_source_file = b.path("src/benchmark/render.zig"),
@@ -276,6 +268,9 @@ pub fn build(b: *Build) !void {
     }
 
     const run_cmd = b.addRunArtifact(exe);
+    if (b.args) |args| {
+        run_cmd.addArgs(args);
+    }
     run_cmd.step.dependOn(b.getInstallStep());
 
     const run_step = b.step("run", "Run the app");

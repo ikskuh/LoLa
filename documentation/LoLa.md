@@ -47,6 +47,7 @@ Print("Stack Length: ", stack.GetSize());
 - String (ASCII-like or UTF-8 encoded string)
 - Array (A ordered list of values, zero-indexed)
 - Object (A thing that has methods which can be called)
+- Struct (A collection of named fields)
 
 ### Syntax
 
@@ -56,9 +57,11 @@ Print("Stack Length: ", stack.GetSize());
 	- number (`1.0`, `4.33`, `2`, …)
 	- string (`""`, `"hello"`, `"line\nfeed"`, …)
 	- boolean (`true`, `false`, …)
+	- struct (`[.x=1, .y=2]`, `[.name="LoLa"]`, …)
 - variable access (`x`, `var`, `var_2`, …)
 - array (`[]`, `[expr]`, `[expr, expr]`, …)
 - array index (`expr[expr])`
+- struct field access (`expr.field`)
 - unary operation (`-expr`, `not expr`, …)
 - binary operaton (`expr + expr`, `expr and expr`, …)
 - function call (`f()`, `f(expr)`, `f(expr,expr)`, …)
@@ -89,7 +92,7 @@ first.
 - scope (`{ … }`)
 - var declaration (`var x;`, `var x = expr;` …)
 - function call (`f();`, …)
-- assignment (`lval = rval;`, `lval[expr] = rval;`, …)
+- assignment (`lval = rval;`, `lval[expr] = rval;`, `lval.field = rval;` …)
 - for loop (`for(x in expr) { … }`)
 - while loop (`while(expr) { … }`)
 - condition (`if(expr) { … }`, `if(expr) { … } else { … }`)

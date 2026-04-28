@@ -288,6 +288,52 @@ pub const VM = struct {
 
                 try self.push(value);
             },
+            .struct_load => {
+                var indexed_val = try self.pop();
+                defer indexed_val.deinit();
+
+                var index_val = try self.pop();
+                defer index_val.deinit();
+
+                var @"struct" = try indexed_val.getStruct();
+                const value = if (@"struct".contents.getPtr(try index_val.toString())) |ret| try ret.clone() else return error.InvalidField;
+                //clone it to get a new mutable value
+                try self.push(value);
+            },
+            .struct_store => {
+                var indexed_val = try self.pop();
+                errdefer indexed_val.deinit();
+
+                var index_val = try self.pop();
+                defer index_val.deinit();
+
+                const value = try self.pop();
+
+                var @"struct" = try indexed_val.getStruct();
+                if (@"struct".contents.getPtr(try index_val.toString())) |entry| {
+                    entry.replaceWith(value);
+                } else {
+                    return error.InvalidField;
+                }
+                try self.push(indexed_val);
+            },
+            .struct_pack => |i| {
+                var @"struct" = try value_unit.Struct.init(self.allocator, i.value);
+                errdefer @"struct".deinit();
+
+                for (0..i.value) |_| {
+                    var value = try self.pop();
+                    errdefer value.deinit();
+                    var name_value = try self.pop();
+                    defer name_value.deinit();
+                    const name = try name_value.toString();
+
+                    const allocated_name = try @"struct".allocator.dupe(u8, name);
+                    errdefer @"struct".allocator.free(allocated_name);
+                    try @"struct".contents.put(allocated_name, value);
+                }
+                try self.push(Value.fromStruct(@"struct"));
+            },
 
             // Array Operations:
 
