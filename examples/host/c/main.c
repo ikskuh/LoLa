@@ -27,22 +27,22 @@ void deinit(void) {
     lola_ObjectPool_deinit(pool);
     lola_alloc_deinit();
 }
-bool addsubCB(lola_Environment* env, void* user_data, const lola_Value* args, usize arg_len, lola_Value* return_value) {
+bool addsubCB(lola_Environment* env, void* user_data, const lola_Value* args, size_t arg_len, lola_Value* return_value) {
     if (arg_len!=3) {error=INVALID_ARGS;return false;}
     lola_CValue cargs[3];
     for (int i=0; i<3; i++) {
         cargs[i]=lola_CValue_fromValue(lola_indexArgs(args, arg_len, i));
     }
 
-    if (cargs[0].type!=lola_type_boolean) {
+    if (cargs[0].type_id!=lola_type_boolean) {
         error=INVALID_ARGS;
         return false;
     }
-    if (cargs[1].type!=lola_type_number) {
+    if (cargs[1].type_id!=lola_type_number) {
         error=INVALID_ARGS;
         return false;
     }
-    if (cargs[2].type!=lola_type_number) {
+    if (cargs[2].type_id!=lola_type_number) {
         error=INVALID_ARGS;
         return false;
     }
@@ -60,7 +60,7 @@ bool UserAsyncExecute(void* user_data, lola_Value* return_value, bool* is_return
     static int counter = 0;
     printf("counter: %d\n",counter);
     if (counter>3) {
-        lola_Value_initNumber((f64)counter, return_value);
+        lola_Value_initNumber((double)counter, return_value);
         *is_return_value_set = true;
         return true;
     } else {
@@ -69,7 +69,7 @@ bool UserAsyncExecute(void* user_data, lola_Value* return_value, bool* is_return
     }
 }
 
-bool UserAsyncCB(lola_Environment* env, void* user_data, const lola_Value* args, usize arg_len, lola_AsyncFunctionCall* return_value) {
+bool UserAsyncCB(lola_Environment* env, void* user_data, const lola_Value* args, size_t arg_len, lola_AsyncFunctionCall* return_value) {
     return_value->user_data=NULL;
     return_value->destructor=NULL;
     return_value->execute = UserAsyncExecute;
@@ -136,7 +136,7 @@ int main(void) {
     lola_CallbackData cbd = {
         .user_data=NULL,
         .c_func = {
-            .type=lola_CallbackType_async,
+            .callback_type=lola_CallbackType_async,
             .async=UserAsyncCB,
         },
     };
@@ -153,7 +153,7 @@ int main(void) {
         return EXIT_FAILURE;
     }
 
-    enum lola_ExecutionResult result;
+    uint8_t result;
     while (1) {
         if (!lola_VM_execute(vm, 0, &result)) {
             deinit();

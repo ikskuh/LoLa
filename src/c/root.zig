@@ -218,6 +218,7 @@ const CValue = extern struct {
         string: Str,
         array: CArray,
         enumerator: CEnumerator,
+        @"struct": void,
     },
     fn get(value: Value) CValue {
         return .{ .value_type = std.meta.activeTag(value), .value = switch (value) {
@@ -231,6 +232,7 @@ const CValue = extern struct {
                 .index = enumerator.index,
                 .array = .{ .elements = enumerator.array.contents.ptr, .len = enumerator.array.contents.len },
             } },
+            .@"struct" => .{ .@"struct" = void{} },
         } };
     }
     fn to(self: CValue) Value {
@@ -248,6 +250,7 @@ const CValue = extern struct {
                     .contents = self.value.enumerator.array.elements[0..self.value.enumerator.array.len],
                 },
             } },
+            .@"struct" => Value.void,
         };
     }
 };
