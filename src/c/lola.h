@@ -1,13 +1,7 @@
+#include <cstdint>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
-
-typedef uint8_t u8;
-typedef uint32_t u32;
-typedef uint64_t u64;
-typedef int32_t i32;
-typedef double f64;
-typedef size_t usize;
 
 typedef struct lola_CompileUnit lola_CompileUnit;
 typedef struct lola_Diagnostics lola_Diagnostics;
@@ -16,35 +10,35 @@ typedef struct lola_Environment lola_Environment;
 typedef struct lola_VM lola_VM;
 typedef struct lola_Value lola_Value;
 
-enum lola_TypeID: u8 {
-    lola_type_void,
-    lola_type_number,
-    lola_type_object,
-    lola_type_boolean,
-    lola_type_string,
-    lola_type_array,
-    lola_type_enumerator,
+enum lola_TypeID {
+    lola_type_void = 0,
+    lola_type_number = 1,
+    lola_type_object = 2,
+    lola_type_boolean = 3,
+    lola_type_string = 4,
+    lola_type_array = 5,
+    lola_type_enumerator = 6,
 };
 
 typedef struct {
     const char* items;
-    usize len;
+    size_t len;
 } lola_Str;
 
 typedef struct {
     lola_Value* elements;
-    usize len;
+    size_t len;
 } lola_value_Array;
 
 typedef struct {
     lola_value_Array array;
-    usize index;
+    size_t index;
 } lola_value_Enumerator;
-typedef u64 lola_ObjectHandle;
+typedef uint64_t lola_ObjectHandle;
 typedef struct {
-    enum lola_TypeID type;
+    uint8_t type_id;
     union {
-        f64 number;
+        double number;
         lola_ObjectHandle object;
         bool boolean;
         lola_Str string;
@@ -58,22 +52,22 @@ typedef struct {
 //     size_t count;
 // } lola_Diagnostics;
 
-// enum lola_MessageKind:u8 {
+// enum lola_MessageKind:uint8_t {
 //     error=0,
 //     warning,
 //     notice,
 // };
 
-enum lola_ExecutionResult: u8 {
+enum lola_ExecutionResult {
     /// The vm instruction quota was exhausted and the execution was terminated.
-    lola_ExecutionResult_exhausted,
+    lola_ExecutionResult_exhausted = 0,
 
     /// The vm has encountered an asynchronous function call and waits for the completion.
-    lola_ExecutionResult_paused,
+    lola_ExecutionResult_paused = 1,
 
     /// The vm has completed execution of the program and has no more instructions to
     /// process.
-    lola_ExecutionResult_completed,
+    lola_ExecutionResult_completed = 2,
 };
 
 typedef struct {
@@ -82,7 +76,7 @@ typedef struct {
 
     /// If set, a hexdump with both hex- and ascii display will be emitted.
     /// Each line of text will contain `hexwidth` number of bytes.
-    usize hexwidth;
+    size_t hexwidth;
 
     /// If set to `true`, the output will contain a line with the
     /// name of function that starts at this offset. This option
@@ -96,9 +90,9 @@ typedef struct {
 
 // function/callback
 
-enum lola_CallbackType: u8 {
-    lola_CallbackType_sync,
-    lola_CallbackType_async,
+enum lola_CallbackType {
+    lola_CallbackType_sync = 0,
+    lola_CallbackType_async = 1,
 };
 
 typedef void(*lola_DestructructorFunc)(void* user_data);
@@ -113,10 +107,10 @@ typedef struct {
 } lola_AsyncFunctionCall;
 
 typedef struct {
-    enum lola_CallbackType type;
+    uint8_t callback_type;
     union {
-        bool(*sync)(lola_Environment* environment, void* user_data, const lola_Value* args, usize arg_len, lola_Value* return_value);
-        bool(*async)(lola_Environment* environment, void* user_data, const lola_Value* args, usize arg_len, lola_AsyncFunctionCall* return_value);
+        bool(*sync)(lola_Environment* environment, void* user_data, const lola_Value* args, size_t arg_len, lola_Value* return_value);
+        bool(*async)(lola_Environment* environment, void* user_data, const lola_Value* args, size_t arg_len, lola_AsyncFunctionCall* return_value);
 
     };
 } lola_FuncType;
@@ -145,7 +139,7 @@ typedef struct {
 
 // functions
 
-bool lola_dis_toBuffer(char* buf, usize buf_len, const lola_CompileUnit* cu, lola_DisassemblerOptions options);
+bool lola_dis_toBuffer(char* buf, size_t buf_len, const lola_CompileUnit* cu, lola_DisassemblerOptions options);
 typedef struct {lola_Str data;} lola_dis_Alloc;
 bool lola_dis_alloc(const lola_CompileUnit* cu, lola_DisassemblerOptions options, lola_dis_Alloc* dis);
 //returns null terminated string
@@ -159,11 +153,11 @@ bool lola_hasError(void);
 
 // alloc
 void lola_alloc_deinit(void);
-void* lola_alloc_alloc(usize size, usize alignment);
-void lola_alloc_free(void* ptr, usize size, usize alignment);
-bool lola_alloc_reisze(void** ptr, usize old_size,usize new_size, usize alignment);
+void* lola_alloc_alloc(size_t size, size_t alignment);
+void lola_alloc_free(void* ptr, size_t size, size_t alignment);
+bool lola_alloc_reisze(void** ptr, size_t old_size,size_t new_size, size_t alignment);
 
-bool lola_CArray_init(lola_value_Array* array, usize size);
+bool lola_CArray_init(lola_value_Array* array, size_t size);
 void lola_CValue_toValue(lola_CValue cvalue, lola_Value* to_value);
 // performs a shallow copy of value
 lola_CValue lola_CValue_fromValue(const lola_Value* value);
@@ -172,13 +166,13 @@ lola_CValue lola_CValue_fromValue(const lola_Value* value);
 bool lola_Value_initObject(lola_Environment* environment, lola_Object* object, lola_Value* value);
 bool lola_Value_initString(lola_Str str, lola_Value* value);
 void lola_Value_initBoolean(bool boolean, lola_Value* value);
-void lola_Value_initNumber(f64 number, lola_Value* value);
+void lola_Value_initNumber(double number, lola_Value* value);
 // returns a shallow copy of value
 lola_Value* lola_Value_clone(const lola_Value* value);
-usize lola_Value_sizeof(void);
+size_t lola_Value_sizeof(void);
 void lola_Value_deinit(lola_Value* value);
 
-const lola_Value* lola_indexArgs(const lola_Value* args, usize arg_len, usize index);
+const lola_Value* lola_indexArgs(const lola_Value* args, size_t arg_len, size_t index);
 
 lola_Str lola_Str_fromC(const char* str);
 
@@ -187,7 +181,7 @@ bool lola_Diagnostics_display(lola_Diagnostics* diag);
 bool lola_Diagnostics_hasErrors(lola_Diagnostics* diag);
 void lola_Diagnostics_deinit(lola_Diagnostics* diag);
 
-lola_CompileUnit* lola_loadCUFromMem(u8* mem, usize len);
+lola_CompileUnit* lola_loadCUFromMem(uint8_t* mem, size_t len);
 lola_CompileUnit* lola_compile(lola_Diagnostics** diag, lola_Str chunk_name, lola_Str source_code);
 void lola_CompileUnit_deinit(lola_CompileUnit* cu);
 
@@ -201,5 +195,5 @@ bool lola_Environment_installRuntime(lola_Environment* environment);
 void lola_Environment_deinit(lola_Environment* environment);
 
 lola_VM* lola_VM_init(lola_Environment* environment);
-bool lola_VM_execute(lola_VM* vm, u32 quota, enum lola_ExecutionResult* result);
+bool lola_VM_execute(lola_VM* vm, uint32_t quota, uint8_t* execution_result);
 void lola_VM_deinit(lola_VM* vm);

@@ -176,7 +176,7 @@ pub fn build(b: *Build) !void {
             .optimize = optimize,
             .target = target,
         });
-        c_exmaple_mod.addCSourceFile(.{ .file = b.path("examples/host/c/main.c"), .flags = &.{ "-Wall", "-Wpedantic", "-Werror", "-std=c23" } });
+        c_exmaple_mod.addCSourceFile(.{ .file = b.path("examples/host/c/main.c"), .flags = &.{ "-Wall", "-Wpedantic", "-Werror", "-std=c11" } });
         const c_exe = b.addExecutable(.{
             .name = "c_example",
             .root_module = c_exmaple_mod,
