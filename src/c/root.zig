@@ -150,7 +150,7 @@ export fn lola_Diagnostics_deinit(cdiag: ?*Diagnostics) void {
         alloc.destroy(diag);
     }
 }
-export fn lola_Diagnostics_display(diag: ?*Diagnostics) Result {
+export fn lola_Diagnostics_display(diag: ?*const Diagnostics) Result {
     var stdout = std.fs.File.stdout().writer(&.{});
     for (diag.?.messages.items) |message| {
         stdout.interface.print("{f}\n", .{message}) catch |e| {
@@ -160,7 +160,52 @@ export fn lola_Diagnostics_display(diag: ?*Diagnostics) Result {
     }
     return .success;
 }
-export fn lola_Diagnostics_hasErrors(diag: ?*Diagnostics) bool {
+export fn lola_Diagnostics_allocPrint(diag: ?*const Diagnostics, out: ?*Str) Result {
+    var alloc_writer = std.Io.Writer.Allocating.init(alloc);
+    for (diag.?.messages.items) |message| {
+        alloc_writer.writer.print("{f}\n", .{message}) catch |e| {
+            static_error = e;
+            alloc_writer.deinit();
+            return Result.fromError(e);
+        };
+    }
+    const slice = alloc_writer.toOwnedSlice() catch |e| {
+        static_error = e;
+        alloc_writer.deinit();
+        return Result.fromError(e);
+    };
+    out.?.* = .fromAllocSlice(slice);
+    return .success;
+}
+export fn lola_Diagnostics_allocPrintZ(diag: ?*const Diagnostics, out: ?*Str) Result {
+    var alloc_writer = std.Io.Writer.Allocating.init(alloc);
+    for (diag.?.messages.items) |message| {
+        alloc_writer.writer.print("{f}\n", .{message}) catch |e| {
+            static_error = e;
+            alloc_writer.deinit();
+            return Result.fromError(e);
+        };
+    }
+    const slice = alloc_writer.toOwnedSliceSentinel(0) catch |e| {
+        static_error = e;
+        alloc_writer.deinit();
+        return Result.fromError(e);
+    };
+    out.?.* = Str.fromAllocSlice(slice[0 .. slice.len + 1]);
+    return .success;
+}
+export fn lola_Diagnostics_printBuf(diag: ?*const Diagnostics, ptr: ?[*]const u8, len: ?*usize) Result {
+    var w = std.Io.Writer.fixed(ptr.?[0..len.?.*]);
+    for (diag.?.messages.items) |message| {
+        w.print("{f}\n", .{message}) catch |e| {
+            static_error = e;
+            return Result.fromError(e);
+        };
+    }
+    len.?.* = w.end;
+    return .success;
+}
+export fn lola_Diagnostics_hasErrors(diag: ?*const Diagnostics) bool {
     return diag.?.hasErrors();
 }
 const CAsyncFunctionCall = extern struct {

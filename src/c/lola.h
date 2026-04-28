@@ -57,6 +57,8 @@ enum lola_TypeID {
 typedef struct {
     const char* items;
     size_t len;
+    // if true, user should call lola_Str_deinit, else lola_Str_deinit is a no-op.
+    bool allocated;
 } lola_Str;
 
 typedef struct {
@@ -173,7 +175,7 @@ typedef struct {
 
 // functions
 
-lola_Result lola_dis_toBuffer(char* buf, size_t buf_len, const lola_CompileUnit* cu, lola_DisassemblerOptions options);
+lola_Result lola_dis_toBuffer(char* buf, size_t* buf_len, const lola_CompileUnit* cu, lola_DisassemblerOptions options);
 typedef struct {lola_Str data;} lola_dis_Alloc;
 lola_Result lola_dis_alloc(const lola_CompileUnit* cu, lola_DisassemblerOptions options, lola_dis_Alloc* dis);
 //returns null terminated string
@@ -209,10 +211,14 @@ void lola_Value_deinit(lola_Value* value);
 const lola_Value* lola_indexArgs(const lola_Value* args, size_t arg_len, size_t index);
 
 lola_Str lola_Str_fromC(const char* str);
+// free str if it was allocated
+void lola_Str_deinit(lola_Str str);
 
-
-lola_Result lola_Diagnostics_display(lola_Diagnostics* diag);
-bool lola_Diagnostics_hasErrors(lola_Diagnostics* diag);
+lola_Result lola_Diagnostics_display(const lola_Diagnostics* diag);
+lola_Result lola_Diagnostics_allocPrint(const lola_Diagnostics* diag, lola_Str* out);
+lola_Result lola_Diagnostics_allocPrintZ(const lola_Diagnostics* diag, lola_Str* out);
+lola_Result lola_Diagnostics_printBuf(const lola_Diagnostics* diag, char* ptr, size_t len);
+bool lola_Diagnostics_hasErrors(const lola_Diagnostics* diag);
 void lola_Diagnostics_deinit(lola_Diagnostics* diag);
 
 lola_CompileUnit* lola_loadCUFromMem(uint8_t* mem, size_t len);
@@ -231,5 +237,5 @@ lola_Result lola_Environment_installRuntime(lola_Environment* environment);
 void lola_Environment_deinit(lola_Environment* environment);
 
 lola_VM* lola_VM_init(lola_Environment* environment);
-bool lola_VM_execute(lola_VM* vm, uint32_t quota, uint8_t* execution_result);
+lola_Result lola_VM_execute(lola_VM* vm, uint32_t quota, uint8_t* execution_result);
 void lola_VM_deinit(lola_VM* vm);
