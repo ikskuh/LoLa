@@ -49,7 +49,7 @@ pub fn build(b: *Build) !void {
     });
 
     const lib = b.addLibrary(.{
-        .name = "lola_lib",
+        .name = "clola",
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/c/root.zig"),
             .target = target,
