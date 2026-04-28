@@ -194,7 +194,7 @@ export fn lola_Diagnostics_allocPrintZ(diag: ?*const Diagnostics, out: ?*Str) Re
     out.?.* = Str.fromAllocSlice(slice[0 .. slice.len + 1]);
     return .success;
 }
-export fn lola_Diagnostics_printBuf(diag: ?*const Diagnostics, ptr: ?[*]const u8, len: ?*usize) Result {
+export fn lola_Diagnostics_printBuf(diag: ?*const Diagnostics, ptr: ?[*]u8, len: ?*usize) Result {
     var w = std.Io.Writer.fixed(ptr.?[0..len.?.*]);
     for (diag.?.messages.items) |message| {
         w.print("{f}\n", .{message}) catch |e| {
