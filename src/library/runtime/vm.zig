@@ -11,7 +11,7 @@ const objects = @import("objects.zig");
 
 const Environment = @import("Environment.zig");
 
-pub const ExecutionResult = enum {
+pub const ExecutionResult = union(enum) {
     /// The vm instruction quota was exhausted and the execution was terminated.
     exhausted,
 
@@ -20,7 +20,8 @@ pub const ExecutionResult = enum {
 
     /// The vm has completed execution of the program and has no more instructions to
     /// process.
-    completed,
+    /// When `.completed` is received, the caller must `deinit()` the received value
+    completed: Value,
 };
 
 pub const LolaCallResult = struct {
@@ -47,9 +48,6 @@ pub const VM = struct {
 
         /// The script function which this context is currently executing
         environment: *Environment,
-
-        /// If true, executeSingle will return the return Value from this Context
-        hostCall: bool,
     };
 
     /// Describes a set of statistics for the virtual machine. Can be useful for benchmarking.
@@ -65,18 +63,16 @@ pub const VM = struct {
     stack: std.ArrayList(Value),
     calls: std.ArrayList(Context),
     currentAsynCall: ?Environment.AsyncFunctionCall,
-    asyncCallFromHost: bool = false,
     objectPool: objects.ObjectPoolInterface,
     stats: Statistics = Statistics{},
 
     /// Initialize a new virtual machine that will run the given environment.
-    pub fn init(allocator: std.mem.Allocator, environment: *Environment) !Self {
+    pub fn init(allocator: std.mem.Allocator, environment: *Environment, function: ?Environment.ScriptFunction) !Self {
         var vm = Self{
             .allocator = allocator,
             .stack = std.ArrayList(Value).empty,
             .calls = std.ArrayList(Context).empty,
             .currentAsynCall = null,
-            .asyncCallFromHost = false,
             .objectPool = environment.objectPool,
         };
         errdefer vm.stack.deinit(allocator);
@@ -87,11 +83,11 @@ pub const VM = struct {
 
         // Initialize with special "init context" that runs the script itself
         // and hosts the global variables.
-        var initFun = try vm.createContext(Environment.ScriptFunction{
+        var initFun = try vm.createContext(function orelse Environment.ScriptFunction{
             .environment = environment,
             .entryPoint = 0, // start at the very first byte
             .localCount = environment.compileUnit.temporaryCount,
-        }, false);
+        });
         errdefer vm.deinitContext(&initFun);
 
         try vm.calls.append(allocator, initFun);
@@ -126,7 +122,7 @@ pub const VM = struct {
     /// The script function must have a resolved environment which
     /// uses the same object pool as the main environment.
     /// It is not possible to mix several object pools.
-    fn createContext(self: *Self, fun: Environment.ScriptFunction, host_call: bool) !Context {
+    fn createContext(self: *Self, fun: Environment.ScriptFunction) !Context {
         std.debug.assert(fun.environment != null);
         std.debug.assert(fun.environment.?.objectPool.self == self.objectPool.self);
         var ctx = Context{
@@ -134,7 +130,6 @@ pub const VM = struct {
             .stackBalance = self.stack.items.len,
             .locals = undefined,
             .environment = fun.environment.?,
-            .hostCall = host_call,
         };
         ctx.decoder.offset = fun.entryPoint;
         ctx.locals = try self.allocator.alloc(Value, fun.localCount);
@@ -176,13 +171,6 @@ pub const VM = struct {
 
     /// Runs the virtual machine for `quota` instructions.
     pub fn execute(self: *Self, _quota: ?u32) !ExecutionResult {
-        return self.executeWithReturn(_quota, null);
-    }
-
-    /// Runs the virtual machine for `quota` instructions.
-    /// if this is a host call, put the returned scope value into `returned_value`,
-    /// else `returned_value` is set to null. if returned_value is null, the return value is deinitialized.
-    pub fn executeWithReturn(self: *Self, _quota: ?u32, returned_value: ?*?Value) !ExecutionResult {
         std.debug.assert(self.calls.items.len > 0);
 
         var quota = _quota;
@@ -194,17 +182,7 @@ pub const VM = struct {
             }
 
             const ret = try self.executeSingle();
-            if (ret.returned_value) |in_value| {
-                if (returned_value) |out_value| {
-                    out_value.* = in_value;
-                    return .completed;
-                } else {
-                    // Discard because it's not being received
-                    var owned = in_value;
-                    owned.deinit();
-                }
-            } else if (returned_value) |out_value| out_value.* = null;
-            if (ret.execution) |result| {
+            if (ret) |result| {
                 switch (result) {
                     .completed => {
                         // A execution may only be completed if no calls
@@ -212,7 +190,7 @@ pub const VM = struct {
                         std.debug.assert(self.calls.items.len == 0);
                         std.debug.assert(self.stack.items.len == 0);
 
-                        return ExecutionResult.completed;
+                        return ExecutionResult{ .completed = try self.pop() };
                     },
                     .yield => return ExecutionResult.paused,
                 }
@@ -221,7 +199,7 @@ pub const VM = struct {
     }
 
     /// Executes a single instruction and returns the state of the machine.
-    fn executeSingle(self: *Self) !SingleResult {
+    fn executeSingle(self: *Self) !?SingleResult {
         if (self.currentAsynCall) |*asyncCall| {
             if (asyncCall.object) |obj| {
                 if (!self.objectPool.isObjectValid(obj))
@@ -234,18 +212,11 @@ pub const VM = struct {
                 self.currentAsynCall = null;
 
                 errdefer result.deinit();
-                if (self.asyncCallFromHost) {
-                    self.asyncCallFromHost = false;
-                    return .{ .returned_value = res, .execution = if (res != null) .completed else null };
-                }
                 try self.push(result.*);
             } else {
                 // We are not finished, continue later...
                 self.stats.stalls += 1;
-                return .{
-                    .execution = .yield,
-                    .returned_value = if (self.asyncCallFromHost) res else null,
-                };
+                return .yield;
             }
         }
 
@@ -457,18 +428,10 @@ pub const VM = struct {
                     item.deinit();
                 }
 
-                if (call.hostCall) {
-                    return SingleResult{
-                        .execution = if (self.calls.items.len == 0) .completed else null,
-                        .returned_value = .void,
-                    };
-                }
-
+                try self.push(.void);
                 // No more context to execute: we have completed execution
                 if (self.calls.items.len == 0)
-                    return .{ .execution = .completed };
-
-                try self.push(.void);
+                    return .completed;
             },
 
             .retval => {
@@ -484,20 +447,10 @@ pub const VM = struct {
                     item.deinit();
                 }
 
-                if (call.hostCall) {
-                    return SingleResult{
-                        .execution = if (self.calls.items.len == 0) .completed else null,
-                        .returned_value = value,
-                    };
-                }
-
+                try self.push(value);
                 // No more context to execute: we have completed execution
                 if (self.calls.items.len == 0) {
-                    // TODO: How to handle returns from the main scrip?
-                    value.deinit();
-                    return .{ .execution = .completed };
-                } else {
-                    try self.push(value);
+                    return .completed;
                 }
             },
 
@@ -521,8 +474,8 @@ pub const VM = struct {
                 if (method == null)
                     return error.FunctionNotFound;
 
-                if (try self.executeFunctionCall(environment, call, method.?, null, false, null))
-                    return .{ .execution = .yield };
+                if (try self.executeFunctionCall(environment, call, method.?, null))
+                    return .yield;
             },
 
             .call_obj => |call| {
@@ -538,8 +491,8 @@ pub const VM = struct {
                 const function_or_null = try self.objectPool.getMethod(obj, call.function);
 
                 if (function_or_null) |function| {
-                    if (try self.executeFunctionCall(environment, call, function, obj, false, null))
-                        return .{ .execution = .yield };
+                    if (try self.executeFunctionCall(environment, call, function, obj))
+                        return .yield;
                 } else {
                     return error.FunctionNotFound;
                 }
@@ -710,7 +663,7 @@ pub const VM = struct {
             => return error.DeprectedInstruction,
         }
 
-        return .{ .execution = null };
+        return null;
     }
 
     /// If function is a sync user function, the value is returned, else the value can be obtained from execute.
@@ -734,10 +687,10 @@ pub const VM = struct {
 
     /// Initiates or executes a function call.
     /// Returns `true` when the VM execution should suspend after the call, else `false`.
-    fn executeFunctionCall(self: *Self, environment: *Environment, call: ir.Instruction.CallArg, function: Environment.Function, object: ?objects.ObjectHandle, host_call: bool, return_value: ?*?Value) !bool {
+    fn executeFunctionCall(self: *Self, environment: *Environment, call: ir.Instruction.CallArg, function: Environment.Function, object: ?objects.ObjectHandle) !bool {
         return switch (function) {
             .script => |fun| blk: {
-                var context = try self.createContext(fun, host_call);
+                var context = try self.createContext(fun);
                 errdefer self.deinitContext(&context);
 
                 try self.readLocals(call, context.locals);
@@ -766,13 +719,6 @@ pub const VM = struct {
                 var result = try fun.call(environment, fun.context, locals);
                 errdefer result.deinit();
 
-                if (host_call) {
-                    if (return_value) |ret| {
-                        ret.* = result;
-                        break :blk false;
-                    }
-                }
-
                 try self.push(result);
 
                 break :blk false;
@@ -793,7 +739,6 @@ pub const VM = struct {
 
                 self.currentAsynCall = try fun.call(environment, fun.context, locals);
                 self.currentAsynCall.?.object = object;
-                self.asyncCallFromHost = host_call;
 
                 break :blk true;
             },
@@ -835,16 +780,12 @@ pub const VM = struct {
         ));
     }
 
-    const SingleResultExecution = enum {
+    const SingleResult = enum {
         /// The program has encountered an asynchronous function
         completed,
 
         /// execution and waits for completion.
         yield,
-    };
-    const SingleResult = struct {
-        execution: ?SingleResultExecution,
-        returned_value: ?Value = null,
     };
 
     fn executeNumberArithmetic(self: *Self, operator: *const fn (f64, f64) error{DivideByZero}!f64) !void {
@@ -934,7 +875,6 @@ pub const VM = struct {
             try stream.writeInt(u16, @as(u16, @intCast(item.locals.len)), .little);
             try stream.writeInt(u32, item.decoder.offset, .little); // we don't need to store the CompileUnit of the decoder, as it is implicitly referenced by the environment
             try stream.writeInt(u32, @as(u32, @intCast(item.stackBalance)), .little);
-            try stream.writeByte(@intFromBool(item.hostCall));
             if (envmap.queryByPtr(item.environment)) |env_id| {
                 try stream.writeInt(u32, env_id, .little);
             } else {
@@ -980,7 +920,6 @@ pub const VM = struct {
                 const local_count = try stream.takeInt(u16, .little);
                 const offset = try stream.takeInt(u32, .little);
                 const stack_balance = try stream.takeInt(u32, .little);
-                const host_call = try stream.takeByte() != 0;
 
                 const env_id = try stream.takeInt(u32, .little);
 
@@ -996,7 +935,7 @@ pub const VM = struct {
                     .environment = env,
                     .entryPoint = offset,
                     .localCount = local_count,
-                }, host_call);
+                });
                 ctx.stackBalance = stack_balance;
                 errdefer vm.deinitContext(&ctx);
 
@@ -1033,7 +972,7 @@ fn runTest(comptime TestRunner: type) !void {
     var env = try Environment.init(std.testing.allocator, &cu, pool.interface());
     defer env.deinit();
 
-    var vm = try VM.init(std.testing.allocator, &env);
+    var vm = try VM.init(std.testing.allocator, &env, null);
     defer vm.deinit();
 
     try TestRunner.verify(&vm);
@@ -1048,7 +987,7 @@ test "VM basic execution" {
         fn verify(vm: *VM) !void {
             const result = try vm.execute(1);
 
-            try std.testing.expectEqual(ExecutionResult.completed, result);
+            try std.testing.expectEqual(ExecutionResult{ .completed = .void }, result);
         }
     });
 }
@@ -1114,22 +1053,16 @@ test "host call" {
     var env = try Environment.init(std.testing.allocator, &cu, pool.interface());
     defer env.deinit();
 
-    var vm = try VM.init(std.testing.allocator, &env);
+    var vm = try VM.init(std.testing.allocator, &env, null);
     defer vm.deinit();
     const call_result = try vm.callLolaFunction(&env, "hello", &.{});
     try std.testing.expectEqual(LolaCallResult{ .returned_value = null, .should_yield = false }, call_result);
 
-    var returned: ?Value = null;
-    const result = try vm.executeWithReturn(null, &returned);
-    try std.testing.expectEqual(result, ExecutionResult.completed);
-    if (returned) |*returned_value| {
-        defer returned_value.deinit();
-        const TypeId = lola.runtime.value.TypeId;
-        try std.testing.expectEqual(TypeId.string, @as(TypeId, returned_value.*));
-        try std.testing.expectEqualStrings("world", returned_value.string.contents);
-    } else {
-        return error.ExpectedReturn;
-    }
+    const result = try vm.execute(null);
+    try std.testing.expectEqual(ExecutionResult.completed, result);
+    var value = result.completed;
+    defer value.deinit();
+    try std.testing.expectEqualStrings("wolrd", try value.toString());
 }
 test "host call with args" {
     const src = "function double(input) {return input*2;}";
@@ -1144,21 +1077,15 @@ test "host call with args" {
     var env = try Environment.init(std.testing.allocator, &cu, pool.interface());
     defer env.deinit();
 
-    var vm = try VM.init(std.testing.allocator, &env);
+    var vm = try VM.init(std.testing.allocator, &env, null);
     defer vm.deinit();
 
     const call_result = try vm.callLolaFunction(&env, "double", &.{Value.initNumber(5)});
     try std.testing.expectEqual(LolaCallResult{ .returned_value = null, .should_yield = false }, call_result);
 
-    var returned: ?Value = null;
-    const result = try vm.executeWithReturn(null, &returned);
-    try std.testing.expectEqual(result, ExecutionResult.completed);
-    if (returned) |*returned_value| {
-        defer returned_value.deinit();
-        const TypeId = lola.runtime.value.TypeId;
-        try std.testing.expectEqual(TypeId.number, @as(TypeId, returned_value.*));
-        try std.testing.expectEqual(@as(f64, 10.0), returned_value.number);
-    } else {
-        return error.ExpectedReturn;
-    }
+    const result = try vm.execute(null);
+    try std.testing.expectEqual(ExecutionResult.completed, result);
+    var value = result.completed;
+    defer value.deinit();
+    try std.testing.expectEqual(@as(f64, 10.0), try value.toNumber());
 }

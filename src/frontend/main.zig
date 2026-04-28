@@ -326,7 +326,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
     var stderr_writer = std.fs.File.stderr().writer(&.{});
     const stderr = &stderr_writer.interface;
     if (options.benchmark == false) {
-        var vm = try lola.runtime.vm.VM.init(allocator, &env);
+        var vm = try lola.runtime.vm.VM.init(allocator, &env, null);
         defer vm.deinit();
 
         while (true) {
@@ -377,7 +377,7 @@ fn run(options: RunCLI, files: []const []const u8) !u8 {
 
         // Run at least one second
         while ((cycle < 100) or (total_timer.read() < std.time.ns_per_s)) : (cycle += 1) {
-            var vm = try lola.runtime.vm.VM.init(allocator, &env);
+            var vm = try lola.runtime.vm.VM.init(allocator, &env, null);
             defer vm.deinit();
 
             var timer = try std.time.Timer.start();

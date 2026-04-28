@@ -77,7 +77,7 @@ fn run_serialization(allocator: std.mem.Allocator, serialization_buffer: []u8) !
     try env.installModule(lola.libs.std, lola.runtime.Context.null_pointer);
     try env.installModule(lola.libs.runtime, lola.runtime.Context.null_pointer);
 
-    var vm = try lola.runtime.vm.VM.init(allocator, &env);
+    var vm = try lola.runtime.vm.VM.init(allocator, &env, null);
     defer vm.deinit();
 
     const result = try vm.execute(405);
