@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include "lola.h"
+#include "../../../src/c/lola.h"
 
 const char* PROGRAM = \
 "Print(\"Hello World\");\
