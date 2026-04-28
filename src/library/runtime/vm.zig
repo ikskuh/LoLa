@@ -11,7 +11,7 @@ const objects = @import("objects.zig");
 
 const Environment = @import("Environment.zig");
 
-pub const ExecutionResult = enum {
+pub const ExecutionResult = enum(u8) {
     /// The vm instruction quota was exhausted and the execution was terminated.
     exhausted,
 
@@ -697,13 +697,13 @@ pub const VM = struct {
             .greater => try self.executeCompareValues(.gt, false),
             .greater_eq => try self.executeCompareValues(.gt, true),
 
-            // Deperecated Section:
+            // Deprecated Section:
             .scope_push,
             .scope_pop,
             .declare,
             .store_global_name,
             .load_global_name,
-            => return error.DeprectedInstruction,
+            => return error.DeprecatedInstruction,
         }
 
         return null;
