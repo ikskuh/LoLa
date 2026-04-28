@@ -211,7 +211,7 @@ const lola_Value* lola_indexArgs(const lola_Value* args, size_t arg_len, size_t 
 lola_Str lola_Str_fromC(const char* str);
 
 
-bool lola_Diagnostics_display(lola_Diagnostics* diag);
+lola_Result lola_Diagnostics_display(lola_Diagnostics* diag);
 bool lola_Diagnostics_hasErrors(lola_Diagnostics* diag);
 void lola_Diagnostics_deinit(lola_Diagnostics* diag);
 
@@ -223,9 +223,11 @@ lola_ObjectPool* lola_ObjectPool_init(void);
 void lola_ObjectPool_deinit(lola_ObjectPool* object_pool);
 
 lola_Environment* lola_Environment_init(lola_CompileUnit* compile_unit, lola_ObjectPool* object_pool);
-bool lola_Environment_install(lola_Environment* environment, lola_Str name, lola_CallbackData func_data);
-bool lola_Environment_installStd(lola_Environment* environment);
-bool lola_Environment_installRuntime(lola_Environment* environment);
+
+// install may return lola_Result_already_exists if a function is already installed
+lola_Result lola_Environment_install(lola_Environment* environment, lola_Str name, lola_CallbackData func_data);
+lola_Result lola_Environment_installStd(lola_Environment* environment);
+lola_Result lola_Environment_installRuntime(lola_Environment* environment);
 void lola_Environment_deinit(lola_Environment* environment);
 
 lola_VM* lola_VM_init(lola_Environment* environment);
