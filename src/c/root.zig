@@ -594,8 +594,8 @@ const CDisassemblerOptions = extern struct {
     instructionOutput: bool,
 };
 const DisassemblerOptions = lola.dis.DisassemblerOptions;
-export fn lola_dis_toBuffer(ptr: ?[*]u8, len: usize, cu: ?*const CompileUnit, options: CDisassemblerOptions) Result {
-    var w = std.Io.Writer.fixed(ptr.?[0..len]);
+export fn lola_dis_toBuffer(ptr: ?[*]u8, len: ?*usize, cu: ?*const CompileUnit, options: CDisassemblerOptions) Result {
+    var w = std.Io.Writer.fixed(ptr.?[0..len.?.*]);
     lola.dis.disassemble(&w, cu.?.*, .{
         .addressPrefix = options.addressPrefix,
         .hexwidth = if (options.hexwidth > 0) options.hexwidth else null,
@@ -605,6 +605,7 @@ export fn lola_dis_toBuffer(ptr: ?[*]u8, len: usize, cu: ?*const CompileUnit, op
         static_error = e;
         return Result.fromError(e);
     };
+    len.?.* = w.end;
     return .success;
 }
 export fn lola_dis_alloc(cu: ?*const CompileUnit, options: CDisassemblerOptions, dis: ?*Str) Result {
