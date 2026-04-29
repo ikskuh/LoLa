@@ -68,34 +68,14 @@ pub const VM = struct {
 
     /// Initialize a new virtual machine that will run the given environment.
     pub fn init(allocator: std.mem.Allocator, environment: *Environment) !Self {
-        var vm = Self{
-            .allocator = allocator,
-            .stack = std.ArrayList(Value).empty,
-            .calls = std.ArrayList(Context).empty,
-            .currentAsynCall = null,
-            .objectPool = environment.objectPool,
-        };
-        errdefer vm.stack.deinit(allocator);
-        errdefer vm.calls.deinit(allocator);
-
-        try vm.stack.ensureTotalCapacity(allocator, 128);
-        try vm.calls.ensureTotalCapacity(allocator, 32);
-
-        // Initialize with special "init context" that runs the script itself
-        // and hosts the global variables.
-        var initFun = try vm.createContext(Environment.ScriptFunction{
+        return initFunctionCall(allocator, environment, Environment.ScriptFunction{
             .environment = environment,
             .entryPoint = 0, // start at the very first byte
             .localCount = environment.compileUnit.temporaryCount,
-        });
-        errdefer vm.deinitContext(&initFun);
-
-        try vm.calls.append(allocator, initFun);
-
-        return vm;
+        }, &.{});
     }
 
-    /// Initialize a new virtual machine that will run the given environment.
+    /// Initialize a new virtual machine that will run the given function.
     pub fn initFunctionCall(allocator: std.mem.Allocator, environment: *Environment, function: Environment.ScriptFunction, args: []const Value) !Self {
         var vm = Self{
             .allocator = allocator,
@@ -116,9 +96,8 @@ pub const VM = struct {
         // Set args
         {
             const argc = @min(args.len, initFun.locals.len);
-            for (0..argc) |i| {
-                initFun.locals[i].replaceWith(args[i]);
-            }
+            @memset(initFun.locals, .void);
+            @memcpy(initFun.locals, args[0..argc]);
             for (args[args.len - argc ..]) |value| {
                 var owned = value;
                 owned.deinit();
