@@ -11,7 +11,7 @@ const objects = @import("objects.zig");
 
 const Environment = @import("Environment.zig");
 
-pub const ExecutionResult = enum {
+pub const ExecutionResult = union(enum) {
     /// The vm instruction quota was exhausted and the execution was terminated.
     exhausted,
 
@@ -20,7 +20,13 @@ pub const ExecutionResult = enum {
 
     /// The vm has completed execution of the program and has no more instructions to
     /// process.
-    completed,
+    /// When `.completed` is received, the caller must `deinit()` the received value
+    completed: Value,
+};
+
+pub const LolaCallResult = struct {
+    should_yield: bool,
+    returned_value: ?Value,
 };
 
 /// Executor of a compile unit. This virtual machine will
@@ -62,6 +68,16 @@ pub const VM = struct {
 
     /// Initialize a new virtual machine that will run the given environment.
     pub fn init(allocator: std.mem.Allocator, environment: *Environment) !Self {
+        return initFunctionCall(allocator, environment, Environment.ScriptFunction{
+            .environment = environment,
+            .entryPoint = 0, // start at the very first byte
+            .localCount = environment.compileUnit.temporaryCount,
+        }, &.{});
+    }
+
+    /// Initialize a new virtual machine that will run the given function.
+    /// The returned `VM` will take ownership of the values in `args`. The caller must not `deinit()` these values.
+    pub fn initFunctionCall(allocator: std.mem.Allocator, environment: *Environment, function: Environment.ScriptFunction, args: []const Value) !Self {
         var vm = Self{
             .allocator = allocator,
             .stack = std.ArrayList(Value).empty,
@@ -75,14 +91,19 @@ pub const VM = struct {
         try vm.stack.ensureTotalCapacity(allocator, 128);
         try vm.calls.ensureTotalCapacity(allocator, 32);
 
-        // Initialize with special "init context" that runs the script itself
-        // and hosts the global variables.
-        var initFun = try vm.createContext(Environment.ScriptFunction{
-            .environment = environment,
-            .entryPoint = 0, // start at the very first byte
-            .localCount = environment.compileUnit.temporaryCount,
-        });
+        var initFun = try vm.createContext(function);
         errdefer vm.deinitContext(&initFun);
+
+        // Set args
+        {
+            const argc = @min(args.len, initFun.locals.len);
+            @memset(initFun.locals, .void);
+            @memcpy(initFun.locals[0..argc], args[0..argc]);
+            for (args[args.len - argc ..]) |value| {
+                var owned = value;
+                owned.deinit();
+            }
+        }
 
         try vm.calls.append(allocator, initFun);
 
@@ -175,15 +196,16 @@ pub const VM = struct {
                 q.* -= 1;
             }
 
-            if (try self.executeSingle()) |result| {
+            const ret = try self.executeSingle();
+            if (ret) |result| {
                 switch (result) {
                     .completed => {
                         // A execution may only be completed if no calls
                         // are active anymore.
                         std.debug.assert(self.calls.items.len == 0);
-                        std.debug.assert(self.stack.items.len == 0);
+                        std.debug.assert(self.stack.items.len == 1);
 
-                        return ExecutionResult.completed;
+                        return ExecutionResult{ .completed = try self.pop() };
                     },
                     .yield => return ExecutionResult.paused,
                 }
@@ -467,11 +489,10 @@ pub const VM = struct {
                     item.deinit();
                 }
 
+                try self.push(.void);
                 // No more context to execute: we have completed execution
                 if (self.calls.items.len == 0)
                     return .completed;
-
-                try self.push(.void);
             },
 
             .retval => {
@@ -487,13 +508,10 @@ pub const VM = struct {
                     item.deinit();
                 }
 
+                try self.push(value);
                 // No more context to execute: we have completed execution
                 if (self.calls.items.len == 0) {
-                    // TODO: How to handle returns from the main scrip?
-                    value.deinit();
                     return .completed;
-                } else {
-                    try self.push(value);
                 }
             },
 
@@ -711,7 +729,7 @@ pub const VM = struct {
 
     /// Initiates or executes a function call.
     /// Returns `true` when the VM execution should suspend after the call, else `false`.
-    fn executeFunctionCall(self: *Self, environment: *Environment, call: anytype, function: Environment.Function, object: ?objects.ObjectHandle) !bool {
+    fn executeFunctionCall(self: *Self, environment: *Environment, call: ir.Instruction.CallArg, function: Environment.Function, object: ?objects.ObjectHandle) !bool {
         return switch (function) {
             .script => |fun| blk: {
                 var context = try self.createContext(fun);
@@ -884,7 +902,7 @@ pub const VM = struct {
         }
     }
 
-    pub fn serialize(self: Self, envmap: *lola.runtime.EnvironmentMap, stream: anytype) !void {
+    pub fn serialize(self: Self, envmap: *lola.runtime.EnvironmentMap, stream: *std.Io.Writer) !void {
         if (self.currentAsynCall != null)
             return error.NotSupportedYet; // we cannot serialize async function that are in-flight atm
 
@@ -910,7 +928,7 @@ pub const VM = struct {
         }
     }
 
-    pub fn deserialize(allocator: std.mem.Allocator, envmap: *lola.runtime.EnvironmentMap, stream: anytype) !Self {
+    pub fn deserialize(allocator: std.mem.Allocator, envmap: *lola.runtime.EnvironmentMap, stream: *std.Io.Reader) !Self {
         const stack_size = try stream.takeInt(u64, .little);
         const call_size = try stream.takeInt(u64, .little);
 
@@ -944,6 +962,7 @@ pub const VM = struct {
                 const local_count = try stream.takeInt(u16, .little);
                 const offset = try stream.takeInt(u32, .little);
                 const stack_balance = try stream.takeInt(u32, .little);
+
                 const env_id = try stream.takeInt(u32, .little);
 
                 const env = envmap.queryById(env_id) orelse return error.UnregisteredEnvironmentPointer;
@@ -1010,7 +1029,7 @@ test "VM basic execution" {
         fn verify(vm: *VM) !void {
             const result = try vm.execute(1);
 
-            try std.testing.expectEqual(ExecutionResult.completed, result);
+            try std.testing.expectEqual(ExecutionResult{ .completed = .void }, result);
         }
     });
 }
@@ -1061,4 +1080,73 @@ test "VM invalid jump panic" {
             try std.testing.expectError(error.InvalidJump, vm.execute(1000));
         }
     });
+}
+
+test "host call" {
+    const src = "function hello() {return \"world\";}";
+    var diag: lola.compiler.Diagnostics = .init(std.testing.allocator);
+    defer diag.deinit();
+    var cu = (try lola.compiler.compile(std.testing.allocator, &diag, "test.lola", src)).?;
+    defer cu.deinit();
+
+    var pool = TestPool.init(std.testing.allocator);
+    defer pool.deinit();
+
+    var env = try Environment.init(std.testing.allocator, &cu, pool.interface());
+    defer env.deinit();
+
+    var vm = try VM.initFunctionCall(std.testing.allocator, &env, env.getMethod("hello").?.script, &.{});
+    defer vm.deinit();
+
+    const result = try vm.execute(null);
+    try std.testing.expectEqual(ExecutionResult.completed, @as(@typeInfo(ExecutionResult).@"union".tag_type.?, result));
+    var value = result.completed;
+    defer value.deinit();
+    try std.testing.expectEqualStrings("world", try value.toString());
+}
+test "host call with args" {
+    const src = "function double(input) {return input*2;}";
+    var diag: lola.compiler.Diagnostics = .init(std.testing.allocator);
+    defer diag.deinit();
+    var cu = (try lola.compiler.compile(std.testing.allocator, &diag, "test.lola", src)).?;
+    defer cu.deinit();
+
+    var pool = TestPool.init(std.testing.allocator);
+    defer pool.deinit();
+
+    var env = try Environment.init(std.testing.allocator, &cu, pool.interface());
+    defer env.deinit();
+
+    const args = [_]Value{Value.initNumber(5)};
+    var vm = try VM.initFunctionCall(std.testing.allocator, &env, env.getMethod("double").?.script, &args);
+    defer vm.deinit();
+
+    const result = try vm.execute(null);
+    try std.testing.expectEqual(ExecutionResult.completed, @as(@typeInfo(ExecutionResult).@"union".tag_type.?, result));
+    var value = result.completed;
+    defer value.deinit();
+    try std.testing.expectEqual(@as(f64, 10.0), try value.toNumber());
+}
+test "host call arg order" {
+    const src = "function sub(a,b) {return a-b;}";
+    var diag: lola.compiler.Diagnostics = .init(std.testing.allocator);
+    defer diag.deinit();
+    var cu = (try lola.compiler.compile(std.testing.allocator, &diag, "test.lola", src)).?;
+    defer cu.deinit();
+
+    var pool = TestPool.init(std.testing.allocator);
+    defer pool.deinit();
+
+    var env = try Environment.init(std.testing.allocator, &cu, pool.interface());
+    defer env.deinit();
+
+    const args = [_]Value{ Value.initNumber(5), Value.initNumber(3) };
+    var vm = try VM.initFunctionCall(std.testing.allocator, &env, env.getMethod("sub").?.script, &args);
+    defer vm.deinit();
+
+    const result = try vm.execute(null);
+    try std.testing.expectEqual(ExecutionResult.completed, @as(@typeInfo(ExecutionResult).@"union".tag_type.?, result));
+    var value = result.completed;
+    defer value.deinit();
+    try std.testing.expectEqual(@as(f64, 2.0), try value.toNumber());
 }
