@@ -97,7 +97,7 @@ pub const VM = struct {
         {
             const argc = @min(args.len, initFun.locals.len);
             @memset(initFun.locals, .void);
-            @memcpy(initFun.locals, args[0..argc]);
+            @memcpy(initFun.locals[0..argc], args[0..argc]);
             for (args[args.len - argc ..]) |value| {
                 var owned = value;
                 owned.deinit();
