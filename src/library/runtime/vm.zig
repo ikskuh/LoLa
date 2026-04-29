@@ -76,6 +76,7 @@ pub const VM = struct {
     }
 
     /// Initialize a new virtual machine that will run the given function.
+    /// The returned `VM` will take ownership of the values in `args`. The caller must not `deinit()` these values.
     pub fn initFunctionCall(allocator: std.mem.Allocator, environment: *Environment, function: Environment.ScriptFunction, args: []const Value) !Self {
         var vm = Self{
             .allocator = allocator,
