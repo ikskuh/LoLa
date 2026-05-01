@@ -11,6 +11,10 @@
             .url = "git+https://github.com/ikskuh/any-pointer.git#0f9725a324d48239d1d7e07b7f270b0a87be576a",
             .hash = "N-V-__8AABtBAABwSNNZpjUoWFLYSZZXjKgv9hKsDuZq64Zk",
         },
+        .koino = .{
+            .url = "https://github.com/kivikakk/koino/archive/0151bb37714d93688f31e3d7a3d0369106818f26.tar.gz",
+            .hash = "122055057fe62c0a8bcccb3c36a23115db58a185af2c18dd41d0bb4ac083f519ad5d",
+        },
     },
 
     .paths = .{"."},
